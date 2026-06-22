@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA-Fallback: clientseitiges Routing (React Router) auf index.html.
+# Vorhandene Dateien (Assets, sw.js, manifest) werden zuerst ausgeliefert.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

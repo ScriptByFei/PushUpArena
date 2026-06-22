@@ -147,6 +147,26 @@ PushupArena/
 
 ---
 
+## Deployment
+
+Die App ist eine statische SPA und lässt sich auf jedem Static-Host betreiben. Konfigurationen
+für **Vercel** ([`vercel.json`](vercel.json)) und **Netlify** ([`netlify.toml`](netlify.toml))
+mit SPA-Fallback liegen bei.
+
+1. **Repo importieren** (Vercel/Netlify → New Project). Build-Command `npm run build`,
+   Output `dist` (wird i. d. R. automatisch erkannt).
+2. **Env-Variablen im Hosting** setzen (nicht ins Repo!):
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. **Supabase an die öffentliche Domain anpassen** (sonst brechen Login-Redirects):
+   - *Authentication → URL Configuration*: deine Domain als **Site URL** und
+     `https://deine-domain/reset-password` zu den **Redirect URLs**.
+   - *Google Cloud Console*: deine Domain zu den **Authorized JavaScript origins** hinzufügen
+     (die Supabase-Callback-URL bleibt unverändert).
+4. **SPA-Routing**: Fallback auf `index.html` ist über die mitgelieferten Configs abgedeckt.
+
+---
+
 ## Erweiterbarkeit: weitere Übungen
 
 Das Modell ist generisch. Eine neue Übung hinzufügen:
