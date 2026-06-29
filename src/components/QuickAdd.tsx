@@ -12,35 +12,44 @@ export function QuickAdd({
 }: {
   exerciseId?: string;
   unit?: string;
-  onLogged?: () => void;
+  onLogged?: (info: { amount: number; entryId: string }) => void;
 }) {
   const { submit, submitting } = useWorkoutLogger(exerciseId, unit);
   const [custom, setCustom] = useState('');
+  const [active, setActive] = useState<number | null>(null);
 
   async function log(amount: number) {
     if (amount <= 0) return;
-    const { error } = await submit({ amount });
-    if (!error) {
+    setActive(amount);
+    const { error, entry } = await submit({ amount });
+    setActive(null);
+    if (!error && entry) {
       setCustom('');
-      onLogged?.();
+      onLogged?.({ amount, entryId: entry.id });
     }
   }
 
   return (
     <div>
       <div className="grid grid-cols-4 gap-2">
-        {PRESETS.map((n) => (
-          <Button
-            key={n}
-            variant="secondary"
-            size="lg"
-            disabled={submitting}
-            onClick={() => log(n)}
-            className="flex-col !py-4 text-lg"
-          >
-            +{n}
-          </Button>
-        ))}
+        {PRESETS.map((n) => {
+          const isActive = active === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              disabled={submitting}
+              onClick={() => log(n)}
+              className={`rounded-xl py-4 text-lg font-semibold transition active:scale-95 disabled:opacity-60 ${
+                isActive
+                  ? 'bg-brand-600 text-white shadow-glow ring-2 ring-brand-400'
+                  : 'bg-ink-700 text-slate-100 hover:bg-ink-600'
+              }`}
+            >
+              +{n}
+            </button>
+          );
+        })}
       </div>
       <form
         className="mt-3 flex gap-2"
@@ -59,7 +68,7 @@ export function QuickAdd({
           placeholder="Eigene Anzahl"
           className="text-center"
         />
-        <Button type="submit" size="lg" loading={submitting} disabled={!custom}>
+        <Button type="submit" size="lg" loading={submitting && active === null} disabled={!custom}>
           Los
         </Button>
       </form>

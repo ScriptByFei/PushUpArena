@@ -37,9 +37,25 @@ export default {
           '0%': { transform: 'scale(0.9)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
+        'xp-float': {
+          '0%': { opacity: '0', transform: 'translateY(8px) scale(0.9)' },
+          '25%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '100%': { opacity: '0', transform: 'translateY(-22px)' },
+        },
+        'pulse-ring': {
+          '0%': { boxShadow: '0 0 0 0 rgba(99,102,241,0.45)' },
+          '100%': { boxShadow: '0 0 0 10px rgba(99,102,241,0)' },
+        },
+        glow: {
+          '0%, 100%': { filter: 'drop-shadow(0 0 5px rgba(129,140,248,0.65))' },
+          '50%': { filter: 'drop-shadow(0 0 12px rgba(129,140,248,0.95))' },
+        },
       },
       animation: {
         'pop-in': 'pop-in 0.2s ease-out',
+        'xp-float': 'xp-float 1s ease-out forwards',
+        'pulse-ring': 'pulse-ring 0.7s ease-out',
+        glow: 'glow 2.6s ease-in-out infinite',
       },
     },
   },
