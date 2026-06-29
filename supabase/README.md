@@ -92,6 +92,31 @@ Die App nutzt `signInWithOAuth({ provider: 'google' })` mit Redirect zurück auf
 App-Root. Profile (inkl. Avatar/Name aus Google) werden automatisch per Trigger
 `handle_new_user` angelegt.
 
+### 4.3 Branding – „PushupArena" im Google-Anmeldedialog
+
+Standardmäßig zeigt Googles Zustimmungsbildschirm „… um fortzufahren zu
+`<project-ref>.supabase.co`". So wird daraus PushupArena:
+
+1. **App-Name & Logo (wichtigster, kostenloser Schritt):**
+   Google Cloud Console → **APIs & Services → OAuth consent screen → Edit app**:
+   - **App name** = `PushupArena`
+   - **App logo** = PushupArena-Logo hochladen (`brand/PushUpArena-Logo.png`)
+   - Support-/Developer-E-Mail ausfüllen, speichern.
+   Damit erscheint der Name „PushupArena" samt Logo im Dialog.
+
+2. **Die „…supabase.co"-Zeile entfernen (optional, fortgeschritten):**
+   Diese Domain zeigt Google nur weg, wenn der OAuth-Redirect über eine **eigene Domain**
+   läuft. Dafür in Supabase **Custom Domains** aktivieren (kostenpflichtiges Add-on), z. B.
+   `auth.deine-domain.de`, und diese Domain dann als Authorized redirect URI in Google
+   hinterlegen (`https://auth.deine-domain.de/auth/v1/callback`).
+
+3. **Verifizierung:** Solange die App im Google-Status „Testing" ist, sehen nur als
+   Test-User eingetragene Konten den Dialog ohne Warnung. Für offene Nutzung den
+   Consent Screen auf „In production" setzen (ggf. Google-Verifizierung nötig).
+
+> Hinweis: Diese Einstellungen liegen in **deinem** Google-Cloud-Projekt und können nicht
+> aus dem Code heraus gesetzt werden.
+
 ---
 
 ## 5. Edge Function „delete-account" (DSGVO-Löschung)

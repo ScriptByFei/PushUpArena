@@ -8,3 +8,9 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Gehashte JS/CSS-Assets dürfen dauerhaft gecacht werden (Dateiname ändert sich bei Änderung).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
