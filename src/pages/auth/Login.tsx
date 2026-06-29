@@ -71,6 +71,7 @@ export default function Login() {
         <Field label="E-Mail" htmlFor="email">
           <Input
             id="email"
+            name="email"
             type="email"
             autoComplete="email"
             required
@@ -82,6 +83,7 @@ export default function Login() {
         <Field label="Passwort" htmlFor="password">
           <PasswordInput
             id="password"
+            name="password"
             autoComplete="current-password"
             required
             value={password}

@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
+import { DateTimeInput } from '@/components/ui/DateTimeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { EditIcon, TrashIcon } from '@/components/ui/icons';
@@ -87,7 +88,7 @@ export default function Track() {
             />
           </Field>
           <Field label="Datum & Uhrzeit" htmlFor="when">
-            <Input id="when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            <DateTimeInput id="when" value={when} onChange={setWhen} />
           </Field>
           <Field label="Notiz (optional)" htmlFor="note">
             <Textarea
@@ -241,7 +242,7 @@ function EditModal({
           />
         </Field>
         <Field label="Datum & Uhrzeit">
-          <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+          <DateTimeInput value={when} onChange={setWhen} />
         </Field>
         <Field label="Notiz (optional)">
           <Textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />

@@ -1,4 +1,4 @@
-# PushupArena
-# Private Fitness-App – keine öffentlichen Inhalte zum Indexieren.
+# PushupArena – nicht-öffentliche App.
+# Keine Indexierung durch Suchmaschinen.
 User-agent: *
-Disallow:
+Disallow: /

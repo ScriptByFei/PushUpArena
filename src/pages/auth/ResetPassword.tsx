@@ -68,6 +68,7 @@ export default function ResetPassword() {
           <Field label="Neues Passwort" htmlFor="password" hint="Mindestens 8 Zeichen.">
             <PasswordInput
               id="password"
+              name="new-password"
               autoComplete="new-password"
               required
               value={password}
@@ -78,6 +79,7 @@ export default function ResetPassword() {
           <Field label="Passwort bestätigen" htmlFor="confirm">
             <PasswordInput
               id="confirm"
+              name="confirm-password"
               autoComplete="new-password"
               required
               value={confirm}

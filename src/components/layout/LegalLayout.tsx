@@ -12,7 +12,9 @@ export function LegalLayout({ title, children }: { title: string; children: Reac
         {children}
       </div>
       <p className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-        ⚠️ Platzhalter – bitte vor Veröffentlichung durch rechtssichere Inhalte ersetzen.
+        ⚠️ Nicht-öffentliche App – private Nutzung im geschlossenen Kreis. Diese Seite ist ein
+        Platzhalter und vor einer öffentlichen Bereitstellung durch rechtssichere Inhalte zu
+        ersetzen.
       </p>
     </div>
   );

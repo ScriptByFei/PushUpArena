@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PWAUpdater } from '@/components/PWAUpdater';
@@ -51,6 +51,9 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/imprint" element={<Imprint />} />
+
+      {/* Alias: /dashboard -> / */}
+      <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
       {/* Geschützte Routen */}
       <Route

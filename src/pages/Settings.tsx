@@ -214,6 +214,7 @@ export default function Settings() {
           <Field label="Neues Passwort" htmlFor="newpw" hint="Mindestens 8 Zeichen.">
             <PasswordInput
               id="newpw"
+              name="new-password"
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}

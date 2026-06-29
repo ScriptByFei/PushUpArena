@@ -44,6 +44,19 @@ export function formatDateTime(value: string | Date): string {
   return `${formatDate(value)} · ${formatTime(value)}`;
 }
 
+// Immer deutsch, 24h, ohne AM/PM, z. B. "29.06.2026, 17:14"
+const dateTimeFmt = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+export function formatGermanDateTime(value: string | Date): string {
+  return dateTimeFmt.format(new Date(value));
+}
+
 /** Relativer, freundlicher Tagesbezug ("Heute", "Gestern", sonst Datum). */
 export function formatRelativeDay(value: string | Date): string {
   const d = new Date(value);

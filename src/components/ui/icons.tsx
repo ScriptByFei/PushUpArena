@@ -134,3 +134,10 @@ export const ShareIcon = (p: IconProps) => (
     <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
   </svg>
 );
+
+export const CalendarIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+);

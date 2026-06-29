@@ -101,6 +101,7 @@ export default function Register() {
         <Field label="E-Mail" htmlFor="email">
           <Input
             id="email"
+            name="email"
             type="email"
             autoComplete="email"
             required
@@ -112,6 +113,7 @@ export default function Register() {
         <Field label="Passwort" htmlFor="password" hint="Mindestens 8 Zeichen.">
           <PasswordInput
             id="password"
+            name="new-password"
             autoComplete="new-password"
             required
             value={password}
@@ -122,6 +124,7 @@ export default function Register() {
         <Field label="Passwort bestätigen" htmlFor="confirm">
           <PasswordInput
             id="confirm"
+            name="confirm-password"
             autoComplete="new-password"
             required
             value={confirm}
