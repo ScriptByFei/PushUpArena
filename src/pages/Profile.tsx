@@ -15,6 +15,24 @@ import { formatDate } from '@/lib/date';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
+// Fortschritt für gesperrte Badges mit klarem numerischem Ziel.
+function lockedProgress(
+  slug: string,
+  total: number,
+  streak: number,
+): { current: number; target: number } | null {
+  switch (slug) {
+    case 'first-10':
+      return { current: Math.min(total, 10), target: 10 };
+    case 'century':
+      return { current: Math.min(total, 100), target: 100 };
+    case 'streak-7':
+      return { current: Math.min(streak, 7), target: 7 };
+    default:
+      return null;
+  }
+}
+
 export default function Profile() {
   const { profile, loading, updateProfile } = useProfile();
   const { exercise } = useExercise();
@@ -169,22 +187,40 @@ export default function Profile() {
       <Card>
         <CardTitle>Badges</CardTitle>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          {items.map((b) => (
-            <div
-              key={b.id}
-              className={`flex items-center gap-3 rounded-xl border p-3 transition ${
-                b.unlocked
-                  ? 'border-amber-400/40 bg-amber-400/10'
-                  : 'border-ink-700 bg-ink-900/40 opacity-60'
-              }`}
-            >
-              <span className={`text-3xl ${b.unlocked ? '' : 'grayscale'}`}>{b.icon}</span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-200">{b.name}</p>
-                <p className="text-[11px] leading-tight text-slate-400">{b.description}</p>
+          {items.map((b) => {
+            const p = b.unlocked
+              ? null
+              : lockedProgress(b.slug, stats.total_amount, stats.current_streak);
+            return (
+              <div
+                key={b.id}
+                className={`flex items-start gap-3 rounded-xl border p-3 transition ${
+                  b.unlocked ? 'border-amber-400/40 bg-amber-400/10' : 'border-ink-700 bg-ink-900/40'
+                }`}
+              >
+                <span className={`text-3xl ${b.unlocked ? '' : 'opacity-50 grayscale'}`}>
+                  {b.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-200">{b.name}</p>
+                  <p className="text-[11px] leading-tight text-slate-400">{b.description}</p>
+                  {p && (
+                    <div className="mt-1.5">
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-ink-700">
+                        <div
+                          className="h-full rounded-full bg-brand-500"
+                          style={{ width: `${Math.min(100, (p.current / p.target) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="mt-0.5 text-[10px] font-medium text-brand-300">
+                        {p.current} / {p.target}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>

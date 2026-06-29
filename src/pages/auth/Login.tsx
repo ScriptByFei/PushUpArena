@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function Login() {
@@ -79,9 +80,8 @@ export default function Login() {
           />
         </Field>
         <Field label="Passwort" htmlFor="password">
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             required
             value={password}

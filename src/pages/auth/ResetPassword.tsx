@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Input';
+import { Field } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export default function ResetPassword() {
   const { updatePassword, session, loading: authLoading } = useAuth();
@@ -65,9 +66,8 @@ export default function ResetPassword() {
             </div>
           )}
           <Field label="Neues Passwort" htmlFor="password" hint="Mindestens 8 Zeichen.">
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="new-password"
               required
               value={password}
@@ -76,9 +76,8 @@ export default function ResetPassword() {
             />
           </Field>
           <Field label="Passwort bestätigen" htmlFor="confirm">
-            <Input
+            <PasswordInput
               id="confirm"
-              type="password"
               autoComplete="new-password"
               required
               value={confirm}

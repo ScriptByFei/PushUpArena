@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function Register() {
@@ -109,9 +110,8 @@ export default function Register() {
           />
         </Field>
         <Field label="Passwort" htmlFor="password" hint="Mindestens 8 Zeichen.">
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             required
             value={password}
@@ -120,9 +120,8 @@ export default function Register() {
           />
         </Field>
         <Field label="Passwort bestätigen" htmlFor="confirm">
-          <Input
+          <PasswordInput
             id="confirm"
-            type="password"
             autoComplete="new-password"
             required
             value={confirm}

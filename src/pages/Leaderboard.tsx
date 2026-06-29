@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import { useExercise } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 
@@ -46,6 +48,11 @@ export default function Leaderboard() {
           icon="🏆"
           title="Deine Rangliste ist noch leer"
           description="Füge Freunde hinzu, um euch zu vergleichen. Nur Freunde sehen die Vergleichsdaten."
+          action={
+            <Link to="/friends">
+              <Button size="sm">Freunde hinzufügen</Button>
+            </Link>
+          }
         />
       ) : (
         <Card>

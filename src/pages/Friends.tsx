@@ -1,5 +1,6 @@
-import { FormEvent, useMemo, useState, type ReactNode } from 'react';
+import { FormEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useFriends, type FriendProfile } from '@/hooks/useFriends';
+import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
-import { SearchIcon, CheckIcon, XIcon, UserIcon } from '@/components/ui/icons';
+import { SearchIcon, CheckIcon, XIcon, UserIcon, ShareIcon } from '@/components/ui/icons';
 
 function PersonRow({
   profile,
@@ -44,6 +45,7 @@ export default function Friends() {
     cancelRequest,
     removeFriend,
   } = useFriends();
+  const { profile } = useProfile();
   const toast = useToast();
 
   const [query, setQuery] = useState('');
@@ -51,6 +53,28 @@ export default function Friends() {
   const [searching, setSearching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  function focusSearch() {
+    searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    searchRef.current?.focus();
+  }
+
+  async function onInvite() {
+    const url = window.location.origin;
+    const uname = profile?.username ?? '';
+    const text = `Tritt mir auf PushupArena bei und such mich als @${uname}: ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'PushupArena', text, url });
+      } else {
+        await navigator.clipboard.writeText(text);
+        toast.success('Einladungstext kopiert.');
+      }
+    } catch {
+      /* vom Nutzer abgebrochen */
+    }
+  }
 
   const friendIds = useMemo(() => new Set(friends.map((f) => f.friend.id)), [friends]);
   const pendingIds = useMemo(
@@ -84,9 +108,19 @@ export default function Friends() {
     <div className="space-y-4">
       {/* Suche */}
       <Card>
-        <CardTitle>Freunde finden</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Freunde finden</CardTitle>
+          <button
+            onClick={onInvite}
+            className="flex items-center gap-1.5 text-xs font-medium text-brand-400 hover:text-brand-300"
+          >
+            <ShareIcon className="h-4 w-4" />
+            Einladen
+          </button>
+        </div>
         <form onSubmit={onSearch} className="mt-3 flex gap-2">
           <Input
+            ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Username suchen …"
@@ -207,7 +241,12 @@ export default function Friends() {
               <EmptyState
                 icon="🤝"
                 title="Noch keine Freunde"
-                description="Suche oben nach Usernamen und sende Anfragen."
+                description="Suche nach Usernamen und sende Anfragen – oder lade jemanden ein."
+                action={
+                  <Button size="sm" onClick={focusSearch}>
+                    Freunde suchen
+                  </Button>
+                }
               />
             ) : (
               <ul className="mt-2 divide-y divide-ink-700">

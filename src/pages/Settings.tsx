@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
 import { LogoutIcon, TrashIcon } from '@/components/ui/icons';
@@ -192,9 +193,8 @@ export default function Settings() {
         <CardTitle>Sicherheit</CardTitle>
         <form onSubmit={onChangePassword} className="mt-3 space-y-3">
           <Field label="Neues Passwort" htmlFor="newpw" hint="Mindestens 8 Zeichen.">
-            <Input
+            <PasswordInput
               id="newpw"
-              type="password"
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
