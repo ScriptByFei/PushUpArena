@@ -16,10 +16,12 @@ export function AuthLayout({
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 text-3xl shadow-glow">
-            💪
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight">PushupArena</h1>
+          <img
+            src="/logo.png"
+            alt="PushupArena"
+            className="mb-2 h-32 w-32 object-contain drop-shadow-[0_6px_24px_rgba(251,146,60,0.28)]"
+          />
+          <h1 className="sr-only">PushupArena</h1>
           <p className="text-sm text-slate-400">Tracke. Vergleiche. Werde stärker.</p>
         </div>
 

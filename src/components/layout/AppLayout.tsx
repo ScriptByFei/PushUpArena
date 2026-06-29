@@ -18,10 +18,8 @@ export function AppLayout() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-800 bg-ink-950/80 px-4 py-3 backdrop-blur">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-sm">
-            💪
-          </span>
+        <Link to="/" className="flex items-center gap-2" aria-label="Start">
+          <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
           <span className="text-base font-bold tracking-tight">{title}</span>
         </Link>
         <Link
