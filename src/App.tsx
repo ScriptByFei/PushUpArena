@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -40,7 +41,9 @@ export default function App() {
   if (!isSupabaseConfigured) return <ConfigNotice />;
 
   return (
-    <Routes>
+    <>
+      <PWAUpdater />
+      <Routes>
       {/* Öffentliche Routen */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -68,6 +71,7 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

@@ -57,6 +57,8 @@ export default function Settings() {
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  const [checking, setChecking] = useState(false);
+
   useEffect(() => {
     if (goal) {
       setDaily(String(goal.daily_goal));
@@ -109,6 +111,22 @@ export default function Settings() {
   async function onLogout() {
     await signOut();
     navigate('/login', { replace: true });
+  }
+
+  async function onCheckUpdate() {
+    setChecking(true);
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) {
+        await reg.update();
+        toast.success('Aktuell – bei einer neuen Version erscheint oben ein Hinweis.');
+      } else {
+        toast.notify('Service Worker noch nicht aktiv.');
+      }
+    } catch {
+      toast.error('Update-Prüfung fehlgeschlagen.');
+    }
+    setChecking(false);
   }
 
   function closeDelete() {
@@ -226,7 +244,24 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* 6 · Gefahrenzone */}
+      {/* App / Updates */}
+      <Card>
+        <CardTitle>App</CardTitle>
+        <p className="mt-2 text-xs text-slate-500">
+          Prüfe, ob eine neue Version bereitsteht – ohne die App neu zu installieren.
+        </p>
+        <Button
+          variant="secondary"
+          fullWidth
+          className="mt-3"
+          loading={checking}
+          onClick={onCheckUpdate}
+        >
+          Nach Updates suchen
+        </Button>
+      </Card>
+
+      {/* 7 · Gefahrenzone */}
       <Card className="border-rose-500/40 bg-rose-500/5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-rose-300">Gefahrenzone</h2>
         <p className="mt-2 text-sm text-slate-400">

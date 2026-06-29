@@ -13,7 +13,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': Updates werden erkannt, aber erst nach Nutzerbestätigung aktiviert
+      // (siehe src/components/PWAUpdater.tsx -> "Aktualisieren"-Banner).
+      registerType: 'prompt',
       includeAssets: [
         'favicon.svg',
         'offline.html',
@@ -31,6 +33,7 @@ export default defineConfig({
         background_color: '#0b1020',
         display: 'standalone',
         orientation: 'portrait',
+        id: '/',
         start_url: '/',
         scope: '/',
         lang: 'de',
