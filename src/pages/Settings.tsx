@@ -11,15 +11,11 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
-import { LogoutIcon } from '@/components/ui/icons';
+import { LogoutIcon, TrashIcon } from '@/components/ui/icons';
 
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
+const DELETE_PHRASE = 'LÖSCHEN';
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       type="button"
@@ -55,7 +51,9 @@ export default function Settings() {
   const [savingPw, setSavingPw] = useState(false);
 
   const [searchable, setSearchable] = useState(true);
+
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -112,18 +110,19 @@ export default function Settings() {
     navigate('/login', { replace: true });
   }
 
+  function closeDelete() {
+    setDeleteOpen(false);
+    setDeleteConfirm('');
+  }
+
   async function onDeleteAccount() {
     setDeleting(true);
-    // Vollständige Löschung erfolgt über die Edge Function "delete-account"
-    // (Service-Role, serverseitig). Siehe supabase/functions/delete-account.
     const { error } = await supabase.functions.invoke('delete-account');
     if (error) {
-      // Fallback: zumindest die eigenen Profildaten löschen (kaskadiert alle Daten),
-      // falls die Edge Function (noch) nicht deployt ist.
+      // Fallback, falls die Edge Function nicht erreichbar ist: eigene Profildaten löschen
+      // (kaskadiert alle Nutzerdaten).
       if (user) await supabase.from('profiles').delete().eq('id', user.id);
-      toast.notify(
-        'Deine Daten wurden gelöscht. Der Auth-Eintrag wird über die Edge Function entfernt (siehe README).',
-      );
+      toast.notify('Deine Daten wurden gelöscht.');
     } else {
       toast.success('Konto gelöscht.');
     }
@@ -134,7 +133,17 @@ export default function Settings() {
 
   return (
     <div className="space-y-4">
-      {/* Ziele */}
+      {/* 1 · Konto */}
+      <Card>
+        <CardTitle>Konto</CardTitle>
+        <p className="mt-2 text-xs text-slate-500">Angemeldet als {user?.email}</p>
+        <Button variant="secondary" fullWidth className="mt-3" onClick={onLogout}>
+          <LogoutIcon className="h-5 w-5" />
+          Abmelden
+        </Button>
+      </Card>
+
+      {/* 2 · Ziele */}
       <Card>
         <CardTitle>Ziele · {exercise?.name}</CardTitle>
         <form onSubmit={onSaveGoals} className="mt-3 space-y-3">
@@ -164,7 +173,7 @@ export default function Settings() {
         </form>
       </Card>
 
-      {/* Privatsphäre */}
+      {/* 3 · Privatsphäre */}
       <Card>
         <CardTitle>Privatsphäre</CardTitle>
         <div className="mt-3 flex items-center justify-between gap-4">
@@ -178,9 +187,9 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* Passwort */}
+      {/* 4 · Sicherheit */}
       <Card>
-        <CardTitle>Passwort ändern</CardTitle>
+        <CardTitle>Sicherheit</CardTitle>
         <form onSubmit={onChangePassword} className="mt-3 space-y-3">
           <Field label="Neues Passwort" htmlFor="newpw" hint="Mindestens 8 Zeichen.">
             <Input
@@ -192,13 +201,19 @@ export default function Settings() {
               placeholder="••••••••"
             />
           </Field>
-          <Button type="submit" variant="secondary" fullWidth loading={savingPw} disabled={!newPassword}>
+          <Button
+            type="submit"
+            variant="secondary"
+            fullWidth
+            loading={savingPw}
+            disabled={!newPassword}
+          >
             Passwort aktualisieren
           </Button>
         </form>
       </Card>
 
-      {/* Rechtliches */}
+      {/* 5 · Rechtliches */}
       <Card>
         <CardTitle>Rechtliches</CardTitle>
         <div className="mt-2 flex flex-col gap-1 text-sm">
@@ -211,33 +226,46 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* Konto */}
-      <Card>
-        <CardTitle>Konto</CardTitle>
-        <p className="mt-2 text-xs text-slate-500">Angemeldet als {user?.email}</p>
-        <Button variant="secondary" fullWidth className="mt-3" onClick={onLogout}>
-          <LogoutIcon className="h-5 w-5" />
-          Abmelden
-        </Button>
-        <button
-          onClick={() => setDeleteOpen(true)}
-          className="mt-4 w-full text-center text-sm text-rose-400 hover:text-rose-300"
-        >
+      {/* 6 · Gefahrenzone */}
+      <Card className="border-rose-500/40 bg-rose-500/5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-rose-300">Gefahrenzone</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Beim Löschen werden alle deine Einträge, Ziele, Freundschaften und dein Profil
+          unwiderruflich entfernt. Das lässt sich nicht rückgängig machen.
+        </p>
+        <Button variant="danger" fullWidth className="mt-3" onClick={() => setDeleteOpen(true)}>
+          <TrashIcon className="h-5 w-5" />
           Konto dauerhaft löschen
-        </button>
+        </Button>
       </Card>
 
       <Modal
         open={deleteOpen}
-        title="Konto löschen?"
-        confirmLabel="Endgültig löschen"
+        title="Konto wirklich löschen?"
+        confirmLabel="Konto löschen"
         confirmVariant="danger"
         loading={deleting}
-        onClose={() => setDeleteOpen(false)}
+        confirmDisabled={deleteConfirm.trim().toUpperCase() !== DELETE_PHRASE}
+        onClose={closeDelete}
         onConfirm={onDeleteAccount}
       >
-        Alle deine Daten (Einträge, Ziele, Freundschaften, Profil) werden unwiderruflich gelöscht.
-        Dieser Schritt kann nicht rückgängig gemacht werden.
+        <div className="space-y-3 text-left">
+          <p>
+            Alle deine Daten werden unwiderruflich gelöscht. Dieser Schritt kann nicht rückgängig
+            gemacht werden.
+          </p>
+          <p className="text-slate-400">
+            Tippe zur Bestätigung <strong className="text-rose-300">{DELETE_PHRASE}</strong> ein:
+          </p>
+          <Input
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder={DELETE_PHRASE}
+            autoCapitalize="characters"
+            autoComplete="off"
+            aria-label="Löschen bestätigen"
+          />
+        </div>
       </Modal>
     </div>
   );

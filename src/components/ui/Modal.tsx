@@ -11,6 +11,7 @@ interface ModalProps {
   cancelLabel?: string;
   confirmVariant?: 'primary' | 'danger';
   loading?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export function Modal({
@@ -23,6 +24,7 @@ export function Modal({
   cancelLabel = 'Abbrechen',
   confirmVariant = 'primary',
   loading,
+  confirmDisabled,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -51,7 +53,13 @@ export function Modal({
             {cancelLabel}
           </Button>
           {onConfirm && (
-            <Button variant={confirmVariant} fullWidth onClick={onConfirm} loading={loading}>
+            <Button
+              variant={confirmVariant}
+              fullWidth
+              onClick={onConfirm}
+              loading={loading}
+              disabled={confirmDisabled}
+            >
               {confirmLabel}
             </Button>
           )}
