@@ -15,7 +15,7 @@ export default function Privacy() {
       <p>
         Konto: E-Mail-Adresse (nur für Login/Kommunikation, nie öffentlich sichtbar). Profil:
         Username, optionaler Anzeigename, Avatar und Bio. Nutzungsdaten: deine Trainings-Einträge,
-        Ziele, Freundschaften und freigeschaltete Badges.
+        Ziele und Freundschaften.
       </p>
 
       <h2>3. Zweck & Rechtsgrundlage</h2>

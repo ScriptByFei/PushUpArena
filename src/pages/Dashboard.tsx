@@ -4,7 +4,6 @@ import { useExercise } from '@/context/ExerciseContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useStats } from '@/hooks/useStats';
 import { useGoals } from '@/hooks/useGoals';
-import { useAchievements } from '@/hooks/useAchievements';
 import { useToast } from '@/context/ToastContext';
 import { supabase } from '@/lib/supabase';
 import { levelProgress, xpForLevel } from '@/lib/gamification';
@@ -42,7 +41,6 @@ export default function Dashboard() {
   const { profile } = useProfile();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
-  const { items, unlockedCount, refetch: refetchAchievements } = useAchievements();
   const toast = useToast();
 
   const [xpBurst, setXpBurst] = useState<{ id: number; amount: number } | null>(null);
@@ -56,12 +54,10 @@ export default function Dashboard() {
   const progress = levelProgress(stats.total_amount);
   const nextLevelXp = xpForLevel(progress.level + 1);
   const unit = exercise.unit === 'reps' ? 'Wdh.' : exercise.unit;
-  const recentBadges = items.filter((i) => i.unlocked).slice(0, 4);
   const isFresh = stats.total_amount === 0;
 
   function onLogged({ amount, entryId }: { amount: number; entryId: string }) {
     void refetchStats();
-    void refetchAchievements();
     setPulseKey((k) => k + 1);
     const id = Date.now();
     setXpBurst({ id, amount });
@@ -81,7 +77,6 @@ export default function Dashboard() {
     toast.success('Rückgängig gemacht.');
     setLastEntry(null);
     void refetchStats();
-    void refetchAchievements();
   }
 
   return (
@@ -205,32 +200,6 @@ export default function Dashboard() {
                 colorClass="from-violet-500 to-fuchsia-400"
               />
             )}
-          </div>
-        )}
-      </Card>
-
-      {/* Badges */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>Badges ({unlockedCount})</CardTitle>
-          <Link to="/profile" className="text-xs text-brand-400 hover:text-brand-300">
-            Alle ansehen
-          </Link>
-        </div>
-        {recentBadges.length === 0 ? (
-          <p className="py-3 text-sm text-slate-400">
-            Noch keine Badges – leg los und schalte dein erstes frei!
-          </p>
-        ) : (
-          <div className="mt-3 flex gap-3">
-            {recentBadges.map((b) => (
-              <div key={b.id} className="flex flex-col items-center gap-1" title={b.description}>
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-400/15 text-2xl">
-                  {b.icon}
-                </span>
-                <span className="max-w-[64px] truncate text-[10px] text-slate-400">{b.name}</span>
-              </div>
-            ))}
           </div>
         )}
       </Card>

@@ -49,15 +49,6 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
       }
 
       toast.success(`+${amount} ${unit} gespeichert 💪`);
-
-      // Achievements serverseitig prüfen (verhindert Manipulation).
-      const { data: unlocked } = await supabase.rpc('evaluate_achievements', {
-        p_exercise: exerciseId,
-      });
-      unlocked?.forEach((u) =>
-        toast.achievement(`Badge freigeschaltet: ${u.name}`, u.icon),
-      );
-
       setSubmitting(false);
       return { error: null, entry };
     },
