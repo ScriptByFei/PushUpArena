@@ -13,9 +13,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 'prompt': Updates werden erkannt, aber erst nach Nutzerbestätigung aktiviert
-      // (siehe src/components/PWAUpdater.tsx -> "Aktualisieren"-Banner).
-      registerType: 'prompt',
+      // 'autoUpdate': neue Versionen werden im Hintergrund installiert und beim Erkennen
+      // automatisch aktiviert + neu geladen (kein Banner, kein Tippen).
+      registerType: 'autoUpdate',
       includeAssets: [
         'favicon.svg',
         'offline.html',

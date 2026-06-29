@@ -119,7 +119,8 @@ export default function Settings() {
       const reg = await navigator.serviceWorker?.getRegistration();
       if (reg) {
         await reg.update();
-        toast.success('Aktuell – bei einer neuen Version erscheint oben ein Hinweis.');
+        // Bei einer neuen Version lädt die App automatisch neu; sonst:
+        toast.success('App ist aktuell.');
       } else {
         toast.notify('Service Worker noch nicht aktiv.');
       }
