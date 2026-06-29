@@ -33,7 +33,7 @@ export function AppLayout() {
         </Link>
       </header>
 
-      <main className="flex-1 px-4 pb-28 pt-4">
+      <main className="flex-1 px-4 pb-32 pt-4">
         <Outlet />
       </main>
 
