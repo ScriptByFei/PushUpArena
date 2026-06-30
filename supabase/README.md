@@ -97,22 +97,22 @@ App-Root. Profile (inkl. Avatar/Name aus Google) werden automatisch per Trigger
 Standardmäßig zeigt Googles Zustimmungsbildschirm „… um fortzufahren zu
 `<project-ref>.supabase.co`". So wird daraus PushupArena:
 
-1. **App-Name & Logo (wichtigster, kostenloser Schritt):**
-   Google Cloud Console → **APIs & Services → OAuth consent screen → Edit app**:
+1. **App-Name & Logo (kostenlos – das machen wir):**
+   Google Cloud Console → **APIs & Services → OAuth consent screen → Edit app → Branding**:
    - **App name** = `PushupArena`
-   - **App logo** = PushupArena-Logo hochladen (`brand/PushUpArena-Logo.png`)
-   - Support-/Developer-E-Mail ausfüllen, speichern.
-   Damit erscheint der Name „PushupArena" samt Logo im Dialog.
+   - **App logo** = `public/logo.png` hochladen (512×512, ~299 KB – unter Googles 1-MB-Limit;
+     die Quelle `brand/PushUpArena-Logo.png` ist mit 1,65 MB zu groß).
+   - Support-E-Mail + Developer-Kontakt ausfüllen, **Save**.
+   Danach zeigt der Anmeldedialog „PushupArena" samt Logo.
 
-2. **Die „…supabase.co"-Zeile entfernen (optional, fortgeschritten):**
-   Diese Domain zeigt Google nur weg, wenn der OAuth-Redirect über eine **eigene Domain**
-   läuft. Dafür in Supabase **Custom Domains** aktivieren (kostenpflichtiges Add-on), z. B.
-   `auth.deine-domain.de`, und diese Domain dann als Authorized redirect URI in Google
-   hinterlegen (`https://auth.deine-domain.de/auth/v1/callback`).
+2. **Die „…supabase.co"-Zeile bleibt (bewusst, kostenlos):**
+   Diese Zeile wegzubekommen ginge nur über eine eigene Domain (Supabase **Custom Domains**,
+   kostenpflichtig). Das nutzen wir nicht – der Hinweis auf die Supabase-Domain ist
+   funktional unkritisch.
 
-3. **Verifizierung:** Solange die App im Google-Status „Testing" ist, sehen nur als
-   Test-User eingetragene Konten den Dialog ohne Warnung. Für offene Nutzung den
-   Consent Screen auf „In production" setzen (ggf. Google-Verifizierung nötig).
+3. **Sichtbarkeit:** Im Status „Testing" sehen nur eingetragene Test-User den Dialog. Für alle
+   Nutzer den Consent Screen auf **In production** setzen (bei reinen email/profile-Scopes i. d. R.
+   ohne aufwändige Verifizierung; Logo/Name können dann eine kurze Google-Prüfung durchlaufen).
 
 > Hinweis: Diese Einstellungen liegen in **deinem** Google-Cloud-Projekt und können nicht
 > aus dem Code heraus gesetzt werden.
