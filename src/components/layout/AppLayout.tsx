@@ -19,7 +19,7 @@ export function AppLayout() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-800 bg-ink-950/80 px-4 py-3 backdrop-blur">
         <Link to="/" className="flex items-center gap-2" aria-label="Start">
-          <img src="/logo.png" alt="" className="h-18 w-18 object-contain" />
+          <img src="/logo.png" alt="" className="h-15 w-15 object-contain" />
           <span className="text-base font-bold tracking-tight">{title}</span>
         </Link>
         <Link
