@@ -6,13 +6,12 @@ import { useStats } from '@/hooks/useStats';
 import { useGoals } from '@/hooks/useGoals';
 import { useToast } from '@/context/ToastContext';
 import { supabase } from '@/lib/supabase';
-import { levelProgress } from '@/lib/gamification';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { QuickAdd } from '@/components/QuickAdd';
-import { FireIcon, BoltIcon } from '@/components/ui/icons';
+import { FireIcon } from '@/components/ui/icons';
 
 function StatTile({
   label,
@@ -48,15 +47,12 @@ export default function Dashboard() {
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const toast = useToast();
 
-  const [xpBurst, setXpBurst] = useState<{ id: number; amount: number } | null>(null);
-  const [pulseKey, setPulseKey] = useState(0);
   const [lastEntry, setLastEntry] = useState<{ id: string; amount: number } | null>(null);
   const undoTimer = useRef<number | undefined>(undefined);
 
   if (exLoading) return <LoadingState label="Lade Übung …" />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
 
-  const progress = levelProgress(stats.total_amount);
   const streak = statsLoading ? 0 : (stats.current_streak ?? 0);
   const streakGlow: CSSProperties =
     streak >= 30
@@ -65,18 +61,10 @@ export default function Dashboard() {
         ? { boxShadow: '0 0 14px 3px rgba(251,146,60,0.5)' }
         : {};
 
-  const ringR = 46;
-  const ringCirc = 2 * Math.PI * ringR;
-  const ringOffset = ringCirc * (1 - (progress.xpForThisLevel > 0 ? progress.xpIntoLevel / progress.xpForThisLevel : 0));
   const unit = exercise.unit === 'reps' ? 'Wdh.' : exercise.unit;
-  const isFresh = stats.total_amount === 0;
 
   function onLogged({ amount, entryId }: { amount: number; entryId: string }) {
     void refetchStats();
-    setPulseKey((k) => k + 1);
-    const id = Date.now();
-    setXpBurst({ id, amount });
-    window.setTimeout(() => setXpBurst((b) => (b?.id === id ? null : b)), 1000);
     setLastEntry({ id: entryId, amount });
     window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setLastEntry(null), 6000);
@@ -96,80 +84,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      {/* Level / XP */}
-      <Card className="relative bg-gradient-to-br from-brand-700/40 to-ink-800/70">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-slate-300">
-              Hallo, {profile?.display_name || profile?.username || 'Athlet'} 👋
-            </p>
-            <p className="mt-1 flex items-center gap-2 text-3xl font-extrabold leading-none">
-              <BoltIcon className="h-7 w-7 text-brand-300 animate-glow" />
-              Level {progress.level}
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-slate-400">Gesamt-XP</div>
-            <div className="text-lg font-bold text-brand-200">{stats.total_amount}</div>
-          </div>
-        </div>
-
-        <div className="relative mt-4 flex flex-col items-center">
-          <div className="relative">
-            {xpBurst && (
-              <span
-                key={xpBurst.id}
-                className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 animate-xp-float text-sm font-bold text-brand-200 whitespace-nowrap"
-              >
-                +{xpBurst.amount} XP
-              </span>
-            )}
-            {pulseKey > 0 && (
-              <span
-                key={pulseKey}
-                className="pointer-events-none absolute inset-0 animate-pulse-ring rounded-full"
-              />
-            )}
-            <svg width="120" height="120" viewBox="0 0 120 120">
-              <defs>
-                <linearGradient id="xp-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#a5b4fc" />
-                </linearGradient>
-              </defs>
-              {/* Hintergrundkreis */}
-              <circle cx="60" cy="60" r={ringR} fill="none" stroke="#1e293b" strokeWidth="8" />
-              {/* Fortschrittskreis */}
-              <circle
-                cx="60"
-                cy="60"
-                r={ringR}
-                fill="none"
-                stroke="url(#xp-grad)"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={ringCirc}
-                strokeDashoffset={ringOffset}
-                style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }}
-              />
-              {/* Mittelbeschriftung */}
-              <text x="60" y="55" textAnchor="middle" fill="white" fontSize="16" fontWeight="800" fontFamily="inherit">
-                Level {progress.level}
-              </text>
-              <text x="60" y="71" textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="inherit">
-                {progress.xpIntoLevel} / {progress.xpForThisLevel} XP
-              </text>
-            </svg>
-          </div>
-          <div className="mt-1 text-xs text-slate-500">noch {progress.xpToNext} XP</div>
-        </div>
-
-        {isFresh && (
-          <p className="mt-3 text-xs text-brand-200/80">
-            Dein erstes Level wartet – logge deine ersten 10 Liegestütze. 💪
-          </p>
-        )}
-      </Card>
+      {/* Begrüßung */}
+      <p className="text-sm text-slate-300">
+        Hallo, {profile?.display_name || profile?.username || 'Athlet'} 👋
+      </p>
 
       {/* Statistik-Kacheln */}
       <div className="grid grid-cols-3 gap-3">

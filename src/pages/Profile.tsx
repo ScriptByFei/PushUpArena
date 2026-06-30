@@ -3,12 +3,10 @@ import { useProfile } from '@/hooks/useProfile';
 import { useStats } from '@/hooks/useStats';
 import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
-import { levelProgress } from '@/lib/gamification';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState } from '@/components/ui/States';
 import { formatDate } from '@/lib/date';
 
@@ -36,8 +34,6 @@ export default function Profile() {
   }, [profile]);
 
   if (loading || !profile) return <LoadingState label="Lade Profil …" />;
-
-  const progress = levelProgress(stats.total_amount);
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
@@ -133,20 +129,9 @@ export default function Profile() {
         </Card>
       )}
 
-      {/* Level / Stats */}
+      {/* Statistik */}
       <Card>
-        <div className="flex items-baseline justify-between">
-          <CardTitle>Level {progress.level}</CardTitle>
-          <span className="text-xs text-slate-400">{stats.total_amount} XP gesamt</span>
-        </div>
-        <div className="mt-3">
-          <ProgressBar
-            value={progress.xpIntoLevel}
-            max={progress.xpForThisLevel}
-            label={`Level ${progress.level + 1}`}
-            showValues={false}
-          />
-        </div>
+        <CardTitle>Statistik</CardTitle>
         <div className="mt-4 grid grid-cols-2 gap-3 text-center">
           <div>
             <div className="text-xl font-extrabold text-brand-300">{stats.total_amount}</div>
