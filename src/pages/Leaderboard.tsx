@@ -10,7 +10,6 @@ const SORTS = [
   { key: 'total_amount', label: 'Gesamt' },
   { key: 'today_amount', label: 'Heute' },
   { key: 'current_streak', label: 'Streak' },
-  { key: 'level', label: 'Level' },
 ] as const;
 
 const medals = ['🥇', '🥈', '🥉'];
@@ -26,7 +25,7 @@ export default function Leaderboard() {
     <div className="space-y-4">
       <Card>
         <CardTitle>Sortieren nach</CardTitle>
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2">
           {SORTS.map((s) => (
             <button
               key={s.key}
@@ -78,7 +77,7 @@ export default function Leaderboard() {
                     {row.is_me && <span className="ml-1 text-xs text-brand-300">(du)</span>}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Lvl {row.level} · {row.current_streak}🔥 · heute {row.today_amount}
+                    {row.current_streak}🔥 · heute {row.today_amount}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

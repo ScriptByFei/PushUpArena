@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { LeaderboardRow } from '@/lib/database.types';
 
-type SortKey = 'total_amount' | 'today_amount' | 'current_streak' | 'level';
+type SortKey = 'total_amount' | 'today_amount' | 'current_streak';
 
 export function useLeaderboard(exerciseId?: string) {
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
