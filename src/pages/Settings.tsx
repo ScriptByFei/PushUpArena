@@ -102,20 +102,15 @@ export default function Settings() {
   async function onRequestPush() {
     setRequestingPush(true);
     try {
-      // Timeout von 5 Sekunden – falls OneSignal hängt, auf nativen Dialog zurückfallen
-      const timeout = new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 5000),
-      );
-      await Promise.race([OneSignal.Notifications.requestPermission(), timeout]);
-    } catch {
-      // Fallback: nativen Browser-Dialog direkt aufrufen
+      // Nativen Dialog sofort aufrufen – muss direkt beim User-Tap passieren,
+      // sonst verwirft iOS den Gesture-Kontext.
       if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-        try {
-          await Notification.requestPermission();
-        } catch {
-          // ignorieren
-        }
+        await Notification.requestPermission();
       }
+      // Danach OneSignal informieren (fire-and-forget, kein await)
+      void OneSignal.Notifications.requestPermission().catch(() => {});
+    } catch {
+      // ignorieren
     }
     if (typeof Notification !== 'undefined') {
       setPushPermission(Notification.permission);
