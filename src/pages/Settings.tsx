@@ -40,8 +40,6 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const [checking, setChecking] = useState(false);
-
   const pushSupported = typeof Notification !== 'undefined';
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     pushSupported ? Notification.permission : 'default',
@@ -109,23 +107,6 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   async function onLogout() {
     await signOut();
     navigate('/login', { replace: true });
-  }
-
-  async function onCheckUpdate() {
-    setChecking(true);
-    try {
-      const reg = await navigator.serviceWorker?.getRegistration();
-      if (reg) {
-        await reg.update();
-        // Bei einer neuen Version lädt die App automatisch neu; sonst:
-        toast.success('App ist aktuell.');
-      } else {
-        toast.notify('Service Worker noch nicht aktiv.');
-      }
-    } catch {
-      toast.error('Update-Prüfung fehlgeschlagen.');
-    }
-    setChecking(false);
   }
 
   function closeDelete() {
@@ -291,24 +272,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
         </div>
       </Card>
 
-      {/* 8 · Gefahrenzone (ehemals 7) */}
-      <Card>
-        <CardTitle>App</CardTitle>
-        <p className="mt-2 text-xs text-slate-500">
-          Prüfe, ob eine neue Version bereitsteht – ohne die App neu zu installieren.
-        </p>
-        <Button
-          variant="secondary"
-          fullWidth
-          className="mt-3"
-          loading={checking}
-          onClick={onCheckUpdate}
-        >
-          Nach Updates suchen
-        </Button>
-      </Card>
-
-      {/* 7 · App / Updates */}
+      {/* Gefahrenzone */}
       <Card className="border-rose-500/40 bg-rose-500/5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-rose-300">Gefahrenzone</h2>
         <p className="mt-2 text-sm text-slate-400">
