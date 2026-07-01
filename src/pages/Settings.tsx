@@ -30,7 +30,11 @@ export default function Settings() {
   const [savingGoals, setSavingGoals] = useState(false);
 
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPw, setSavingPw] = useState(false);
+
+  // Google/OAuth-User haben kein Passwort → Sicherheitsabschnitt verstecken
+  const isOAuthUser = user?.app_metadata?.provider !== 'email';
 
 const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -87,6 +91,10 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       toast.error('Mindestens 8 Zeichen.');
       return;
     }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwörter stimmen nicht überein.');
+      return;
+    }
     setSavingPw(true);
     const { error } = await updatePassword(newPassword);
     setSavingPw(false);
@@ -94,6 +102,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     else {
       toast.success('Passwort geändert.');
       setNewPassword('');
+      setConfirmPassword('');
     }
   }
 
@@ -231,31 +240,43 @@ const [deleteOpen, setDeleteOpen] = useState(false);
         )}
       </Card>
 
-      {/* 5 · Sicherheit */}
-      <Card>
-        <CardTitle>Sicherheit</CardTitle>
-        <form onSubmit={onChangePassword} className="mt-3 space-y-3">
-          <Field label="Neues Passwort" htmlFor="newpw" hint="Mindestens 8 Zeichen.">
-            <PasswordInput
-              id="newpw"
-              name="new-password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </Field>
-          <Button
-            type="submit"
-            variant="secondary"
-            fullWidth
-            loading={savingPw}
-            disabled={!newPassword}
-          >
-            Passwort aktualisieren
-          </Button>
-        </form>
-      </Card>
+      {/* 5 · Sicherheit – nur für E-Mail-User */}
+      {!isOAuthUser && (
+        <Card>
+          <CardTitle>Sicherheit</CardTitle>
+          <form onSubmit={onChangePassword} className="mt-3 space-y-3">
+            <Field label="Neues Passwort" htmlFor="newpw" hint="Mindestens 8 Zeichen.">
+              <PasswordInput
+                id="newpw"
+                name="new-password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </Field>
+            <Field label="Passwort bestätigen" htmlFor="confirmpw">
+              <PasswordInput
+                id="confirmpw"
+                name="confirm-password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </Field>
+            <Button
+              type="submit"
+              variant="secondary"
+              fullWidth
+              loading={savingPw}
+              disabled={!newPassword || !confirmPassword}
+            >
+              Passwort aktualisieren
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {/* 6 · Rechtliches */}
       <Card>
