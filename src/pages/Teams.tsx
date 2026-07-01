@@ -119,12 +119,15 @@ export default function Teams() {
     joinTeam,
     leaveTeam,
     updateTeam,
+    deleteTeam,
   } = useTeams(exercise?.slug);
 
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState(false);
   const [joining, setJoining] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
 
@@ -152,6 +155,16 @@ export default function Teams() {
     setLeaveOpen(false);
     if (err) toast.error(err);
     else toast.success('Team verlassen.');
+  }
+
+  async function handleDeleteTeam() {
+    if (!myTeam) return;
+    setDeletingTeam(true);
+    const { error: err } = await deleteTeam(myTeam.id);
+    setDeletingTeam(false);
+    setDeleteTeamOpen(false);
+    if (err) toast.error(err);
+    else toast.success('Team gelöscht.');
   }
 
   // ── IN A TEAM ───────────────────────────────────────────────────────────────
@@ -246,6 +259,15 @@ export default function Teams() {
           Team verlassen
         </button>
 
+        {canManageTeams && (
+          <button
+            onClick={() => setDeleteTeamOpen(true)}
+            className="w-full py-2 text-sm font-medium text-red-500 hover:text-red-400"
+          >
+            Team löschen
+          </button>
+        )}
+
         <Modal
           open={leaveOpen}
           title="Team verlassen?"
@@ -256,6 +278,18 @@ export default function Teams() {
           onConfirm={handleLeave}
         >
           Du verlässt „{myTeam.name}". Du kannst danach einem anderen Team beitreten.
+        </Modal>
+
+        <Modal
+          open={deleteTeamOpen}
+          title="Team löschen?"
+          confirmLabel="Löschen"
+          confirmVariant="danger"
+          loading={deletingTeam}
+          onClose={() => setDeleteTeamOpen(false)}
+          onConfirm={handleDeleteTeam}
+        >
+          „{myTeam.name}" wird dauerhaft gelöscht. Alle Mitglieder werden entfernt. Das kann nicht rückgängig gemacht werden.
         </Modal>
 
         {/* Edit modal */}
