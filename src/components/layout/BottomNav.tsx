@@ -43,7 +43,7 @@ export function BottomNav() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* FAB — absolut zentriert, weiter nach oben versetzt */}
-      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-2/3">
+      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full">
         <NavLink to="/track" aria-label="Eintragen">
           {({ isActive }) => (
             <span
