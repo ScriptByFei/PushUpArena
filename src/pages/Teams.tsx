@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { useTeams } from '@/hooks/useTeams';
@@ -63,6 +63,7 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 // ── Logo picker (shared by create + edit modals) ──────────────────────────────
+// Nutzt <label>-Trick statt JS-click(), da iOS Safari input.click() in Modals blockiert
 function LogoPicker({
   preview,
   onChange,
@@ -71,14 +72,9 @@ function LogoPicker({
   onChange: (file: File) => void;
 }) {
   const toast = useToast();
-  const ref = useRef<HTMLInputElement>(null);
   return (
     <div className="flex justify-center">
-      <button
-        type="button"
-        onClick={() => ref.current?.click()}
-        className="relative flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-ink-600 bg-ink-800 hover:border-brand-500"
-      >
+      <label className="relative flex h-20 w-20 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-ink-600 bg-ink-800 hover:border-brand-500">
         {preview ? (
           <img src={preview} alt="" className="h-full w-full rounded-2xl object-cover" />
         ) : (
@@ -87,21 +83,20 @@ function LogoPicker({
             <span className="text-xs">Logo</span>
           </div>
         )}
-      </button>
-      <input
-        ref={ref}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          if (!ALLOWED_TYPES.includes(file.type)) { toast.error('Nur JPG, PNG oder WebP.'); return; }
-          if (file.size > MAX_BYTES) { toast.error('Max. 5 MB.'); return; }
-          onChange(file);
-          e.target.value = '';
-        }}
-      />
+        <input
+          type="file"
+          accept="image/*"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (!ALLOWED_TYPES.includes(file.type)) { toast.error('Nur JPG, PNG oder WebP.'); return; }
+              if (file.size > MAX_BYTES) { toast.error('Max. 5 MB.'); return; }
+              onChange(file);
+              e.target.value = '';
+            }}
+          />
+      </label>
     </div>
   );
 }
