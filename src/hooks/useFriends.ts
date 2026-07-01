@@ -85,28 +85,6 @@ export function useFriends() {
     void load();
   }, [load]);
 
-  const searchUsers = useCallback(
-    async (term: string): Promise<FriendProfile[]> => {
-      const clean = term.trim();
-      if (!user || clean.length < 2) return [];
-      const { data, error: err } = await supabase
-        .from('profiles')
-        .select(PROFILE_FIELDS)
-        .ilike('username', `%${clean}%`)
-        .eq('is_searchable', true)
-        .neq('id', user.id)
-        .order('username')
-        .limit(20)
-        .returns<FriendProfile[]>();
-      if (err) {
-        setError(err.message);
-        return [];
-      }
-      return data ?? [];
-    },
-    [user],
-  );
-
   const sendRequest = useCallback(
     async (receiverId: string): Promise<{ error: string | null; status?: string }> => {
       const { data, error: err } = await supabase.rpc('send_friend_request', {
@@ -160,7 +138,6 @@ export function useFriends() {
     loading,
     error,
     refetch: load,
-    searchUsers,
     sendRequest,
     respond,
     cancelRequest,

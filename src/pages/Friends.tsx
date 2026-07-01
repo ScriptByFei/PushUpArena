@@ -1,14 +1,13 @@
-import { FormEvent, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useFriends, type FriendProfile } from '@/hooks/useFriends';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
-import { SearchIcon, CheckIcon, XIcon, UserIcon, ShareIcon } from '@/components/ui/icons';
+import { CheckIcon, XIcon, UserIcon, ShareIcon } from '@/components/ui/icons';
 
 function PersonRow({
   profile,
@@ -40,7 +39,6 @@ export default function Friends() {
     loading,
     error,
     refetch,
-    searchUsers,
     sendRequest,
     respond,
     cancelRequest,
@@ -49,17 +47,8 @@ export default function Friends() {
   const { profile } = useProfile();
   const toast = useToast();
 
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<FriendProfile[] | null>(null);
-  const [searching, setSearching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  function focusSearch() {
-    searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    searchRef.current?.focus();
-  }
 
   async function onInvite() {
     const url = window.location.origin;
@@ -80,22 +69,6 @@ export default function Friends() {
   const friendIds = useMemo(() => new Set(friends.map((f) => f.friend.id)), [friends]);
   const outgoingIds = useMemo(() => new Set(outgoing.map((o) => o.receiver.id)), [outgoing]);
   const incomingIds = useMemo(() => new Set(incoming.map((i) => i.sender.id)), [incoming]);
-  const pendingIds = useMemo(
-    () => new Set([...outgoingIds, ...incomingIds]),
-    [outgoingIds, incomingIds],
-  );
-
-  async function onSearch(e: FormEvent) {
-    e.preventDefault();
-    if (query.trim().length < 2) {
-      toast.error('Bitte mindestens 2 Zeichen eingeben.');
-      return;
-    }
-    setSearching(true);
-    const res = await searchUsers(query);
-    setResults(res);
-    setSearching(false);
-  }
 
   async function handleSend(id: string) {
     setBusyId(id);
@@ -109,67 +82,6 @@ export default function Friends() {
 
   return (
     <div className="space-y-4">
-      {/* Suche */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>Freunde finden</CardTitle>
-          <button
-            onClick={onInvite}
-            className="flex items-center gap-1.5 text-xs font-medium text-brand-400 hover:text-brand-300"
-          >
-            <ShareIcon className="h-4 w-4" />
-            Einladen
-          </button>
-        </div>
-        <form onSubmit={onSearch} className="mt-3 flex gap-2">
-          <Input
-            ref={searchRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Username suchen …"
-            autoCapitalize="none"
-            autoCorrect="off"
-          />
-          <Button type="submit" loading={searching} aria-label="Suchen">
-            <SearchIcon className="h-5 w-5" />
-          </Button>
-        </form>
-
-        {results !== null && (
-          <div className="mt-3">
-            {results.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-400">
-                Keine suchbaren Nutzer gefunden.
-              </p>
-            ) : (
-              <ul className="divide-y divide-ink-700">
-                {results.map((p) => {
-                  const isFriend = friendIds.has(p.id);
-                  const isPending = pendingIds.has(p.id);
-                  return (
-                    <PersonRow key={p.id} profile={p}>
-                      {isFriend ? (
-                        <span className="text-xs text-emerald-400">Freund ✓</span>
-                      ) : isPending ? (
-                        <span className="text-xs text-slate-400">Ausstehend …</span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          loading={busyId === p.id}
-                          onClick={() => handleSend(p.id)}
-                        >
-                          Hinzufügen
-                        </Button>
-                      )}
-                    </PersonRow>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        )}
-      </Card>
-
       {loading ? (
         <LoadingState />
       ) : error ? (
@@ -244,12 +156,7 @@ export default function Friends() {
               <EmptyState
                 icon="🤝"
                 title="Noch keine Freunde"
-                description="Suche nach Usernamen und sende Anfragen – oder lade jemanden ein."
-                action={
-                  <Button size="sm" onClick={focusSearch}>
-                    Freunde suchen
-                  </Button>
-                }
+                description="Entdecke Nutzer weiter unten und sende ihnen eine Anfrage."
               />
             ) : (
               <ul className="mt-2 divide-y divide-ink-700">
@@ -269,40 +176,49 @@ export default function Friends() {
               </ul>
             )}
           </Card>
-        </>
-      )}
 
-      {/* Alle Nutzer */}
-      {!loading && allUsers.length > 0 && (
-        <Card>
-          <CardTitle>Nutzer entdecken</CardTitle>
-          <ul className="mt-2 divide-y divide-ink-700">
-            {allUsers.map((p) => {
-              const isFriend = friendIds.has(p.id);
-              const isOutgoing = outgoingIds.has(p.id);
-              const isIncoming = incomingIds.has(p.id);
-              return (
-                <PersonRow key={p.id} profile={p}>
-                  {isFriend ? (
-                    <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
-                  ) : isOutgoing ? (
-                    <span className="text-xs text-slate-400">Anfrage gesendet</span>
-                  ) : isIncoming ? (
-                    <span className="text-xs text-slate-400">Anfrage erhalten</span>
-                  ) : (
-                    <Button
-                      size="sm"
-                      loading={busyId === p.id}
-                      onClick={() => handleSend(p.id)}
-                    >
-                      Adden
-                    </Button>
-                  )}
-                </PersonRow>
-              );
-            })}
-          </ul>
-        </Card>
+          {/* Alle Nutzer */}
+          {allUsers.length > 0 && (
+            <Card>
+              <div className="flex items-center justify-between">
+                <CardTitle>Nutzer entdecken</CardTitle>
+                <button
+                  onClick={onInvite}
+                  className="flex items-center gap-1.5 text-xs font-medium text-brand-400 hover:text-brand-300"
+                >
+                  <ShareIcon className="h-4 w-4" />
+                  Einladen
+                </button>
+              </div>
+              <ul className="mt-2 divide-y divide-ink-700">
+                {allUsers.map((p) => {
+                  const isFriend = friendIds.has(p.id);
+                  const isOutgoing = outgoingIds.has(p.id);
+                  const isIncoming = incomingIds.has(p.id);
+                  return (
+                    <PersonRow key={p.id} profile={p}>
+                      {isFriend ? (
+                        <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
+                      ) : isOutgoing ? (
+                        <span className="text-xs text-slate-400">Anfrage gesendet</span>
+                      ) : isIncoming ? (
+                        <span className="text-xs text-slate-400">Anfrage erhalten</span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          loading={busyId === p.id}
+                          onClick={() => handleSend(p.id)}
+                        >
+                          Adden
+                        </Button>
+                      )}
+                    </PersonRow>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
+        </>
       )}
 
       <Modal
