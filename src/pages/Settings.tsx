@@ -253,10 +253,11 @@ export default function Settings() {
             <p className="text-sm font-medium text-amber-300">Benachrichtigungen blockiert</p>
             <p className="mt-1 text-xs text-slate-400">
               Du hast Benachrichtigungen blockiert. Um sie zu aktivieren: Einstellungen → Apps →
-              Safari (bzw. PushupArena) → Mitteilungen → erlauben.
+              PushupArena → Mitteilungen → erlauben.
             </p>
           </div>
         ) : (
+          /* 'default' oder unbekannter Wert → Button anzeigen */
           <>
             <p className="mt-2 text-xs text-slate-400">
               Erhalte Benachrichtigungen über neue Freundschaftsanfragen und Aktivitäten.
