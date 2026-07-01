@@ -178,7 +178,7 @@ export default function Friends() {
           </Card>
 
           {/* Alle Nutzer */}
-          {allUsers.length > 0 && (
+          {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
             <Card>
               <div className="flex items-center justify-between">
                 <CardTitle>Nutzer entdecken</CardTitle>
@@ -191,7 +191,7 @@ export default function Friends() {
                 </button>
               </div>
               <ul className="mt-2 divide-y divide-ink-700">
-                {allUsers.map((p) => {
+                {allUsers.filter((p) => !friendIds.has(p.id)).map((p) => {
                   const isFriend = friendIds.has(p.id);
                   const isOutgoing = outgoingIds.has(p.id);
                   const isIncoming = incomingIds.has(p.id);
