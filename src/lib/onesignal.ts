@@ -8,6 +8,6 @@ export async function initOneSignal(): Promise<void> {
   await OneSignal.init({
     appId: 'b903194f-0494-48c4-aed0-5bd439c57e1f',
     serviceWorkerPath: '/OneSignalSDKWorker.js',
-    notifyButton: { enable: false },
+    notifyButton: { enable: false } as never,
   });
 }
