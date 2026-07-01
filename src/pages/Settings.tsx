@@ -102,9 +102,20 @@ export default function Settings() {
   async function onRequestPush() {
     setRequestingPush(true);
     try {
-      await OneSignal.Notifications.requestPermission();
+      // Timeout von 5 Sekunden – falls OneSignal hängt, auf nativen Dialog zurückfallen
+      const timeout = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 5000),
+      );
+      await Promise.race([OneSignal.Notifications.requestPermission(), timeout]);
     } catch {
-      // Browser lehnte ab oder unterstützt keine Notifications
+      // Fallback: nativen Browser-Dialog direkt aufrufen
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        try {
+          await Notification.requestPermission();
+        } catch {
+          // ignorieren
+        }
+      }
     }
     if (typeof Notification !== 'undefined') {
       setPushPermission(Notification.permission);
