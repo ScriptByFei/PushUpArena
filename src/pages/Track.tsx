@@ -6,7 +6,7 @@ import { useStats } from '@/hooks/useStats';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Textarea } from '@/components/ui/Input';
+import { Field, Input } from '@/components/ui/Input';
 import { DateTimeInput } from '@/components/ui/DateTimeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
@@ -24,7 +24,6 @@ export default function Track() {
 
   const [amount, setAmount] = useState('');
   const [when, setWhen] = useState(toDateTimeLocalValue());
-  const [note, setNote] = useState('');
 
   const [editing, setEditing] = useState<WorkoutEntry | null>(null);
   const [deleting, setDeleting] = useState<WorkoutEntry | null>(null);
@@ -41,12 +40,11 @@ export default function Track() {
     }
     const { error: err } = await submit({
       amount: n,
-      note,
+      note: null,
       performedAt: when ? new Date(when).toISOString() : undefined,
     });
     if (!err) {
       setAmount('');
-      setNote('');
       setWhen(toDateTimeLocalValue());
       void refetch();
       void refetchStats();
@@ -90,16 +88,6 @@ export default function Track() {
           <Field label="Datum & Uhrzeit" htmlFor="when">
             <DateTimeInput id="when" value={when} onChange={setWhen} />
           </Field>
-          <Field label="Notiz (optional)" htmlFor="note">
-            <Textarea
-              id="note"
-              rows={2}
-              maxLength={500}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Wie lief der Satz?"
-            />
-          </Field>
           <Button type="submit" fullWidth size="lg" loading={submitting}>
             Eintragen
           </Button>
@@ -131,9 +119,6 @@ export default function Track() {
                     <p className="text-sm font-medium text-slate-200">
                       {formatRelativeDay(entry.performed_at)} · {formatTime(entry.performed_at)}
                     </p>
-                    {entry.note && (
-                      <p className="truncate text-xs text-slate-400">{entry.note}</p>
-                    )}
                   </div>
                   <button
                     aria-label="Bearbeiten"
@@ -209,7 +194,6 @@ function EditModal({
 }) {
   const [amount, setAmount] = useState(String(entry.amount));
   const [when, setWhen] = useState(toDateTimeLocalValue(new Date(entry.performed_at)));
-  const [note, setNote] = useState(entry.note ?? '');
   const [saving, setSaving] = useState(false);
 
   return (
@@ -225,7 +209,7 @@ function EditModal({
         setSaving(true);
         await onSave({
           amount: n,
-          note: note.trim() ? note.trim() : null,
+          note: null,
           performed_at: new Date(when).toISOString(),
         });
         setSaving(false);
@@ -243,9 +227,6 @@ function EditModal({
         </Field>
         <Field label="Datum & Uhrzeit">
           <DateTimeInput value={when} onChange={setWhen} />
-        </Field>
-        <Field label="Notiz (optional)">
-          <Textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </div>
     </Modal>
