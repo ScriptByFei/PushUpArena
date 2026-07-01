@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { useTeams } from '@/hooks/useTeams';
@@ -470,40 +470,3 @@ function TeamRow({
   );
 }
 
-// ── Logo picker ───────────────────────────────────────────────────────────────
-function LogoPicker({ preview, onChange }: { preview: string | null; onChange: (file: File) => void }) {
-  const toast = useToast();
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <div className="flex justify-center">
-      <button
-        type="button"
-        onClick={() => ref.current?.click()}
-        className="relative flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-ink-600 bg-ink-800 hover:border-brand-500"
-      >
-        {preview ? (
-          <img src={preview} alt="" className="h-full w-full rounded-2xl object-cover" />
-        ) : (
-          <div className="flex flex-col items-center gap-1 text-slate-500">
-            <CameraIcon className="h-6 w-6" />
-            <span className="text-xs">Logo</span>
-          </div>
-        )}
-      </button>
-      <input
-        ref={ref}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          if (!ALLOWED_TYPES.includes(file.type)) { toast.error('Nur JPG, PNG oder WebP.'); return; }
-          if (file.size > MAX_BYTES) { toast.error('Max. 5 MB.'); return; }
-          onChange(file);
-          e.target.value = '';
-        }}
-      />
-    </div>
-  );
-}
