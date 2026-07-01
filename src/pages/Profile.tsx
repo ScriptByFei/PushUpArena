@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
-import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { formatDate } from '@/lib/date';
 
@@ -182,14 +182,43 @@ export default function Profile() {
             </Card>
           )}
 
-          {/* Aktivitäts-Heatmap */}
-          {stats.dailyData.length > 0 && (
-            <Card>
-              <CardTitle>Aktivitätskalender</CardTitle>
-              <p className="mb-3 mt-0.5 text-xs text-slate-400">Letzte 26 Wochen · Tippe auf einen Tag</p>
-              <ActivityHeatmap data={stats.dailyData} />
-            </Card>
-          )}
+          {/* Monatskalender */}
+          <Card>
+            <CardTitle>Aktivitätskalender</CardTitle>
+            <p className="mb-3 mt-0.5 text-xs text-slate-400">Tippe auf einen Tag für Details</p>
+            <MonthCalendar data={stats.dailyData} />
+          </Card>
+
+          {/* Letzte Einträge */}
+          {(() => {
+            const recent = stats.dailyData.filter((d) => d.amount > 0).slice(-5).reverse();
+            if (recent.length === 0) return null;
+            return (
+              <Card>
+                <CardTitle>Letzte Einträge</CardTitle>
+                <ul className="mt-2 divide-y divide-ink-700">
+                  {recent.map((d) => (
+                    <li key={d.date} className="flex items-center justify-between py-2.5">
+                      <div>
+                        <p className="text-sm text-slate-200">
+                          {new Date(d.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            timeZone: 'UTC',
+                          })}
+                        </p>
+                        {d.sessions > 1 && (
+                          <p className="text-xs text-slate-400">{d.sessions} Sessions</p>
+                        )}
+                      </div>
+                      <span className="text-base font-bold text-brand-300">{d.amount}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            );
+          })()}
         </>
       )}
     </div>
