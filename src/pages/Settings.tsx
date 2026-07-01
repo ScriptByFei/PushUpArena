@@ -17,30 +17,10 @@ import OneSignal from 'react-onesignal';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition ${
-        checked ? 'bg-brand-500' : 'bg-ink-600'
-      }`}
-    >
-      <span
-        className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
-          checked ? 'left-6' : 'left-1'
-        }`}
-      />
-    </button>
-  );
-}
-
 export default function Settings() {
   const { user, signOut, updatePassword } = useAuth();
   const { exercise } = useExercise();
-  const { profile, loading: profileLoading, updateProfile } = useProfile();
+  const { loading: profileLoading } = useProfile();
   const { goal, loading: goalLoading, saveGoals } = useGoals(exercise?.id);
   const toast = useToast();
   const navigate = useNavigate();
