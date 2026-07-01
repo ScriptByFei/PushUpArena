@@ -12,7 +12,8 @@ import { Field, Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
-import { LogoutIcon, TrashIcon } from '@/components/ui/icons';
+import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
+import OneSignal from 'react-onesignal';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
@@ -59,6 +60,11 @@ export default function Settings() {
 
   const [checking, setChecking] = useState(false);
 
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default',
+  );
+  const [requestingPush, setRequestingPush] = useState(false);
+
   useEffect(() => {
     if (goal) {
       setDaily(String(goal.daily_goal));
@@ -90,6 +96,19 @@ export default function Settings() {
     } else {
       toast.success(value ? 'Du bist jetzt auffindbar.' : 'Du bist nicht mehr auffindbar.');
     }
+  }
+
+  async function onRequestPush() {
+    setRequestingPush(true);
+    try {
+      await OneSignal.Notifications.requestPermission();
+    } catch {
+      // Browser lehnte ab oder unterstützt keine Notifications
+    }
+    if (typeof Notification !== 'undefined') {
+      setPushPermission(Notification.permission);
+    }
+    setRequestingPush(false);
   }
 
   async function onChangePassword(e: FormEvent) {
@@ -207,7 +226,50 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* 4 · Sicherheit */}
+      {/* 4 · Benachrichtigungen */}
+      <Card>
+        <div className="flex items-center gap-2">
+          <BellIcon className="h-4 w-4 text-brand-300" />
+          <CardTitle>Benachrichtigungen</CardTitle>
+        </div>
+
+        {pushPermission === 'granted' && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-500/10 px-4 py-3">
+            <span className="text-emerald-400">✓</span>
+            <p className="text-sm text-emerald-300">Push-Benachrichtigungen sind aktiviert.</p>
+          </div>
+        )}
+
+        {pushPermission === 'denied' && (
+          <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+            <p className="text-sm font-medium text-amber-300">Benachrichtigungen blockiert</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Du hast Benachrichtigungen für diese App blockiert. Um sie wieder zu aktivieren, öffne
+              die Browser- oder Systemeinstellungen und erlaube Benachrichtigungen für diese Seite.
+            </p>
+          </div>
+        )}
+
+        {pushPermission === 'default' && (
+          <>
+            <p className="mt-2 text-xs text-slate-400">
+              Erhalte Benachrichtigungen über neue Freundschaftsanfragen und Aktivitäten.
+            </p>
+            <Button
+              variant="secondary"
+              fullWidth
+              className="mt-3"
+              loading={requestingPush}
+              onClick={onRequestPush}
+            >
+              <BellIcon className="h-4 w-4" />
+              Benachrichtigungen aktivieren
+            </Button>
+          </>
+        )}
+      </Card>
+
+      {/* 5 · Sicherheit */}
       <Card>
         <CardTitle>Sicherheit</CardTitle>
         <form onSubmit={onChangePassword} className="mt-3 space-y-3">
@@ -233,7 +295,7 @@ export default function Settings() {
         </form>
       </Card>
 
-      {/* 5 · Rechtliches */}
+      {/* 6 · Rechtliches */}
       <Card>
         <CardTitle>Rechtliches</CardTitle>
         <div className="mt-2 flex flex-col gap-1 text-sm">
@@ -246,7 +308,7 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* App / Updates */}
+      {/* 8 · Gefahrenzone (ehemals 7) */}
       <Card>
         <CardTitle>App</CardTitle>
         <p className="mt-2 text-xs text-slate-500">
@@ -263,7 +325,7 @@ export default function Settings() {
         </Button>
       </Card>
 
-      {/* 7 · Gefahrenzone */}
+      {/* 7 · App / Updates */}
       <Card className="border-rose-500/40 bg-rose-500/5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-rose-300">Gefahrenzone</h2>
         <p className="mt-2 text-sm text-slate-400">
