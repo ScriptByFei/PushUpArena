@@ -50,6 +50,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Cache-ID: Änderung erzwingt komplette Cache-Invalidierung auf allen Geräten.
+        cacheId: 'pushup-arena-v2',
         // SPA-App-Shell offline verfügbar machen.
         navigateFallback: '/index.html',
         // Supabase-Requests nie über den Fallback ausliefern.
