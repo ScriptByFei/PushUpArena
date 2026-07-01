@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { useTeams } from '@/hooks/useTeams';
@@ -128,6 +128,8 @@ export default function Teams() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
   const [deletingTeam, setDeletingTeam] = useState(false);
+  const [swipeDeleteTarget, setSwipeDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deletingSwipeTeam, setDeletingSwipeTeam] = useState(false);
   const [joining, setJoining] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
 
@@ -345,6 +347,8 @@ export default function Teams() {
                 rank={leaderboard.indexOf(t) + 1}
                 joining={joining === t.team_id}
                 onJoin={() => handleJoin(t.team_id)}
+                canDelete={canManageTeams}
+                onDelete={() => setSwipeDeleteTarget({ id: t.team_id, name: t.name })}
               />
             ))}
           </ul>
@@ -383,6 +387,26 @@ export default function Teams() {
           setCreateOpen(false);
         }}
       />
+
+      <Modal
+        open={swipeDeleteTarget !== null}
+        title="Team löschen?"
+        confirmLabel="Löschen"
+        confirmVariant="danger"
+        loading={deletingSwipeTeam}
+        onClose={() => setSwipeDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!swipeDeleteTarget) return;
+          setDeletingSwipeTeam(true);
+          const { error: err } = await deleteTeam(swipeDeleteTarget.id);
+          setDeletingSwipeTeam(false);
+          setSwipeDeleteTarget(null);
+          if (err) toast.error(err);
+          else toast.success('Team gelöscht.');
+        }}
+      >
+        „{swipeDeleteTarget?.name}" wird dauerhaft gelöscht. Alle Mitglieder werden entfernt. Das kann nicht rückgängig gemacht werden.
+      </Modal>
     </div>
   );
 }
@@ -454,33 +478,74 @@ function TeamFormModal({
 }
 
 // ── Team row (browse) ─────────────────────────────────────────────────────────
+const DELETE_BTN_W = 76;
+
 function TeamRow({
   team,
   rank,
   joining,
   onJoin,
+  canDelete,
+  onDelete,
 }: {
   team: TeamLeaderboardRow;
   rank: number;
   joining: boolean;
   onJoin: () => void;
+  canDelete?: boolean;
+  onDelete?: () => void;
 }) {
+  const [swiped, setSwiped] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    if (dx > 40) setSwiped(true);
+    else if (dx < -20) setSwiped(false);
+    touchStartX.current = null;
+  }
+
   return (
-    <li className="flex items-center gap-3 py-3">
-      <RankBadge rank={rank} />
-      <TeamLogo url={team.avatar_url} name={team.name} size={40} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-200">{team.name}</p>
-        <p className="text-xs text-slate-500">
-          {team.member_count} Mitgl. · {team.weekly_total} diese Woche
-        </p>
-        {team.description && (
-          <p className="mt-0.5 truncate text-xs text-slate-400">{team.description}</p>
-        )}
+    <li className="relative overflow-hidden">
+      {/* Red delete button revealed behind the row */}
+      {canDelete && (
+        <button
+          onClick={() => { setSwiped(false); onDelete?.(); }}
+          className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-600 text-xs font-semibold text-white active:bg-red-700"
+          style={{ width: DELETE_BTN_W }}
+        >
+          Löschen
+        </button>
+      )}
+
+      {/* Row content slides left on swipe */}
+      <div
+        className="flex items-center gap-3 bg-ink-900 py-3 transition-transform duration-200 ease-out"
+        style={{ transform: swiped && canDelete ? `translateX(-${DELETE_BTN_W}px)` : 'translateX(0)' }}
+        onTouchStart={canDelete ? handleTouchStart : undefined}
+        onTouchEnd={canDelete ? handleTouchEnd : undefined}
+        onClick={swiped ? () => setSwiped(false) : undefined}
+      >
+        <RankBadge rank={rank} />
+        <TeamLogo url={team.avatar_url} name={team.name} size={40} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-slate-200">{team.name}</p>
+          <p className="text-xs text-slate-500">
+            {team.member_count} Mitgl. · {team.weekly_total} diese Woche
+          </p>
+          {team.description && (
+            <p className="mt-0.5 truncate text-xs text-slate-400">{team.description}</p>
+          )}
+        </div>
+        <Button size="sm" variant="secondary" loading={joining} onClick={onJoin}>
+          Beitreten
+        </Button>
       </div>
-      <Button size="sm" variant="secondary" loading={joining} onClick={onJoin}>
-        Beitreten
-      </Button>
     </li>
   );
 }
