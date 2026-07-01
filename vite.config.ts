@@ -50,25 +50,13 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache-ID: Änderung erzwingt komplette Cache-Invalidierung auf allen Geräten.
-        cacheId: 'pushup-arena-v2',
-        // SPA-App-Shell offline verfügbar machen.
-        navigateFallback: '/index.html',
-        // Supabase-Requests nie über den Fallback ausliefern.
-        navigateFallbackDenylist: [/^\/api/, /supabase\.co/],
+        // Nur Assets cachen – index.html NIEMALS precachen oder abfangen.
+        // Navigation geht immer direkt ans Netzwerk → garantiert frische App-Version.
+        cacheId: 'pushup-arena-v3',
         globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
-        // Wenn die Navigation komplett offline scheitert, statische Offline-Seite zeigen.
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'pages-cache',
-              networkTimeoutSeconds: 5,
-              precacheFallback: { fallbackURL: '/offline.html' },
-            },
-          },
-        ],
+        // Keine navigateFallback, kein runtimeCaching für Navigation.
+        // Offline-Nutzung: Supabase-Anfragen scheitern ohnehin; UI-Assets sind gecacht.
+        runtimeCaching: [],
       },
       devOptions: {
         // Service Worker im Dev-Modus deaktiviert (sauberes HMR).
