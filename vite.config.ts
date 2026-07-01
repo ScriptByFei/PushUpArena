@@ -15,7 +15,7 @@ export default defineConfig({
     VitePWA({
       // 'autoUpdate': neue Versionen werden im Hintergrund installiert und beim Erkennen
       // automatisch aktiviert + neu geladen (kein Banner, kein Tippen).
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: [
         'favicon.svg',
         'offline.html',
@@ -56,7 +56,7 @@ export default defineConfig({
         navigateFallback: '/index.html',
         // Supabase-Requests nie über den Fallback ausliefern.
         navigateFallbackDenylist: [/^\/api/, /supabase\.co/],
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
         // Wenn die Navigation komplett offline scheitert, statische Offline-Seite zeigen.
         runtimeCaching: [
           {
