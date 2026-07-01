@@ -1,21 +1,38 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
-import { useStats } from '@/hooks/useStats';
+import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
-import { LoadingState } from '@/components/ui/States';
+import { LoadingState, ErrorState } from '@/components/ui/States';
+import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { formatDate } from '@/lib/date';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
+interface StatCellProps {
+  label: string;
+  value: string | number;
+  accent?: string;
+}
+
+function StatCell({ label, value, accent = 'text-brand-300' }: StatCellProps) {
+  return (
+    <div className="flex flex-col items-center rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-3 text-center">
+      <span className={`text-lg font-extrabold ${accent}`}>{value}</span>
+      <span className="mt-0.5 text-[11px] leading-tight text-slate-400">{label}</span>
+    </div>
+  );
+}
+
 export default function Profile() {
-  const { profile, loading, updateProfile } = useProfile();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { exercise } = useExercise();
-  const { stats } = useStats(exercise?.id);
+  const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
@@ -33,7 +50,7 @@ export default function Profile() {
     }
   }, [profile]);
 
-  if (loading || !profile) return <LoadingState label="Lade Profil …" />;
+  if (profileLoading || !profile) return <LoadingState label="Lade Profil …" />;
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
@@ -78,7 +95,7 @@ export default function Profile() {
         <p className="mt-3 text-xs text-slate-500">Dabei seit {formatDate(profile.created_at)}</p>
       </Card>
 
-      {/* Bearbeiten */}
+      {/* Profil bearbeiten */}
       {editing && (
         <Card>
           <CardTitle>Profil bearbeiten</CardTitle>
@@ -130,19 +147,51 @@ export default function Profile() {
       )}
 
       {/* Statistik */}
-      <Card>
-        <CardTitle>Statistik</CardTitle>
-        <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-          <div>
-            <div className="text-xl font-extrabold text-brand-300">{stats.total_amount}</div>
-            <div className="text-xs text-slate-400">Gesamt</div>
-          </div>
-          <div>
-            <div className="text-xl font-extrabold text-amber-300">{stats.current_streak}🔥</div>
-            <div className="text-xs text-slate-400">Streak</div>
-          </div>
-        </div>
-      </Card>
+      {statsLoading ? (
+        <LoadingState label="Lade Statistiken …" />
+      ) : statsError ? (
+        <ErrorState message={statsError} />
+      ) : (
+        <>
+          {/* Stat-Kacheln 2×4 */}
+          <Card>
+            <CardTitle>Statistik</CardTitle>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <StatCell label="Gesamt" value={stats.totalAmount} />
+              <StatCell label="Akt. Streak" value={`${stats.currentStreak}🔥`} accent="text-amber-300" />
+              <StatCell label="Längste Streak" value={`${stats.longestStreak}🔥`} accent="text-amber-400" />
+              <StatCell label="Ø pro Trainingstag" value={stats.avgPerActiveDay} />
+              <StatCell
+                label="Bester Tag"
+                value={stats.bestDay ? stats.bestDay.amount : '–'}
+                accent="text-emerald-400"
+              />
+              <StatCell label="Trainingstage" value={stats.trainingDays} />
+              <StatCell label="Letzte 7 Tage" value={stats.last7Days} />
+              <StatCell label="Letzte 30 Tage" value={stats.last30Days} />
+            </div>
+          </Card>
+
+          {/* Letzte 7 Tage – Balkendiagramm */}
+          {stats.last7DaysData.length > 0 && (
+            <Card>
+              <CardTitle>Letzte 7 Tage</CardTitle>
+              <div className="mt-3">
+                <WeeklyBarChart data={stats.last7DaysData} />
+              </div>
+            </Card>
+          )}
+
+          {/* Aktivitäts-Heatmap */}
+          {stats.dailyData.length > 0 && (
+            <Card>
+              <CardTitle>Aktivitätskalender</CardTitle>
+              <p className="mb-3 mt-0.5 text-xs text-slate-400">Letzte 26 Wochen · Tippe auf einen Tag</p>
+              <ActivityHeatmap data={stats.dailyData} />
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }
