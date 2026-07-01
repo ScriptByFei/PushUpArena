@@ -52,9 +52,7 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [savingPw, setSavingPw] = useState(false);
 
-  const [searchable, setSearchable] = useState(true);
-
-  const [deleteOpen, setDeleteOpen] = useState(false);
+const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
 
@@ -73,10 +71,6 @@ export default function Settings() {
     }
   }, [goal]);
 
-  useEffect(() => {
-    if (profile) setSearchable(profile.is_searchable);
-  }, [profile]);
-
   if (profileLoading || goalLoading) return <LoadingState />;
 
   async function onSaveGoals(e: FormEvent) {
@@ -86,17 +80,6 @@ export default function Settings() {
     setSavingGoals(false);
     if (error) toast.error(error);
     else toast.success('Ziele gespeichert.');
-  }
-
-  async function onToggleSearchable(value: boolean) {
-    setSearchable(value);
-    const { error } = await updateProfile({ is_searchable: value });
-    if (error) {
-      setSearchable(!value);
-      toast.error(error);
-    } else {
-      toast.success(value ? 'Du bist jetzt auffindbar.' : 'Du bist nicht mehr auffindbar.');
-    }
   }
 
   async function onRequestPush() {
@@ -217,20 +200,6 @@ export default function Settings() {
             Ziele speichern
           </Button>
         </form>
-      </Card>
-
-      {/* 3 · Privatsphäre */}
-      <Card>
-        <CardTitle>Privatsphäre</CardTitle>
-        <div className="mt-3 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-slate-200">Über Username auffindbar</p>
-            <p className="text-xs text-slate-400">
-              Wenn aus, kann dich niemand über die Suche finden.
-            </p>
-          </div>
-          <Toggle checked={searchable} onChange={onToggleSearchable} />
-        </div>
       </Card>
 
       {/* 4 · Benachrichtigungen */}
