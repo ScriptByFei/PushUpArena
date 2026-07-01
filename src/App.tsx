@@ -12,6 +12,7 @@ import ResetPassword from '@/pages/auth/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import Track from '@/pages/Track';
 import Friends from '@/pages/Friends';
+import Teams from '@/pages/Teams';
 import Leaderboard from '@/pages/Leaderboard';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
@@ -68,6 +69,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="track" element={<Track />} />
         <Route path="friends" element={<Friends />} />
+        <Route path="teams" element={<Teams />} />
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />

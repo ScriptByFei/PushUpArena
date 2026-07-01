@@ -149,6 +149,12 @@ export const BellIcon = (p: IconProps) => (
   </svg>
 );
 
+export const ShieldIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M12 2 3 7v5c0 5.25 3.75 10.2 9 11.4 5.25-1.2 9-6.15 9-11.4V7L12 2Z" />
+  </svg>
+);
+
 export const CameraIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />

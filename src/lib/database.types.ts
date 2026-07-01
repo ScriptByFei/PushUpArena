@@ -124,6 +124,31 @@ export interface Database {
         Update: { name?: string; description?: string; icon?: string; sort_order?: number };
         Relationships: [];
       };
+      teams: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          avatar_url: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: { name: string; description?: string | null; avatar_url?: string | null; created_by?: string | null };
+        Update: { name?: string; description?: string | null; avatar_url?: string | null };
+        Relationships: [];
+      };
+      team_members: {
+        Row: {
+          id: string;
+          team_id: string;
+          user_id: string;
+          role: 'owner' | 'member';
+          joined_at: string;
+        };
+        Insert: { team_id: string; user_id: string; role?: 'owner' | 'member' };
+        Update: { role?: 'owner' | 'member' };
+        Relationships: [];
+      };
       user_achievements: {
         Row: {
           id: string;
@@ -171,6 +196,29 @@ export interface Database {
       remove_friend: { Args: { p_friend: string }; Returns: undefined };
       compute_level: { Args: { xp: number }; Returns: number };
       compute_streak: { Args: { p_user: string; p_exercise: string }; Returns: number };
+      get_team_leaderboard: {
+        Args: { p_exercise: string };
+        Returns: {
+          team_id: string;
+          name: string;
+          avatar_url: string | null;
+          description: string | null;
+          member_count: number;
+          weekly_total: number;
+          my_team: boolean;
+        }[];
+      };
+      get_team_member_stats: {
+        Args: { p_team_id: string; p_exercise: string };
+        Returns: {
+          user_id: string;
+          username: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          role: string;
+          weekly_amount: number;
+        }[];
+      };
     };
     Enums: {
       friend_request_status: FriendRequestStatus;
@@ -190,3 +238,7 @@ export type UserAchievement = Database['public']['Tables']['user_achievements'][
 
 export type MyStats = Database['public']['Functions']['get_my_stats']['Returns'][number];
 export type LeaderboardRow = Database['public']['Functions']['get_friend_leaderboard']['Returns'][number];
+export type Team = Database['public']['Tables']['teams']['Row'];
+export type TeamMember = Database['public']['Tables']['team_members']['Row'];
+export type TeamLeaderboardRow = Database['public']['Functions']['get_team_leaderboard']['Returns'][number];
+export type TeamMemberStat = Database['public']['Functions']['get_team_member_stats']['Returns'][number];
