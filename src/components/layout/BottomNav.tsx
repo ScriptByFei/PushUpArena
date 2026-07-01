@@ -42,16 +42,16 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* FAB — absolut zentriert, nach oben versetzt */}
-      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-1/2">
+      {/* FAB — absolut zentriert, weiter nach oben versetzt */}
+      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-2/3">
         <NavLink to="/track" aria-label="Eintragen">
           {({ isActive }) => (
             <span
-              className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-glow ring-4 ring-ink-900 transition active:scale-95 ${
+              className={`flex h-11 w-11 items-center justify-center rounded-full text-white shadow-glow ring-2 ring-ink-900 transition active:scale-95 ${
                 isActive ? 'bg-brand-500' : 'bg-gradient-to-br from-brand-400 to-brand-600'
               }`}
             >
-              <PlusIcon className="h-7 w-7" />
+              <PlusIcon className="h-5 w-5" />
             </span>
           )}
         </NavLink>
