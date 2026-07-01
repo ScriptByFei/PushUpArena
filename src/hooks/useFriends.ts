@@ -33,6 +33,7 @@ export function useFriends() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([]);
+  const [allUsers, setAllUsers] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +42,7 @@ export function useFriends() {
     setLoading(true);
     setError(null);
 
-    const [friendsRes, incomingRes, outgoingRes] = await Promise.all([
+    const [friendsRes, incomingRes, outgoingRes, allUsersRes] = await Promise.all([
       supabase
         .from('friendships')
         .select(`created_at, friend:profiles!friendships_friend_fkey(${PROFILE_FIELDS})`)
@@ -59,15 +60,23 @@ export function useFriends() {
         .eq('sender_id', user.id)
         .eq('status', 'pending')
         .returns<OutgoingRequest[]>(),
+      supabase
+        .from('profiles')
+        .select(PROFILE_FIELDS)
+        .neq('id', user.id)
+        .order('username')
+        .returns<FriendProfile[]>(),
     ]);
 
-    const firstError = friendsRes.error || incomingRes.error || outgoingRes.error;
+    const firstError =
+      friendsRes.error || incomingRes.error || outgoingRes.error || allUsersRes.error;
     if (firstError) {
       setError(firstError.message);
     } else {
       setFriends(friendsRes.data ?? []);
       setIncoming(incomingRes.data ?? []);
       setOutgoing(outgoingRes.data ?? []);
+      setAllUsers(allUsersRes.data ?? []);
     }
     setLoading(false);
   }, [user]);
@@ -147,6 +156,7 @@ export function useFriends() {
     friends,
     incoming,
     outgoing,
+    allUsers,
     loading,
     error,
     refetch: load,
