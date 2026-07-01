@@ -39,6 +39,28 @@ export default function Profile() {
   const [form, setForm] = useState({ username: '', display_name: '', bio: '', avatar_url: '' });
   const [saving, setSaving] = useState(false);
 
+  const now = new Date();
+  const todayYear = now.getUTCFullYear();
+  const todayMonth = now.getUTCMonth();
+  const [calYear, setCalYear] = useState(todayYear);
+  const [calMonth, setCalMonth] = useState(todayMonth);
+
+  // Daten reichen max. 182 Tage zurück (~6 Monate)
+  const minDate = new Date(Date.UTC(todayYear, todayMonth, now.getUTCDate()) - 181 * 86_400_000);
+  const canGoPrev =
+    calYear > minDate.getUTCFullYear() ||
+    (calYear === minDate.getUTCFullYear() && calMonth > minDate.getUTCMonth());
+  const canGoNext = calYear < todayYear || (calYear === todayYear && calMonth < todayMonth);
+
+  function goPrev() {
+    if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
+    else setCalMonth((m) => m - 1);
+  }
+  function goNext() {
+    if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1); }
+    else setCalMonth((m) => m + 1);
+  }
+
   useEffect(() => {
     if (profile) {
       setForm({
@@ -186,12 +208,25 @@ export default function Profile() {
           <Card>
             <CardTitle>Aktivitätskalender</CardTitle>
             <p className="mb-3 mt-0.5 text-xs text-slate-400">Tippe auf einen Tag für Details</p>
-            <MonthCalendar data={stats.dailyData} />
+            <MonthCalendar
+              data={stats.dailyData}
+              selectedYear={calYear}
+              selectedMonth={calMonth}
+              canGoPrev={canGoPrev}
+              canGoNext={canGoNext}
+              onPrev={goPrev}
+              onNext={goNext}
+            />
           </Card>
 
-          {/* Letzte Einträge */}
+          {/* Letzte Einträge – gefiltert nach gewähltem Monat */}
           {(() => {
-            const recent = stats.dailyData.filter((d) => d.amount > 0).slice(-5).reverse();
+            const monthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+            const recent = stats.dailyData
+              .filter((d) => d.amount > 0 && d.date.startsWith(monthPrefix))
+              .slice()
+              .reverse()
+              .slice(0, 5);
             if (recent.length === 0) return null;
             return (
               <Card>

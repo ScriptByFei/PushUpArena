@@ -2,18 +2,24 @@ import { useState } from 'react';
 import type { DayData } from '@/hooks/useProfileStats';
 
 interface Props {
-  data: DayData[]; // mind. letzter Monat, ältester zuerst
+  data: DayData[];
+  selectedYear: number;
+  selectedMonth: number; // 0-basiert
+  canGoPrev: boolean;
+  canGoNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
 }
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 function tileClasses(amount: number, isToday: boolean): string {
   const base = 'flex flex-col items-center rounded-xl py-2 px-0.5 transition-colors';
-  const todayRing = isToday ? ' ring-2 ring-brand-400' : '';
-  if (amount === 0)    return `${base} bg-ink-800/40 border border-ink-700/40${todayRing}`;
-  if (amount <= 25)    return `${base} bg-violet-900/70 border border-violet-800/50${todayRing}`;
-  if (amount <= 75)    return `${base} bg-violet-700/80 border border-violet-600/50${todayRing}`;
-  return               `${base} bg-brand-600/90 border border-brand-500/60${todayRing}`;
+  const ring = isToday ? ' ring-2 ring-brand-400' : '';
+  if (amount === 0)  return `${base} bg-ink-800/40 border border-ink-700/40${ring}`;
+  if (amount <= 25)  return `${base} bg-violet-900/70 border border-violet-800/50${ring}`;
+  if (amount <= 75)  return `${base} bg-violet-700/80 border border-violet-600/50${ring}`;
+  return             `${base} bg-brand-600/90 border border-brand-500/60${ring}`;
 }
 
 function dayNumberColor(amount: number, isToday: boolean): string {
@@ -39,26 +45,47 @@ function formatLong(dateStr: string): string {
   });
 }
 
-export function MonthCalendar({ data }: Props) {
+function ChevronLeft() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+export function MonthCalendar({
+  data,
+  selectedYear,
+  selectedMonth,
+  canGoPrev,
+  canGoNext,
+  onPrev,
+  onNext,
+}: Props) {
   const [selected, setSelected] = useState<DayData | null>(null);
 
   const byDate = new Map(data.map((d) => [d.date, d]));
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const todayStr = now.toISOString().slice(0, 10);
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const firstWeekday = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7; // Mo=0
+  const daysInMonth = new Date(Date.UTC(selectedYear, selectedMonth + 1, 0)).getUTCDate();
+  const firstWeekday = (new Date(Date.UTC(selectedYear, selectedMonth, 1)).getUTCDay() + 6) % 7;
 
-  const monthLabel = new Date(Date.UTC(year, month, 1)).toLocaleDateString('de-DE', {
+  const monthLabel = new Date(Date.UTC(selectedYear, selectedMonth, 1)).toLocaleDateString('de-DE', {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
   });
 
   function ds(day: number): string {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   const cells: (number | null)[] = [
@@ -66,9 +93,31 @@ export function MonthCalendar({ data }: Props) {
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
+  // Auswahl zurücksetzen wenn Monat wechselt
+  const selectedMonthKey = `${selectedYear}-${selectedMonth}`;
+
   return (
     <div>
-      <p className="mb-3 text-center text-sm font-semibold text-slate-300">{monthLabel}</p>
+      {/* Monatsnavigation */}
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          onClick={onPrev}
+          disabled={!canGoPrev}
+          className="rounded-full bg-ink-700 p-1.5 text-slate-300 transition hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="Vorheriger Monat"
+        >
+          <ChevronLeft />
+        </button>
+        <span className="text-sm font-semibold text-slate-300">{monthLabel}</span>
+        <button
+          onClick={onNext}
+          disabled={!canGoNext}
+          className="rounded-full bg-ink-700 p-1.5 text-slate-300 transition hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="Nächster Monat"
+        >
+          <ChevronRight />
+        </button>
+      </div>
 
       {/* Wochentag-Header */}
       <div className="mb-1.5 grid grid-cols-7 gap-1">
@@ -82,7 +131,7 @@ export function MonthCalendar({ data }: Props) {
       {/* Kalender-Kacheln */}
       <div className="grid grid-cols-7 gap-1">
         {cells.map((day, idx) => {
-          if (day === null) return <div key={`pad-${idx}`} />;
+          if (day === null) return <div key={`${selectedMonthKey}-pad-${idx}`} />;
           const dateStr = ds(day);
           const entry = byDate.get(dateStr);
           const amount = entry?.amount ?? 0;
