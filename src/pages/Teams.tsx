@@ -135,6 +135,8 @@ export default function Teams() {
     ? leaderboard.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
     : leaderboard;
 
+  const canManageTeams = user?.id === '379a8a5d-0a23-4205-a938-e4ce87b9a9fc';
+
   async function handleJoin(teamId: string) {
     setJoining(teamId);
     const { error: err } = await joinTeam(teamId);
@@ -293,7 +295,7 @@ export default function Teams() {
             className="w-full rounded-xl border border-ink-600 bg-ink-800 py-2.5 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-500 focus:border-brand-500 focus:outline-none"
           />
         </div>
-        <Button onClick={() => setCreateOpen(true)}>+ Neu</Button>
+        {canManageTeams && <Button onClick={() => setCreateOpen(true)}>+ Neu</Button>}
       </div>
 
       {filtered.length === 0 ? (
