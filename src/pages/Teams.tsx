@@ -14,13 +14,12 @@ import { SearchIcon, CameraIcon, ShieldIcon } from '@/components/ui/icons';
 import type { TeamLeaderboardRow } from '@/hooks/useTeams';
 
 const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 async function uploadTeamLogo(
   file: File,
   teamId: string,
 ): Promise<{ url: string | null; error: string | null }> {
-  if (!ALLOWED_TYPES.includes(file.type)) return { url: null, error: 'Nur JPG, PNG oder WebP.' };
+  if (!file.type.startsWith('image/')) return { url: null, error: 'Bitte ein Bild auswählen.' };
   if (file.size > MAX_BYTES) return { url: null, error: 'Max. 5 MB.' };
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
   const path = `${teamId}/${Date.now()}.${ext}`;
@@ -90,7 +89,7 @@ function LogoPicker({
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (!file) return;
-              if (!ALLOWED_TYPES.includes(file.type)) { toast.error('Nur JPG, PNG oder WebP.'); return; }
+              if (!file.type.startsWith('image/')) { toast.error('Bitte ein Bild auswählen.'); return; }
               if (file.size > MAX_BYTES) { toast.error('Max. 5 MB.'); return; }
               onChange(file);
               e.target.value = '';
