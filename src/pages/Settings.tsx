@@ -60,8 +60,9 @@ export default function Settings() {
 
   const [checking, setChecking] = useState(false);
 
+  const pushSupported = typeof Notification !== 'undefined';
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default',
+    pushSupported ? Notification.permission : 'default',
   );
   const [requestingPush, setRequestingPush] = useState(false);
 
@@ -233,24 +234,29 @@ export default function Settings() {
           <CardTitle>Benachrichtigungen</CardTitle>
         </div>
 
-        {pushPermission === 'granted' && (
+        {!pushSupported ? (
+          <div className="mt-3 rounded-xl border border-ink-600 bg-ink-800/60 px-4 py-3">
+            <p className="text-sm font-medium text-slate-300">Nicht unterstützt</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Dein Browser unterstützt keine Push-Benachrichtigungen. Auf iPhone/iPad
+              funktioniert dies ab iOS 16.4 – aber nur wenn die App zum Homebildschirm
+              hinzugefügt wurde und von dort gestartet wird.
+            </p>
+          </div>
+        ) : pushPermission === 'granted' ? (
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-500/10 px-4 py-3">
             <span className="text-emerald-400">✓</span>
             <p className="text-sm text-emerald-300">Push-Benachrichtigungen sind aktiviert.</p>
           </div>
-        )}
-
-        {pushPermission === 'denied' && (
+        ) : pushPermission === 'denied' ? (
           <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
             <p className="text-sm font-medium text-amber-300">Benachrichtigungen blockiert</p>
             <p className="mt-1 text-xs text-slate-400">
-              Du hast Benachrichtigungen für diese App blockiert. Um sie wieder zu aktivieren, öffne
-              die Browser- oder Systemeinstellungen und erlaube Benachrichtigungen für diese Seite.
+              Du hast Benachrichtigungen blockiert. Um sie zu aktivieren: Einstellungen → Apps →
+              Safari (bzw. PushupArena) → Mitteilungen → erlauben.
             </p>
           </div>
-        )}
-
-        {pushPermission === 'default' && (
+        ) : (
           <>
             <p className="mt-2 text-xs text-slate-400">
               Erhalte Benachrichtigungen über neue Freundschaftsanfragen und Aktivitäten.
