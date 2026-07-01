@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useWorkoutLogger } from '@/hooks/useWorkoutLogger';
@@ -27,6 +27,32 @@ export default function Track() {
 
   const [editing, setEditing] = useState<WorkoutEntry | null>(null);
   const [deleting, setDeleting] = useState<WorkoutEntry | null>(null);
+
+  type Period = 'all' | 'today' | 'week' | 'month';
+  type SortDir = 'desc' | 'asc';
+  const [period, setPeriod] = useState<Period>('all');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const filteredEntries = useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay() + (startOfDay.getDay() === 0 ? -6 : 1));
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const filtered = entries.filter((e) => {
+      const d = new Date(e.performed_at);
+      if (period === 'today') return d >= startOfDay;
+      if (period === 'week') return d >= startOfWeek;
+      if (period === 'month') return d >= startOfMonth;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const diff = new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime();
+      return sortDir === 'desc' ? -diff : diff;
+    });
+  }, [entries, period, sortDir]);
 
   if (exLoading) return <LoadingState />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
@@ -96,21 +122,45 @@ export default function Track() {
 
       {/* Historie */}
       <Card>
-        <CardTitle>Verlauf</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Verlauf</CardTitle>
+          <button
+            onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-ink-700 hover:text-slate-200"
+          >
+            {sortDir === 'desc' ? '↓ Neueste' : '↑ Älteste'}
+          </button>
+        </div>
+        {/* Zeitraum-Filter */}
+        <div className="mt-2 flex gap-1.5">
+          {(['all', 'today', 'week', 'month'] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                period === p
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-ink-700 text-slate-400 hover:bg-ink-600 hover:text-slate-200'
+              }`}
+            >
+              {p === 'all' ? 'Alle' : p === 'today' ? 'Heute' : p === 'week' ? 'Woche' : 'Monat'}
+            </button>
+          ))}
+        </div>
         <div className="mt-3">
           {loading ? (
             <LoadingState label="Lade Einträge …" />
           ) : error ? (
             <ErrorState message={error} onRetry={refetch} />
-          ) : entries.length === 0 ? (
+          ) : filteredEntries.length === 0 ? (
             <EmptyState
               icon="📝"
-              title="Noch keine Einträge"
-              description="Trage oben deinen ersten Satz ein."
+              title={entries.length === 0 ? 'Noch keine Einträge' : 'Keine Einträge im Zeitraum'}
+              description={entries.length === 0 ? 'Trage oben deinen ersten Satz ein.' : ''}
             />
           ) : (
             <ul className="divide-y divide-ink-700">
-              {entries.map((entry) => (
+              {filteredEntries.map((entry) => (
                 <li key={entry.id} className="flex items-center gap-3 py-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/20 text-base font-bold text-brand-200">
                     {entry.amount}
