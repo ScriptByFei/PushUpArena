@@ -6,8 +6,8 @@ import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
-import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
+import { AvatarUpload } from '@/components/AvatarUpload';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { formatDate } from '@/lib/date';
@@ -36,7 +36,7 @@ export default function Profile() {
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ username: '', display_name: '', bio: '', avatar_url: '' });
+  const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
   const [saving, setSaving] = useState(false);
 
   const now = new Date();
@@ -67,7 +67,6 @@ export default function Profile() {
         username: profile.username,
         display_name: profile.display_name ?? '',
         bio: profile.bio ?? '',
-        avatar_url: profile.avatar_url ?? '',
       });
     }
   }, [profile]);
@@ -85,7 +84,6 @@ export default function Profile() {
       username: form.username,
       display_name: form.display_name.trim() || null,
       bio: form.bio.trim() || null,
-      avatar_url: form.avatar_url.trim() || null,
     });
     setSaving(false);
     if (error) toast.error(error);
@@ -100,7 +98,16 @@ export default function Profile() {
       {/* Profil-Header */}
       <Card>
         <div className="flex items-center gap-4">
-          <Avatar url={profile.avatar_url} name={profile.display_name || profile.username} size={64} />
+          <AvatarUpload
+              url={profile.avatar_url ?? null}
+              name={profile.display_name || profile.username}
+              userId={profile.id}
+              size={64}
+              onUploaded={async (newUrl) => {
+                const { error } = await updateProfile({ avatar_url: newUrl });
+                return { error };
+              }}
+            />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-xl font-extrabold">
               {profile.display_name || profile.username}
@@ -136,15 +143,6 @@ export default function Profile() {
                 maxLength={50}
                 value={form.display_name}
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })}
-              />
-            </Field>
-            <Field label="Avatar-URL (optional)" htmlFor="avatar_url">
-              <Input
-                id="avatar_url"
-                type="url"
-                value={form.avatar_url}
-                onChange={(e) => setForm({ ...form, avatar_url: e.target.value })}
-                placeholder="https://…"
               />
             </Field>
             <Field label="Bio (optional)" htmlFor="bio">
