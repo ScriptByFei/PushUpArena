@@ -267,7 +267,6 @@ export default function Teams() {
           open={editOpen}
           title="Team bearbeiten"
           initialName={myTeam.name}
-          initialDescription={myTeam.description ?? ''}
           initialLogoUrl={myTeam.avatar_url}
           onClose={() => setEditOpen(false)}
           onSubmit={async (name, description, logoFile) => {
@@ -326,7 +325,6 @@ export default function Teams() {
         open={createOpen}
         title="Team erstellen"
         initialName=""
-        initialDescription=""
         initialLogoUrl={null}
         onClose={() => setCreateOpen(false)}
         onSubmit={async (name, description, logoFile) => {
@@ -364,7 +362,6 @@ function TeamFormModal({
   open,
   title,
   initialName,
-  initialDescription,
   initialLogoUrl,
   onClose,
   onSubmit,
@@ -372,13 +369,11 @@ function TeamFormModal({
   open: boolean;
   title: string;
   initialName: string;
-  initialDescription: string;
   initialLogoUrl: string | null;
   onClose: () => void;
   onSubmit: (name: string, description: string | null, logoFile: File | null) => Promise<void>;
 }) {
   const [name, setName] = useState(initialName);
-  const [description, setDescription] = useState(initialDescription);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialLogoUrl);
   const [saving, setSaving] = useState(false);
@@ -386,7 +381,6 @@ function TeamFormModal({
   // Reset when modal opens
   function handleOpen() {
     setName(initialName);
-    setDescription(initialDescription);
     setLogoFile(null);
     setLogoPreview(initialLogoUrl);
   }
@@ -394,7 +388,7 @@ function TeamFormModal({
   async function handleConfirm() {
     if (!name.trim()) return;
     setSaving(true);
-    await onSubmit(name.trim(), description.trim() || null, logoFile);
+    await onSubmit(name.trim(), null, logoFile);
     setSaving(false);
   }
 
@@ -422,15 +416,6 @@ function TeamFormModal({
             onChange={(e) => setName(e.target.value)}
             placeholder="z. B. PushUp Legends"
             maxLength={40}
-          />
-        </Field>
-        <Field label="Beschreibung (optional)" htmlFor="tdesc">
-          <Input
-            id="tdesc"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Worum geht's in eurem Team?"
-            maxLength={120}
           />
         </Field>
       </div>
