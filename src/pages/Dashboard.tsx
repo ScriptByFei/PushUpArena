@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { QuickAdd } from '@/components/QuickAdd';
-import { FireIcon } from '@/components/ui/icons';
 
 function StatTile({
   label,
@@ -97,7 +96,6 @@ export default function Dashboard() {
           label="Streak"
           value={statsLoading ? '–' : `${stats.current_streak}🔥`}
           accent="text-amber-300"
-          icon={<FireIcon className="h-3.5 w-3.5 text-amber-400" />}
           glowStyle={streakGlow}
         />
       </div>
