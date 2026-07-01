@@ -17,17 +17,20 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      <header className="sticky top-0 z-30 flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Spacer – gleiche Breite wie Settings-Button, damit Logo+Titel optisch zentriert sind */}
-        <div className="w-9 shrink-0" />
-        <Link to="/" className="flex flex-1 items-center justify-center gap-2" aria-label="Start">
+      <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
+        {/* Logo links */}
+        <Link to="/" aria-label="Start" className="shrink-0">
           <img src="/logo.png" alt="" className="h-12 w-12 object-contain" />
-          <span className="text-base font-bold tracking-tight">{title}</span>
         </Link>
+        {/* Titel absolut zentriert */}
+        <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
+          {title}
+        </span>
+        {/* Settings rechts */}
         <Link
           to="/settings"
           aria-label="Einstellungen"
-          className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
+          className="ml-auto shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
         >
           <SettingsIcon className="h-5 w-5" />
         </Link>
