@@ -68,6 +68,7 @@ export default function Track() {
       amount: n,
       note: null,
       performedAt: when ? new Date(when).toISOString() : undefined,
+      prevDailyTotal: stats.today_amount,
     });
     if (!err) {
       setAmount('');

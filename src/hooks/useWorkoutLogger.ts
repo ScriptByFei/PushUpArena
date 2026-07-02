@@ -8,12 +8,16 @@ interface SubmitInput {
   amount: number;
   note?: string | null;
   performedAt?: string; // ISO-String; default = jetzt
+  /** Tagesstand VOR diesem Eintrag – für Meilenstein-Check */
+  prevDailyTotal?: number;
 }
 
 interface SubmitResult {
   error: string | null;
   entry?: WorkoutEntry;
 }
+
+const MILESTONE = 100;
 
 /**
  * Zentrale „Eintrag loggen"-Logik: speichert den Eintrag, wertet danach
@@ -26,7 +30,7 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
   const [submitting, setSubmitting] = useState(false);
 
   const submit = useCallback(
-    async ({ amount, note, performedAt }: SubmitInput): Promise<SubmitResult> => {
+    async ({ amount, note, performedAt, prevDailyTotal = 0 }: SubmitInput): Promise<SubmitResult> => {
       if (!user || !exerciseId) return { error: 'Nicht angemeldet.' };
       setSubmitting(true);
 
@@ -50,15 +54,12 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
 
       toast.success(`+${amount} ${unit} gespeichert 💪`);
 
-      // Meilenstein-Check: hat der User heute 100 erreicht?
-      const MILESTONE = 100;
-      const { data: statsRows } = await supabase.rpc('get_my_stats', { p_exercise: exerciseId });
-      const todayTotal = (Array.isArray(statsRows) ? statsRows[0]?.today_amount : 0) ?? 0;
-      const prevTotal = todayTotal - amount;
-      if (prevTotal < MILESTONE && todayTotal >= MILESTONE) {
-        void supabase.functions.invoke('notify-milestone', {
-          body: { user_id: user.id, milestone: MILESTONE },
-        });
+      // Meilenstein-Check: hat der User mit diesem Eintrag 100 heute geknackt?
+      const newTotal = prevDailyTotal + amount;
+      if (prevDailyTotal < MILESTONE && newTotal >= MILESTONE) {
+        supabase.functions
+          .invoke('notify-milestone', { body: { user_id: user.id, milestone: MILESTONE } })
+          .catch(() => {/* fire-and-forget */});
       }
 
       setSubmitting(false);
