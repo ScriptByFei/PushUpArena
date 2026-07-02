@@ -10,4 +10,13 @@ export async function initOneSignal(): Promise<void> {
     serviceWorkerPath: '/OneSignalSDKWorker.js',
     notifyButton: { enable: false } as never,
   });
+  // Wenn der User bereits Browser-Permission hat: sicherstellen dass OneSignal
+  // auch wirklich subscribed ist (z. B. nach App-Update oder Neuinstallation)
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    try {
+      await (OneSignal.User as any).PushSubscription?.optIn?.();
+    } catch {
+      // ignorieren
+    }
+  }
 }

@@ -67,13 +67,11 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   async function onRequestPush() {
     setRequestingPush(true);
     try {
-      // Nativen Dialog sofort aufrufen – muss direkt beim User-Tap passieren,
-      // sonst verwirft iOS den Gesture-Kontext.
-      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-        await Notification.requestPermission();
-      }
-      // Danach OneSignal informieren (fire-and-forget, kein await)
-      void OneSignal.Notifications.requestPermission().catch(() => {});
+      // OneSignal muss selbst die Permission anfordern damit es die
+      // Push-Subscription registrieren kann. Kein direktes Notification.requestPermission() vorher.
+      await OneSignal.Notifications.requestPermission();
+      // Explizit opt-in damit OneSignal die Subscription auch wirklich speichert
+      await (OneSignal.User as any).PushSubscription?.optIn?.();
     } catch {
       // ignorieren
     }
