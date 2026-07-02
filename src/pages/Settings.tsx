@@ -143,27 +143,35 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       {/* 2 · Ziele */}
       <Card>
         <CardTitle>Ziele · {exercise?.name}</CardTitle>
-        <form onSubmit={onSaveGoals} className="mt-3 space-y-3">
-          <Field label="Tagesziel" htmlFor="daily" hint="0 = kein Ziel">
-            <Input
-              id="daily"
-              type="number"
-              min={0}
-              max={100000}
-              value={daily}
-              onChange={(e) => setDaily(e.target.value)}
-            />
-          </Field>
-          <Field label="Wochenziel" htmlFor="weekly" hint="0 = kein Ziel">
-            <Input
-              id="weekly"
-              type="number"
-              min={0}
-              max={700000}
-              value={weekly}
-              onChange={(e) => setWeekly(e.target.value)}
-            />
-          </Field>
+        <form onSubmit={onSaveGoals} className="mt-3">
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="daily" className="mb-1 block text-xs text-slate-400">
+                Tagesziel <span className="text-slate-600">(0 = kein)</span>
+              </label>
+              <Input
+                id="daily"
+                type="number"
+                min={0}
+                max={100000}
+                value={daily}
+                onChange={(e) => setDaily(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="weekly" className="mb-1 block text-xs text-slate-400">
+                Wochenziel <span className="text-slate-600">(0 = kein)</span>
+              </label>
+              <Input
+                id="weekly"
+                type="number"
+                min={0}
+                max={700000}
+                value={weekly}
+                onChange={(e) => setWeekly(e.target.value)}
+              />
+            </div>
+          </div>
           <Button type="submit" fullWidth loading={savingGoals}>
             Ziele speichern
           </Button>
