@@ -1,7 +1,6 @@
 import { useRef, useState, type ReactNode, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useExercise } from '@/context/ExerciseContext';
-import { useProfile } from '@/hooks/useProfile';
 import { useStats } from '@/hooks/useStats';
 import { useGoals } from '@/hooks/useGoals';
 import { useToast } from '@/context/ToastContext';
@@ -41,7 +40,6 @@ function StatTile({
 
 export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
-  const { profile } = useProfile();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const toast = useToast();
