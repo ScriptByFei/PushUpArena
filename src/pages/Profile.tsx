@@ -10,6 +10,7 @@ import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeeklyBarChart } from '@/components/WeeklyBarChart';
+import { useGoals } from '@/hooks/useGoals';
 import { formatDate } from '@/lib/date';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -33,6 +34,7 @@ export default function Profile() {
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { exercise } = useExercise();
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
+  const { goal } = useGoals(exercise?.id);
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
@@ -197,7 +199,7 @@ export default function Profile() {
             <Card>
               <CardTitle>Letzte 7 Tage</CardTitle>
               <div className="mt-3">
-                <WeeklyBarChart data={stats.last7DaysData} />
+                <WeeklyBarChart data={stats.last7DaysData} dailyGoal={goal?.daily_goal ?? 0} />
               </div>
             </Card>
           )}
