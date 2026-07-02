@@ -19,10 +19,8 @@ export function AppLayout() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Logo links */}
-        <Link to="/" aria-label="Start" className="shrink-0">
-          <img src="/logo.png" alt="" className="h-12 w-12 object-contain" />
-        </Link>
+        {/* Platzhalter links (gleiche Breite wie Settings-Icon rechts) */}
+        <div className="h-9 w-9 shrink-0" />
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
           {title}
