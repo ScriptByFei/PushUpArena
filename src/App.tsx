@@ -3,6 +3,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
+import { PushProvider } from '@/context/PushContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 import Login from '@/pages/auth/Login';
@@ -61,7 +62,9 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ExerciseProvider>
-              <AppLayout />
+              <PushProvider>
+                <AppLayout />
+              </PushProvider>
             </ExerciseProvider>
           </ProtectedRoute>
         }

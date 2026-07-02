@@ -13,7 +13,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
 import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
-import { requestPushPermission, removePushSubscription } from '@/lib/pushNotifications';
+import { usePush } from '@/context/PushContext';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
@@ -41,11 +41,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const pushSupported = typeof Notification !== 'undefined';
-  const [pushPermission, setPushPermission] = useState<NotificationPermission>(
-    pushSupported ? Notification.permission : 'default',
-  );
-  const [requestingPush, setRequestingPush] = useState(false);
-  const [deactivatingPush, setDeactivatingPush] = useState(false);
+  const { pushPermission, busy: pushBusy, togglePush } = usePush();
 
   useEffect(() => {
     if (goal) {
@@ -65,21 +61,6 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     else toast.success('Ziele gespeichert.');
   }
 
-  async function onRequestPush() {
-    setRequestingPush(true);
-    const permission = await requestPushPermission();
-    setPushPermission(permission);
-    setRequestingPush(false);
-  }
-
-  async function onDeactivatePush() {
-    setDeactivatingPush(true);
-    await removePushSubscription();
-    setDeactivatingPush(false);
-    // Browser-Permission kann nicht per JS entzogen werden; UI auf "default" setzen
-    // damit der Aktivieren-Button wieder erscheint
-    setPushPermission('default');
-  }
 
   async function onChangePassword(e: FormEvent) {
     e.preventDefault();
@@ -203,8 +184,8 @@ const [deleteOpen, setDeleteOpen] = useState(false);
             <Button
               variant="secondary"
               fullWidth
-              loading={deactivatingPush}
-              onClick={onDeactivatePush}
+              loading={pushBusy}
+              onClick={togglePush}
             >
               Benachrichtigungen deaktivieren
             </Button>
@@ -227,8 +208,8 @@ const [deleteOpen, setDeleteOpen] = useState(false);
               variant="secondary"
               fullWidth
               className="mt-3"
-              loading={requestingPush}
-              onClick={onRequestPush}
+              loading={pushBusy}
+              onClick={togglePush}
             >
               <BellIcon className="h-4 w-4" />
               Benachrichtigungen aktivieren
