@@ -13,7 +13,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
 import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
-import OneSignal from 'react-onesignal';
+import { requestPushPermission } from '@/lib/pushNotifications';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
@@ -66,18 +66,8 @@ const [deleteOpen, setDeleteOpen] = useState(false);
 
   async function onRequestPush() {
     setRequestingPush(true);
-    try {
-      // OneSignal muss selbst die Permission anfordern damit es die
-      // Push-Subscription registrieren kann. Kein direktes Notification.requestPermission() vorher.
-      await OneSignal.Notifications.requestPermission();
-      // Explizit opt-in damit OneSignal die Subscription auch wirklich speichert
-      await (OneSignal.User as any).PushSubscription?.optIn?.();
-    } catch {
-      // ignorieren
-    }
-    if (typeof Notification !== 'undefined') {
-      setPushPermission(Notification.permission);
-    }
+    const permission = await requestPushPermission();
+    setPushPermission(permission);
     setRequestingPush(false);
   }
 

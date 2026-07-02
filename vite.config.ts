@@ -57,8 +57,6 @@ export default defineConfig({
         // Keine navigateFallback, kein runtimeCaching für Navigation.
         // Offline-Nutzung: Supabase-Anfragen scheitern ohnehin; UI-Assets sind gecacht.
         runtimeCaching: [],
-        // OneSignal in den PWA-Service-Worker einbinden damit es keinen Scope-Konflikt gibt.
-        importScripts: ['/OneSignalSDKWorker.js'],
       },
       devOptions: {
         // Service Worker im Dev-Modus deaktiviert (sauberes HMR).

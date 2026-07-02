@@ -8,7 +8,6 @@ import {
 } from 'react';
 import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import OneSignal from 'react-onesignal';
 
 interface AuthResult {
   error: AuthError | null;
@@ -51,9 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(newSession);
       setLoading(false);
       if (newSession?.user) {
-        void OneSignal.login(newSession.user.id);
       } else {
-        void OneSignal.logout();
       }
     });
 
