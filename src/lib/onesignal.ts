@@ -7,7 +7,7 @@ export async function initOneSignal(): Promise<void> {
   initialized = true;
   await OneSignal.init({
     appId: 'b903194f-0494-48c4-aed0-5bd439c57e1f',
-    serviceWorkerPath: '/OneSignalSDKWorker.js',
+    serviceWorkerPath: '/sw.js',
     notifyButton: { enable: false } as never,
   });
   // Wenn der User bereits Browser-Permission hat: sicherstellen dass OneSignal
