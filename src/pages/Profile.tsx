@@ -219,41 +219,6 @@ export default function Profile() {
             />
           </Card>
 
-          {/* Letzte Einträge – gefiltert nach gewähltem Monat */}
-          {(() => {
-            const monthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
-            const recent = stats.dailyData
-              .filter((d) => d.amount > 0 && d.date.startsWith(monthPrefix))
-              .slice()
-              .reverse()
-              .slice(0, 5);
-            if (recent.length === 0) return null;
-            return (
-              <Card>
-                <CardTitle>Letzte Einträge</CardTitle>
-                <ul className="mt-2 divide-y divide-ink-700">
-                  {recent.map((d) => (
-                    <li key={d.date} className="flex items-center justify-between py-2.5">
-                      <div>
-                        <p className="text-sm text-slate-200">
-                          {new Date(d.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            timeZone: 'UTC',
-                          })}
-                        </p>
-                        {d.sessions > 1 && (
-                          <p className="text-xs text-slate-400">{d.sessions} Sessions</p>
-                        )}
-                      </div>
-                      <span className="text-base font-bold text-brand-300">{d.amount}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            );
-          })()}
         </>
       )}
     </div>
