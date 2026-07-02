@@ -57,6 +57,8 @@ export default defineConfig({
         // Keine navigateFallback, kein runtimeCaching für Navigation.
         // Offline-Nutzung: Supabase-Anfragen scheitern ohnehin; UI-Assets sind gecacht.
         runtimeCaching: [],
+        // Push-Event-Handler in den SW einbinden
+        importScripts: ['/OneSignalSDKWorker.js'],
       },
       devOptions: {
         // Service Worker im Dev-Modus deaktiviert (sauberes HMR).
