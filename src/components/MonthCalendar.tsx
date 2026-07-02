@@ -92,7 +92,7 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
       </div>
 
       {/* Wochentag-Header */}
-      <div className="mb-1 mt-2 grid grid-cols-7 gap-1.5">
+      <div className="mb-1 mt-4 grid grid-cols-7 gap-1.5">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d} className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">{d}</div>
         ))}
