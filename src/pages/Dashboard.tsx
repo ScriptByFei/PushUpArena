@@ -9,6 +9,8 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
+import { ShareIcon } from '@/components/ui/icons';
+import { useProfile } from '@/hooks/useProfile';
 import { QuickAdd } from '@/components/QuickAdd';
 
 function StatTile({
@@ -40,6 +42,7 @@ function StatTile({
 
 export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
+  const { profile } = useProfile();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const toast = useToast();
@@ -77,6 +80,20 @@ export default function Dashboard() {
     toast.success('Rückgängig gemacht.');
     setLastEntry(null);
     void refetchStats();
+  }
+
+  async function onInvite() {
+    const url = window.location.origin;
+    const uname = profile?.username ?? '';
+    const text = `Tritt mir auf PushupArena bei und such mich als @${uname}: ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'PushupArena', text, url });
+      } else {
+        await navigator.clipboard.writeText(text);
+        toast.success('Einladungstext kopiert.');
+      }
+    } catch { /* abgebrochen */ }
   }
 
   return (
@@ -149,6 +166,15 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+
+      {/* Freunde einladen */}
+      <button
+        onClick={onInvite}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 bg-ink-800/40 py-3 text-sm font-medium text-brand-400 hover:border-brand-500 hover:bg-ink-800/70 transition-colors"
+      >
+        <ShareIcon className="h-4 w-4" />
+        Freunde einladen
+      </button>
     </div>
   );
 }
