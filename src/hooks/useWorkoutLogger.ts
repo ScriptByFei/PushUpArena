@@ -59,7 +59,10 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
       if (prevDailyTotal < MILESTONE && newTotal >= MILESTONE) {
         supabase.functions
           .invoke('notify-milestone', { body: { user_id: user.id, milestone: MILESTONE } })
-          .catch(() => {/* fire-and-forget */});
+          .then(({ data, error }) => {
+            console.log('[milestone] invoke result:', JSON.stringify(data), error);
+          })
+          .catch((e) => console.error('[milestone] invoke error:', e));
       }
 
       setSubmitting(false);
