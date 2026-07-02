@@ -27,14 +27,14 @@ function StatTile({
 }) {
   return (
     <div
-      className="rounded-2xl border border-ink-700 bg-ink-800/70 p-4"
+      className="rounded-2xl border border-ink-700 bg-ink-800/70 p-4 flex flex-col items-center text-center"
       style={glowStyle}
     >
-      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+      <div className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
         {icon}
         {label}
       </div>
-      <div className={`mt-1 text-2xl font-extrabold ${accent ?? 'text-slate-100'}`}>{value}</div>
+      <div className={`mt-1.5 text-3xl font-extrabold leading-none ${accent ?? 'text-slate-100'}`}>{value}</div>
     </div>
   );
 }
