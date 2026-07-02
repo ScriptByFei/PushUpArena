@@ -10,8 +10,6 @@ import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { formatDate } from '@/lib/date';
 
-const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
-
 interface StatCellProps {
   label: string;
   value: string | number;
@@ -34,14 +32,13 @@ export default function Profile() {
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ username: '', display_name: '' });
+  const [form, setForm] = useState({ display_name: '' });
   const [saving, setSaving] = useState(false);
 
 
   useEffect(() => {
     if (profile) {
       setForm({
-        username: profile.username,
         display_name: profile.display_name ?? '',
       });
     }
@@ -51,13 +48,8 @@ export default function Profile() {
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
-    if (!USERNAME_RE.test(form.username)) {
-      toast.error('Username: 3–20 Zeichen, nur Buchstaben, Zahlen und _.');
-      return;
-    }
     setSaving(true);
     const { error } = await updateProfile({
-      username: form.username,
       display_name: form.display_name.trim() || null,
 
     });
@@ -88,7 +80,6 @@ export default function Profile() {
             <h2 className="truncate text-xl font-extrabold">
               {profile.display_name || profile.username}
             </h2>
-            <p className="text-sm text-slate-400">@{profile.username}</p>
           </div>
           {!editing && (
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
@@ -105,15 +96,7 @@ export default function Profile() {
         <Card>
           <CardTitle>Profil bearbeiten</CardTitle>
           <form onSubmit={onSave} className="mt-3 space-y-3">
-            <Field label="Username" htmlFor="username" hint="3–20 Zeichen: a–z, 0–9, _">
-              <Input
-                id="username"
-                value={form.username}
-                autoCapitalize="none"
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-              />
-            </Field>
-            <Field label="Anzeigename" htmlFor="display_name">
+            <Field label="Name" htmlFor="display_name">
               <Input
                 id="display_name"
                 maxLength={50}

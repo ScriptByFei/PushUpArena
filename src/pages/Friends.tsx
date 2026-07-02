@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useFriends, type FriendProfile } from '@/hooks/useFriends';
-import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,7 +22,6 @@ function PersonRow({
         <p className="truncate text-sm font-semibold text-slate-200">
           {profile.display_name || profile.username}
         </p>
-        <p className="truncate text-xs text-slate-400">@{profile.username}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
     </li>
@@ -44,7 +42,6 @@ export default function Friends() {
     cancelRequest,
     removeFriend,
   } = useFriends();
-  const { profile } = useProfile();
   const toast = useToast();
 
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -52,8 +49,7 @@ export default function Friends() {
 
   async function onInvite() {
     const url = window.location.origin;
-    const uname = profile?.username ?? '';
-    const text = `Tritt mir auf PushupArena bei und such mich als @${uname}: ${url}`;
+    const text = `Tritt mir auf PushupArena bei: ${url}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'PushupArena', text, url });
@@ -236,7 +232,7 @@ export default function Friends() {
           setRemoveTarget(null);
         }}
       >
-        Du entfernst <strong>@{removeTarget?.username}</strong> aus deiner Freundesliste. Ihr seht
+        Du entfernst <strong>{removeTarget?.display_name || removeTarget?.username}</strong> aus deiner Freundesliste. Ihr seht
         dann die Vergleichsdaten des jeweils anderen nicht mehr.
       </Modal>
     </div>
