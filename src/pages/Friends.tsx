@@ -88,6 +88,39 @@ export default function Friends() {
         <ErrorState message={error} onRetry={refetch} />
       ) : (
         <>
+          {/* Alle Nutzer */}
+          {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
+            <Card>
+              <CardTitle>Nutzer entdecken</CardTitle>
+              <ul className="mt-2 divide-y divide-ink-700">
+                {allUsers.filter((p) => !friendIds.has(p.id)).map((p) => {
+                  const isFriend = friendIds.has(p.id);
+                  const isOutgoing = outgoingIds.has(p.id);
+                  const isIncoming = incomingIds.has(p.id);
+                  return (
+                    <PersonRow key={p.id} profile={p}>
+                      {isFriend ? (
+                        <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
+                      ) : isOutgoing ? (
+                        <span className="text-xs text-slate-400">Anfrage gesendet</span>
+                      ) : isIncoming ? (
+                        <span className="text-xs text-slate-400">Anfrage erhalten</span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          loading={busyId === p.id}
+                          onClick={() => handleSend(p.id)}
+                        >
+                          Adden
+                        </Button>
+                      )}
+                    </PersonRow>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
+
           {/* Eingehende Anfragen */}
           {incoming.length > 0 && (
             <Card>
@@ -186,38 +219,6 @@ export default function Friends() {
             Freunde einladen
           </button>
 
-          {/* Alle Nutzer */}
-          {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
-            <Card>
-              <CardTitle>Nutzer entdecken</CardTitle>
-              <ul className="mt-2 divide-y divide-ink-700">
-                {allUsers.filter((p) => !friendIds.has(p.id)).map((p) => {
-                  const isFriend = friendIds.has(p.id);
-                  const isOutgoing = outgoingIds.has(p.id);
-                  const isIncoming = incomingIds.has(p.id);
-                  return (
-                    <PersonRow key={p.id} profile={p}>
-                      {isFriend ? (
-                        <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
-                      ) : isOutgoing ? (
-                        <span className="text-xs text-slate-400">Anfrage gesendet</span>
-                      ) : isIncoming ? (
-                        <span className="text-xs text-slate-400">Anfrage erhalten</span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          loading={busyId === p.id}
-                          onClick={() => handleSend(p.id)}
-                        >
-                          Adden
-                        </Button>
-                      )}
-                    </PersonRow>
-                  );
-                })}
-              </ul>
-            </Card>
-          )}
         </>
       )}
 
