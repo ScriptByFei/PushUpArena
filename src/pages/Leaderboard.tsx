@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExercise } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
@@ -49,16 +48,6 @@ const PODIUM_SLOTS = [
 export default function Leaderboard() {
   const { exercise, loading: exLoading } = useExercise();
   const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(exercise?.id);
-  const [showPodium, setShowPodium] = useState(() => {
-    try { return localStorage.getItem('pua-show-podium') !== 'false'; } catch { return true; }
-  });
-
-  function togglePodium() {
-    setShowPodium((v) => {
-      try { localStorage.setItem('pua-show-podium', String(!v)); } catch { /* */ }
-      return !v;
-    });
-  }
 
   if (exLoading || loading) return <LoadingState label="Lade Rangliste …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -68,18 +57,6 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-4">
-      {/* Untertitel + Podest-Toggle */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">
-          Sieh, wie du im Vergleich zu deinen Freunden stehst.
-        </p>
-        <button
-          onClick={togglePodium}
-          className="text-xs font-medium text-slate-400 hover:text-slate-200"
-        >
-          {showPodium ? 'Podest ausblenden' : 'Podest anzeigen'}
-        </button>
-      </div>
 
       {/* Tab-Leiste */}
       <div className="grid grid-cols-3 gap-2">
