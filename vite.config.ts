@@ -13,8 +13,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 'autoUpdate': neue Versionen werden im Hintergrund installiert und beim Erkennen
-      // automatisch aktiviert + neu geladen (kein Banner, kein Tippen).
+      // Push-Handler wird direkt in sw.js eingebaut (kein importScripts-Caching-Problem)
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: [
         'favicon.svg',
@@ -49,19 +51,11 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // Nur Assets cachen – index.html NIEMALS precachen oder abfangen.
-        // Navigation geht immer direkt ans Netzwerk → garantiert frische App-Version.
-        cacheId: 'pushup-arena-v4',
+      injectManifest: {
+        // Nur Assets cachen – index.html niemals precachen
         globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
-        // Keine navigateFallback, kein runtimeCaching für Navigation.
-        // Offline-Nutzung: Supabase-Anfragen scheitern ohnehin; UI-Assets sind gecacht.
-        runtimeCaching: [],
-        // Push-Event-Handler in den SW einbinden
-        importScripts: ['/OneSignalSDKWorker.js'],
       },
       devOptions: {
-        // Service Worker im Dev-Modus deaktiviert (sauberes HMR).
         enabled: false,
       },
     }),
