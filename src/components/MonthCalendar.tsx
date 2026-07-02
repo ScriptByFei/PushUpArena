@@ -121,16 +121,16 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
               `}
             >
               {/* Datum – klein und gedimmt oben */}
-              <span className={`text-[9px] font-medium leading-none ${isToday ? 'text-brand-300' : level === 0 ? 'text-slate-600' : 'text-white/50'}`}>
+              <span className={`text-xs font-semibold leading-none ${isToday ? 'text-brand-300' : level === 0 ? 'text-slate-600' : 'text-white/50'}`}>
                 {day}
               </span>
               {/* Liegestützen – groß und farbig unten, nur wenn > 0 */}
               {amount > 0 ? (
-                <span className={`text-[11px] font-extrabold leading-none ${REP_COLOR[level]}`}>
+                <span className={`text-[10px] font-extrabold leading-none ${REP_COLOR[level]}`}>
                   {amount}
                 </span>
               ) : (
-                <span className="text-[11px] leading-none text-transparent select-none">0</span>
+                <span className="text-[10px] leading-none text-transparent select-none">0</span>
               )}
             </button>
           );
