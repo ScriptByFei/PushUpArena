@@ -83,11 +83,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      {/* Begrüßung */}
-      <p className="text-sm text-slate-300">
-        Hallo, {profile?.display_name || profile?.username || 'Athlet'} 👋
-      </p>
-
       {/* Statistik-Kacheln */}
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Heute" value={statsLoading ? '–' : stats.today_amount} accent="text-brand-300" />
