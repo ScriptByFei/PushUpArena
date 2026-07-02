@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { ShareIcon } from '@/components/ui/icons';
-import { useProfile } from '@/hooks/useProfile';
 import { QuickAdd } from '@/components/QuickAdd';
 
 function StatTile({
@@ -42,7 +41,6 @@ function StatTile({
 
 export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
-  const { profile } = useProfile();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const toast = useToast();
@@ -84,14 +82,13 @@ export default function Dashboard() {
 
   async function onInvite() {
     const url = window.location.origin;
-    const uname = profile?.username ?? '';
-    const text = `Tritt mir auf PushupArena bei und such mich als @${uname}: ${url}`;
+    const text = `Tritt mir auf PushupArena bei: ${url}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'PushupArena', text, url });
       } else {
-        await navigator.clipboard.writeText(text);
-        toast.success('Einladungstext kopiert.');
+        await navigator.clipboard.writeText(url);
+        toast.success('Link kopiert.');
       }
     } catch { /* abgebrochen */ }
   }
