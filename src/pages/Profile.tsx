@@ -59,7 +59,7 @@ export default function Profile() {
     const { error } = await updateProfile({
       username: form.username,
       display_name: form.display_name.trim() || null,
-      bio: form.bio.trim() || null,
+
     });
     setSaving(false);
     if (error) toast.error(error);
