@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { useTeams } from '@/hooks/useTeams';
@@ -10,7 +10,7 @@ import { Field, Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
-import { SearchIcon, CameraIcon, ShieldIcon } from '@/components/ui/icons';
+import { SearchIcon, CameraIcon, ShieldIcon, TrashIcon } from '@/components/ui/icons';
 import type { TeamLeaderboardRow } from '@/hooks/useTeams';
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -478,8 +478,6 @@ function TeamFormModal({
 }
 
 // ── Team row (browse) ─────────────────────────────────────────────────────────
-const DELETE_BTN_W = 76;
-
 function TeamRow({
   team,
   rank,
@@ -495,69 +493,31 @@ function TeamRow({
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
-  const [swipeX, setSwipeX] = useState(0);
-  const startXRef = useRef<number | null>(null);
-  const startSwipeRef = useRef(0);
-  const dragging = startXRef.current !== null;
-
-  function handleTouchStart(e: React.TouchEvent) {
-    startXRef.current = e.touches[0].clientX;
-    startSwipeRef.current = swipeX;
-  }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    if (startXRef.current === null) return;
-    const dx = startXRef.current - e.touches[0].clientX;
-    setSwipeX(Math.max(0, Math.min(DELETE_BTN_W, startSwipeRef.current + dx)));
-  }
-
-  function handleTouchEnd() {
-    if (startXRef.current === null) return;
-    startXRef.current = null;
-    setSwipeX(swipeX > DELETE_BTN_W / 2 ? DELETE_BTN_W : 0);
-  }
-
   return (
-    <li className="relative overflow-hidden">
-      {/* Red delete button revealed behind the row */}
+    <li className="flex items-center gap-3 py-3">
+      <RankBadge rank={rank} />
+      <TeamLogo url={team.avatar_url} name={team.name} size={40} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-slate-200">{team.name}</p>
+        <p className="text-xs text-slate-500">
+          {team.member_count} Mitgl. · {team.weekly_total} diese Woche
+        </p>
+        {team.description && (
+          <p className="mt-0.5 truncate text-xs text-slate-400">{team.description}</p>
+        )}
+      </div>
       {canDelete && (
         <button
-          onClick={() => { setSwipeX(0); onDelete?.(); }}
-          className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-600 text-xs font-semibold text-white active:bg-red-700"
-          style={{ width: DELETE_BTN_W }}
+          onClick={onDelete}
+          className="shrink-0 rounded-lg p-1.5 text-red-500 hover:bg-red-500/10 active:bg-red-500/20"
+          aria-label="Team löschen"
         >
-          Löschen
+          <TrashIcon className="h-4 w-4" />
         </button>
       )}
-
-      {/* Row content — slides left on swipe; touch-action:pan-y lets iOS scroll vertically but gives us horizontal */}
-      <div
-        className="flex items-center gap-3 bg-ink-900 py-3"
-        style={{
-          transform: `translateX(-${swipeX}px)`,
-          transition: dragging ? 'none' : 'transform 200ms ease-out',
-          touchAction: canDelete ? 'pan-y' : undefined,
-        }}
-        onTouchStart={canDelete ? handleTouchStart : undefined}
-        onTouchMove={canDelete ? handleTouchMove : undefined}
-        onTouchEnd={canDelete ? handleTouchEnd : undefined}
-        onClick={swipeX > 0 ? () => setSwipeX(0) : undefined}
-      >
-        <RankBadge rank={rank} />
-        <TeamLogo url={team.avatar_url} name={team.name} size={40} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-slate-200">{team.name}</p>
-          <p className="text-xs text-slate-500">
-            {team.member_count} Mitgl. · {team.weekly_total} diese Woche
-          </p>
-          {team.description && (
-            <p className="mt-0.5 truncate text-xs text-slate-400">{team.description}</p>
-          )}
-        </div>
-        <Button size="sm" variant="secondary" loading={joining} onClick={onJoin}>
-          Beitreten
-        </Button>
-      </div>
+      <Button size="sm" variant="secondary" loading={joining} onClick={onJoin}>
+        Beitreten
+      </Button>
     </li>
   );
 }
