@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ComponentType, SVGProps } from 'react';
-import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, ShieldIcon } from '@/components/ui/icons';
+import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, CalendarIcon } from '@/components/ui/icons';
 
 interface NavItem {
   to: string;
@@ -11,7 +11,7 @@ interface NavItem {
 const items: NavItem[] = [
   { to: '/', label: 'Start', Icon: HomeIcon },
   { to: '/friends', label: 'Freunde', Icon: UsersIcon },
-  { to: '/teams', label: 'Teams', Icon: ShieldIcon },
+  { to: '/activity', label: 'Aktivität', Icon: CalendarIcon },
   { to: '/leaderboard', label: 'Rangliste', Icon: TrophyIcon },
   { to: '/profile', label: 'Profil', Icon: UserIcon },
 ];

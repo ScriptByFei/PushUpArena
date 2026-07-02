@@ -8,9 +8,6 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { MonthCalendar } from '@/components/MonthCalendar';
-import { WeeklyBarChart } from '@/components/WeeklyBarChart';
-import { useGoals } from '@/hooks/useGoals';
 import { formatDate } from '@/lib/date';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -34,34 +31,12 @@ export default function Profile() {
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { exercise } = useExercise();
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
-  const { goal } = useGoals(exercise?.id);
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
   const [saving, setSaving] = useState(false);
 
-  const now = new Date();
-  const todayYear = now.getUTCFullYear();
-  const todayMonth = now.getUTCMonth();
-  const [calYear, setCalYear] = useState(todayYear);
-  const [calMonth, setCalMonth] = useState(todayMonth);
-
-  // Daten reichen max. 182 Tage zurück (~6 Monate)
-  const minDate = new Date(Date.UTC(todayYear, todayMonth, now.getUTCDate()) - 181 * 86_400_000);
-  const canGoPrev =
-    calYear > minDate.getUTCFullYear() ||
-    (calYear === minDate.getUTCFullYear() && calMonth > minDate.getUTCMonth());
-  const canGoNext = calYear < todayYear || (calYear === todayYear && calMonth < todayMonth);
-
-  function goPrev() {
-    if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
-    else setCalMonth((m) => m - 1);
-  }
-  function goNext() {
-    if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1); }
-    else setCalMonth((m) => m + 1);
-  }
 
   useEffect(() => {
     if (profile) {
@@ -194,30 +169,6 @@ export default function Profile() {
             </div>
           </Card>
 
-          {/* Letzte 7 Tage – Balkendiagramm */}
-          {stats.last7DaysData.length > 0 && (
-            <Card>
-              <CardTitle>Letzte 7 Tage</CardTitle>
-              <div className="mt-3">
-                <WeeklyBarChart data={stats.last7DaysData} dailyGoal={goal?.daily_goal ?? 0} />
-              </div>
-            </Card>
-          )}
-
-          {/* Monatskalender */}
-          <Card>
-            <CardTitle>Aktivitätskalender</CardTitle>
-            <p className="mb-3 mt-0.5 text-xs text-slate-400">Tippe auf einen Tag für Details</p>
-            <MonthCalendar
-              data={stats.dailyData}
-              selectedYear={calYear}
-              selectedMonth={calMonth}
-              canGoPrev={canGoPrev}
-              canGoNext={canGoNext}
-              onPrev={goPrev}
-              onNext={goNext}
-            />
-          </Card>
 
         </>
       )}

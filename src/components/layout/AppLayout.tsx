@@ -7,7 +7,7 @@ const titles: Record<string, string> = {
   '/': 'Dashboard',
   '/track': 'Eintragen',
   '/friends': 'Freunde',
-  '/teams': 'Teams',
+  '/activity': 'Aktivität',
   '/leaderboard': 'Rangliste',
   '/profile': 'Profil',
   '/settings': 'Einstellungen',
