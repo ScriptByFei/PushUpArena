@@ -45,7 +45,7 @@ export default function Activity() {
       )}
 
       {/* Monatskalender */}
-      <Card>
+      <Card className="!pt-2">
         <CardTitle>Aktivitätskalender</CardTitle>
         <MonthCalendar
           data={stats.dailyData}
