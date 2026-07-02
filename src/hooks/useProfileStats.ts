@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
 export interface DayData {
-  date: string; // YYYY-MM-DD UTC
+  date: string; // YYYY-MM-DD in Europe/Berlin
   amount: number;
   sessions: number;
 }
@@ -36,12 +36,21 @@ const EMPTY: ProfileStats = {
   last7DaysData: [],
 };
 
-function utcDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+const TZ = 'Europe/Berlin';
+
+/** Datum als "YYYY-MM-DD" in Europe/Berlin */
+function berlinDateStr(d: Date): string {
+  return d.toLocaleDateString('sv-SE', { timeZone: TZ });
 }
 
-function addDays(d: Date, n: number): Date {
-  return new Date(d.getTime() + n * 86_400_000);
+/** Addiert n Tage zu einem "YYYY-MM-DD"-String (rein kalendarisch) */
+function shiftDate(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const result = new Date(y, m - 1, d + n);
+  const ry = result.getFullYear();
+  const rm = result.getMonth() + 1;
+  const rd = result.getDate();
+  return `${ry}-${String(rm).padStart(2, '0')}-${String(rd).padStart(2, '0')}`;
 }
 
 export function useProfileStats(exerciseId?: string) {
@@ -55,20 +64,14 @@ export function useProfileStats(exerciseId?: string) {
     setLoading(true);
     setError(null);
 
-    const todayUtc = new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate(),
-      ),
-    );
-    const since = addDays(todayUtc, -364);
+    const today = berlinDateStr(new Date()); // "2026-07-02"
+    const since = shiftDate(today, -364);
 
     const { data, error: err } = await supabase
       .from('workout_entries')
       .select('amount, performed_at')
       .eq('exercise_id', exerciseId)
-      .gte('performed_at', since.toISOString())
+      .gte('performed_at', since + 'T00:00:00+02:00') // Berliner Mitternacht als UTC-Grenze
       .order('performed_at', { ascending: true });
 
     if (err) {
@@ -77,10 +80,10 @@ export function useProfileStats(exerciseId?: string) {
       return;
     }
 
-    // Aggregate by UTC date
+    // Aggregate by Berlin date
     const byDay = new Map<string, { amount: number; sessions: number }>();
     for (const row of data ?? []) {
-      const dateStr = (row.performed_at as string).slice(0, 10);
+      const dateStr = berlinDateStr(new Date(row.performed_at as string));
       const prev = byDay.get(dateStr) ?? { amount: 0, sessions: 0 };
       byDay.set(dateStr, { amount: prev.amount + row.amount, sessions: prev.sessions + 1 });
     }
@@ -88,8 +91,7 @@ export function useProfileStats(exerciseId?: string) {
     // Build 182-day array for heatmap (26 weeks, oldest first)
     const dailyData: DayData[] = [];
     for (let i = 181; i >= 0; i--) {
-      const d = addDays(todayUtc, -i);
-      const dateStr = utcDateStr(d);
+      const dateStr = shiftDate(today, -i);
       const entry = byDay.get(dateStr);
       dailyData.push({ date: dateStr, amount: entry?.amount ?? 0, sessions: entry?.sessions ?? 0 });
     }
@@ -97,21 +99,20 @@ export function useProfileStats(exerciseId?: string) {
     // Last 7 days for bar chart (oldest first)
     const last7DaysData: DayData[] = [];
     for (let i = 6; i >= 0; i--) {
-      const d = addDays(todayUtc, -i);
-      const dateStr = utcDateStr(d);
+      const dateStr = shiftDate(today, -i);
       const entry = byDay.get(dateStr);
       last7DaysData.push({ date: dateStr, amount: entry?.amount ?? 0, sessions: entry?.sessions ?? 0 });
     }
 
-    // Aggregate totals from all fetched data
+    // Aggregate totals
     let totalAmount = 0;
     let trainingDays = 0;
     let bestDay: DayData | null = null;
     let last7Days = 0;
     let last30Days = 0;
 
-    const cutoff7 = utcDateStr(addDays(todayUtc, -6));
-    const cutoff30 = utcDateStr(addDays(todayUtc, -29));
+    const cutoff7 = shiftDate(today, -6);
+    const cutoff30 = shiftDate(today, -29);
 
     for (const [dateStr, v] of byDay) {
       totalAmount += v.amount;
@@ -125,28 +126,25 @@ export function useProfileStats(exerciseId?: string) {
 
     const avgPerActiveDay = trainingDays > 0 ? Math.round(totalAmount / trainingDays) : 0;
 
-    // Streak calculations (UTC, matching compute_streak server logic)
+    // Streak-Berechnung in Europe/Berlin
     const activeDates = Array.from(byDay.keys()).sort();
     const activeDateSet = new Set(activeDates);
-    const todayStr = utcDateStr(todayUtc);
-    const yesterdayStr = utcDateStr(addDays(todayUtc, -1));
+    const yesterday = shiftDate(today, -1);
 
-    // Current streak: consecutive days ending today or yesterday
     let currentStreak = 0;
-    const streakStart = activeDateSet.has(todayStr)
-      ? todayUtc
-      : activeDateSet.has(yesterdayStr)
-        ? addDays(todayUtc, -1)
+    const streakStart = activeDateSet.has(today)
+      ? today
+      : activeDateSet.has(yesterday)
+        ? yesterday
         : null;
     if (streakStart) {
       let cursor = streakStart;
-      while (activeDateSet.has(utcDateStr(cursor))) {
+      while (activeDateSet.has(cursor)) {
         currentStreak++;
-        cursor = addDays(cursor, -1);
+        cursor = shiftDate(cursor, -1);
       }
     }
 
-    // Longest streak: scan sorted active dates
     let longestStreak = 0;
     let run = 0;
     for (let i = 0; i < activeDates.length; i++) {
