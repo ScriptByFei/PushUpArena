@@ -34,17 +34,26 @@ export default function Track() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const filteredEntries = useMemo(() => {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(startOfDay);
-    startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay() + (startOfDay.getDay() === 0 ? -6 : 1));
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Datumsvergleiche in Europe/Berlin – konsistent mit der DB (get_my_stats).
+    const TZ = 'Europe/Berlin';
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); // "2026-07-02"
+    const [y, m, d] = today.split('-').map(Number);
+
+    // Montag der aktuellen Woche in Berlin
+    const tmpDate = new Date(y, m - 1, d); // nur für getDay()
+    const dow = (tmpDate.getDay() + 6) % 7; // 0 = Mo
+    const monDate = new Date(y, m - 1, d - dow);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const monday = `${monDate.getFullYear()}-${pad(monDate.getMonth() + 1)}-${pad(monDate.getDate())}`;
+
+    // Erster des aktuellen Monats in Berlin
+    const firstOfMonth = `${y}-${pad(m)}-01`;
 
     const filtered = entries.filter((e) => {
-      const d = new Date(e.performed_at);
-      if (period === 'today') return d >= startOfDay;
-      if (period === 'week') return d >= startOfWeek;
-      if (period === 'month') return d >= startOfMonth;
+      const eBerlin = new Date(e.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ });
+      if (period === 'today') return eBerlin === today;
+      if (period === 'week')  return eBerlin >= monday;
+      if (period === 'month') return eBerlin >= firstOfMonth;
       return true;
     });
 

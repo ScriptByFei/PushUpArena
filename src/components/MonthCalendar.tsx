@@ -73,7 +73,7 @@ export function MonthCalendar({
   const [selected, setSelected] = useState<DayData | null>(null);
 
   const byDate = new Map(data.map((d) => [d.date, d]));
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
 
   const daysInMonth = new Date(Date.UTC(selectedYear, selectedMonth + 1, 0)).getUTCDate();
   const firstWeekday = (new Date(Date.UTC(selectedYear, selectedMonth, 1)).getUTCDay() + 6) % 7;

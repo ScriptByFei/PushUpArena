@@ -1,5 +1,10 @@
-// Datums-Helfer. Hinweis: Die serverseitige Aggregation (Streak/Heute/Woche)
-// nutzt UTC-Tagesgrenzen. Diese Helfer sind v. a. für die Anzeige & Eingabe.
+// Datums-Helfer. Alle Tagesberechnungen nutzen Europe/Berlin – konsistent mit der DB-Funktion get_my_stats.
+const TZ = 'Europe/Berlin';
+
+/** Gibt ein Date-Objekt als "YYYY-MM-DD" in Europe/Berlin zurück. */
+function berlinDate(d: Date): string {
+  return d.toLocaleDateString('sv-SE', { timeZone: TZ });
+}
 
 export function startOfWeek(date = new Date()): Date {
   const d = new Date(date);
@@ -57,15 +62,15 @@ export function formatGermanDateTime(value: string | Date): string {
   return dateTimeFmt.format(new Date(value));
 }
 
-/** Relativer, freundlicher Tagesbezug ("Heute", "Gestern", sonst Datum). */
+/** Relativer, freundlicher Tagesbezug ("Heute", "Gestern", sonst Datum) – Europe/Berlin. */
 export function formatRelativeDay(value: string | Date): string {
-  const d = new Date(value);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (isSameDay(d, today)) return 'Heute';
-  if (isSameDay(d, yesterday)) return 'Gestern';
-  return formatDate(d);
+  const d = berlinDate(new Date(value));
+  const today = berlinDate(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  if (d === today) return 'Heute';
+  if (d === berlinDate(yesterdayDate)) return 'Gestern';
+  return formatDate(value);
 }
 
 /** Wert für <input type="datetime-local"> (lokale Zeit). */

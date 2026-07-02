@@ -15,7 +15,7 @@ export function WeeklyBarChart({ data }: Props) {
       {data.map((day) => {
         const barH = Math.max(2, Math.round((day.amount / max) * MAX_H));
         const weekday = WEEKDAY_SHORT[new Date(day.date + 'T00:00:00Z').getUTCDay()];
-        const isToday = day.date === new Date().toISOString().slice(0, 10);
+        const isToday = day.date === new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
 
         return (
           <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
