@@ -4,7 +4,7 @@ import type { DayData } from '@/hooks/useProfileStats';
 interface Props {
   data: DayData[];
   selectedYear: number;
-  selectedMonth: number; // 0-basiert
+  selectedMonth: number;
   canGoPrev: boolean;
   canGoNext: boolean;
   onPrev: () => void;
@@ -13,37 +13,26 @@ interface Props {
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-function tileClasses(amount: number, isToday: boolean): string {
-  const base = 'flex flex-col items-center rounded-xl py-2 px-0.5 transition-colors';
-  const ring = isToday ? ' ring-2 ring-brand-400' : '';
-  if (amount === 0)  return `${base} bg-ink-800/40 border border-ink-700/40${ring}`;
-  if (amount <= 25)  return `${base} bg-violet-900/70 border border-violet-800/50${ring}`;
-  if (amount <= 75)  return `${base} bg-violet-700/80 border border-violet-600/50${ring}`;
-  return             `${base} bg-brand-600/90 border border-brand-500/60${ring}`;
+function intensity(amount: number): 0 | 1 | 2 | 3 {
+  if (amount === 0) return 0;
+  if (amount <= 30)  return 1;
+  if (amount <= 80)  return 2;
+  return 3;
 }
 
-function dayNumberColor(amount: number, isToday: boolean): string {
-  if (isToday)      return 'text-brand-300';
-  if (amount === 0) return 'text-slate-600';
-  if (amount <= 25) return 'text-violet-300';
-  if (amount <= 75) return 'text-violet-100';
-  return 'text-white';
-}
+const CELL_BG: Record<0 | 1 | 2 | 3, string> = {
+  0: 'bg-ink-800/60',
+  1: 'bg-violet-900/80',
+  2: 'bg-violet-600/90',
+  3: 'bg-brand-500',
+};
 
-function amountColor(amount: number): string {
-  if (amount <= 25) return 'text-violet-400';
-  if (amount <= 75) return 'text-violet-200';
-  return 'text-brand-200';
-}
-
-function formatLong(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00Z').toLocaleDateString('de-DE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
-}
+const DAY_COLOR: Record<0 | 1 | 2 | 3, string> = {
+  0: 'text-slate-600',
+  1: 'text-violet-300',
+  2: 'text-violet-100',
+  3: 'text-white',
+};
 
 function ChevronLeft() {
   return (
@@ -61,15 +50,7 @@ function ChevronRight() {
   );
 }
 
-export function MonthCalendar({
-  data,
-  selectedYear,
-  selectedMonth,
-  canGoPrev,
-  canGoNext,
-  onPrev,
-  onNext,
-}: Props) {
+export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, canGoNext, onPrev, onNext }: Props) {
   const [selected, setSelected] = useState<DayData | null>(null);
 
   const byDate = new Map(data.map((d) => [d.date, d]));
@@ -79,12 +60,10 @@ export function MonthCalendar({
   const firstWeekday = (new Date(Date.UTC(selectedYear, selectedMonth, 1)).getUTCDay() + 6) % 7;
 
   const monthLabel = new Date(Date.UTC(selectedYear, selectedMonth, 1)).toLocaleDateString('de-DE', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
+    month: 'long', year: 'numeric', timeZone: 'UTC',
   });
 
-  function ds(day: number): string {
+  function ds(day: number) {
     return `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
@@ -93,26 +72,25 @@ export function MonthCalendar({
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
-  // Auswahl zurücksetzen wenn Monat wechselt
-  const selectedMonthKey = `${selectedYear}-${selectedMonth}`;
+  const monthKey = `${selectedYear}-${selectedMonth}`;
 
   return (
     <div>
-      {/* Monatsnavigation */}
-      <div className="mb-3 flex items-center justify-between">
+      {/* Navigation */}
+      <div className="mb-4 flex items-center justify-between">
         <button
           onClick={onPrev}
           disabled={!canGoPrev}
-          className="rounded-full bg-ink-700 p-1.5 text-slate-300 transition hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-full p-1.5 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200 disabled:opacity-25"
           aria-label="Vorheriger Monat"
         >
           <ChevronLeft />
         </button>
-        <span className="text-sm font-semibold text-slate-300">{monthLabel}</span>
+        <span className="text-sm font-semibold text-slate-200">{monthLabel}</span>
         <button
           onClick={onNext}
           disabled={!canGoNext}
-          className="rounded-full bg-ink-700 p-1.5 text-slate-300 transition hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-full p-1.5 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200 disabled:opacity-25"
           aria-label="Nächster Monat"
         >
           <ChevronRight />
@@ -120,61 +98,70 @@ export function MonthCalendar({
       </div>
 
       {/* Wochentag-Header */}
-      <div className="mb-1.5 grid grid-cols-7 gap-1">
+      <div className="mb-1 grid grid-cols-7 gap-1.5">
         {WEEKDAY_LABELS.map((d) => (
-          <div key={d} className="text-center text-[11px] font-medium text-slate-500">
+          <div key={d} className="text-center text-[10px] font-medium uppercase tracking-wide text-slate-600">
             {d}
           </div>
         ))}
       </div>
 
-      {/* Kalender-Kacheln */}
-      <div className="grid grid-cols-7 gap-1">
+      {/* Kacheln */}
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((day, idx) => {
-          if (day === null) return <div key={`${selectedMonthKey}-pad-${idx}`} />;
+          if (day === null) return <div key={`${monthKey}-pad-${idx}`} />;
           const dateStr = ds(day);
           const entry = byDate.get(dateStr);
           const amount = entry?.amount ?? 0;
+          const level = intensity(amount);
           const isToday = dateStr === todayStr;
+          const isSelected = selected?.date === dateStr;
 
           return (
             <button
               key={dateStr}
               onClick={() =>
-                setSelected(
-                  selected?.date === dateStr
-                    ? null
-                    : (entry ?? { date: dateStr, amount: 0, sessions: 0 }),
-                )
+                setSelected(isSelected ? null : (entry ?? { date: dateStr, amount: 0, sessions: 0 }))
               }
-              className={tileClasses(amount, isToday)}
+              className={`
+                relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold transition-all
+                ${CELL_BG[level]}
+                ${isToday ? 'ring-2 ring-brand-400 ring-offset-1 ring-offset-ink-900' : ''}
+                ${isSelected ? 'scale-110 shadow-lg shadow-brand-900/50' : 'hover:scale-105'}
+              `}
             >
-              <span className={`text-sm font-bold leading-none ${dayNumberColor(amount, isToday)}`}>
-                {day}
-              </span>
-              {amount > 0 && (
-                <span className={`mt-1 text-[10px] font-semibold leading-none ${amountColor(amount)}`}>
-                  {amount}
-                </span>
-              )}
+              <span className={DAY_COLOR[level]}>{day}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Detailinfo bei Auswahl */}
+      {/* Legende */}
+      <div className="mt-3 flex items-center justify-end gap-1.5">
+        <span className="text-[10px] text-slate-600">Weniger</span>
+        {([0, 1, 2, 3] as const).map((l) => (
+          <div key={l} className={`h-3 w-3 rounded-sm ${CELL_BG[l]}`} />
+        ))}
+        <span className="text-[10px] text-slate-600">Mehr</span>
+      </div>
+
+      {/* Detailinfo */}
       {selected && (
-        <div className="mt-3 rounded-xl border border-ink-700 bg-ink-800/80 px-4 py-2.5">
-          <p className="text-sm font-semibold text-slate-100">{formatLong(selected.date)}</p>
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-4 py-2.5">
+          <p className="text-sm font-medium text-slate-300">
+            {new Date(selected.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
+              weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+            })}
+          </p>
           {selected.amount === 0 ? (
-            <p className="mt-0.5 text-xs text-slate-400">Kein Training</p>
+            <span className="text-xs text-slate-500">Kein Training</span>
           ) : (
-            <p className="mt-0.5 text-xs text-slate-300">
-              <span className="font-bold text-brand-300">{selected.amount}</span> Wdh.
+            <span className="text-sm font-bold text-brand-300">
+              {selected.amount}
               {selected.sessions > 1 && (
-                <span className="ml-2 text-slate-400">· {selected.sessions} Sessions</span>
+                <span className="ml-1.5 text-xs font-normal text-slate-400">· {selected.sessions}×</span>
               )}
-            </p>
+            </span>
           )}
         </div>
       )}
