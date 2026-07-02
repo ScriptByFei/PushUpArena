@@ -49,6 +49,18 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
       }
 
       toast.success(`+${amount} ${unit} gespeichert 💪`);
+
+      // Meilenstein-Check: hat der User heute 100 erreicht?
+      const MILESTONE = 100;
+      const { data: statsRows } = await supabase.rpc('get_my_stats', { p_exercise: exerciseId });
+      const todayTotal = (Array.isArray(statsRows) ? statsRows[0]?.today_amount : 0) ?? 0;
+      const prevTotal = todayTotal - amount;
+      if (prevTotal < MILESTONE && todayTotal >= MILESTONE) {
+        void supabase.functions.invoke('notify-milestone', {
+          body: { user_id: user.id, milestone: MILESTONE },
+        });
+      }
+
       setSubmitting(false);
       return { error: null, entry };
     },
