@@ -5,7 +5,7 @@ import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Textarea } from '@/components/ui/Input';
+import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { formatDate } from '@/lib/date';
@@ -34,7 +34,7 @@ export default function Profile() {
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
+  const [form, setForm] = useState({ username: '', display_name: '' });
   const [saving, setSaving] = useState(false);
 
 
@@ -43,7 +43,6 @@ export default function Profile() {
       setForm({
         username: profile.username,
         display_name: profile.display_name ?? '',
-        bio: profile.bio ?? '',
       });
     }
   }, [profile]);
@@ -122,15 +121,7 @@ export default function Profile() {
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })}
               />
             </Field>
-            <Field label="Bio (optional)" htmlFor="bio">
-              <Textarea
-                id="bio"
-                rows={3}
-                maxLength={280}
-                value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              />
-            </Field>
+
             <div className="flex gap-2">
               <Button type="button" variant="secondary" fullWidth onClick={() => setEditing(false)}>
                 Abbrechen
