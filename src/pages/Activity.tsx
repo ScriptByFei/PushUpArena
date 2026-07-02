@@ -47,7 +47,6 @@ export default function Activity() {
       {/* Monatskalender */}
       <Card>
         <CardTitle>Aktivitätskalender</CardTitle>
-        <p className="mb-3 mt-0.5 text-xs text-slate-400">Tippe auf einen Tag für Details</p>
         <MonthCalendar
           data={stats.dailyData}
           selectedYear={calYear}
