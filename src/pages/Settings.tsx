@@ -13,7 +13,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
 import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
-import { requestPushPermission } from '@/lib/pushNotifications';
+import { requestPushPermission, removePushSubscription } from '@/lib/pushNotifications';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
@@ -45,6 +45,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     pushSupported ? Notification.permission : 'default',
   );
   const [requestingPush, setRequestingPush] = useState(false);
+  const [deactivatingPush, setDeactivatingPush] = useState(false);
 
   useEffect(() => {
     if (goal) {
@@ -69,6 +70,15 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     const permission = await requestPushPermission();
     setPushPermission(permission);
     setRequestingPush(false);
+  }
+
+  async function onDeactivatePush() {
+    setDeactivatingPush(true);
+    await removePushSubscription();
+    setDeactivatingPush(false);
+    // Browser-Permission kann nicht per JS entzogen werden; UI auf "default" setzen
+    // damit der Aktivieren-Button wieder erscheint
+    setPushPermission('default');
   }
 
   async function onChangePassword(e: FormEvent) {
@@ -177,9 +187,19 @@ const [deleteOpen, setDeleteOpen] = useState(false);
             </p>
           </div>
         ) : pushPermission === 'granted' ? (
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-500/10 px-4 py-3">
-            <span className="text-emerald-400">✓</span>
-            <p className="text-sm text-emerald-300">Push-Benachrichtigungen sind aktiviert.</p>
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-500/10 px-4 py-3">
+              <span className="text-emerald-400">✓</span>
+              <p className="text-sm text-emerald-300">Push-Benachrichtigungen sind aktiviert.</p>
+            </div>
+            <Button
+              variant="secondary"
+              fullWidth
+              loading={deactivatingPush}
+              onClick={onDeactivatePush}
+            >
+              Benachrichtigungen deaktivieren
+            </Button>
           </div>
         ) : pushPermission === 'denied' ? (
           <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
