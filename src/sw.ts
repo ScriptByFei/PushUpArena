@@ -1,16 +1,27 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
-import { clientsClaim } from 'workbox-core';
 
 declare const self: ServiceWorkerGlobalScope;
-
-// Neuen SW sofort aktivieren (verhält sich wie autoUpdate)
-self.skipWaiting();
-clientsClaim();
 
 // Precache-Manifest wird von VitePWA zur Build-Zeit injiziert
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
+
+// Sofort aktivieren: beim ersten Install und bei Updates via SKIP_WAITING-Message
+self.addEventListener('install', () => {
+  void self.skipWaiting();
+});
+
+self.addEventListener('activate', () => {
+  void self.clients.claim();
+});
+
+// VitePWA sendet diese Message im autoUpdate-Modus
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    void self.skipWaiting();
+  }
+});
 
 // ── Push-Benachrichtigungen ────────────────────────────────────────────────
 self.addEventListener('push', (event) => {

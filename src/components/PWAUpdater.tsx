@@ -1,26 +1,30 @@
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-const UPDATE_CHECK_INTERVAL = 5 * 60 * 1000; // alle 5 Minuten
+const UPDATE_CHECK_INTERVAL = 60 * 1000; // jede Minute prüfen
 
 export function PWAUpdater() {
-  useRegisterSW({
+  const { updateServiceWorker } = useRegisterSW({
+    onNeedRefresh() {
+      // Neue Version verfügbar → sofort anwenden und Seite neu laden
+      void updateServiceWorker(true);
+    },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
-      registration.update().catch(() => {});
+      // Regelmäßig auf Updates prüfen
       setInterval(() => registration.update().catch(() => {}), UPDATE_CHECK_INTERVAL);
     },
   });
 
-  // Beim Zurückwechseln zur App sofort auf Updates prüfen.
+  // Beim Zurückwechseln zur App sofort prüfen
   useEffect(() => {
-    function handleVisibilityChange() {
+    function onVisible() {
       if (document.visibilityState === 'visible') {
         navigator.serviceWorker?.getRegistration().then((reg) => reg?.update()).catch(() => {});
       }
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   return null;
