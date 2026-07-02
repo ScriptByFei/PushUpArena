@@ -27,10 +27,10 @@ const CELL_BG: Record<0 | 1 | 2 | 3, string> = {
   3: 'bg-brand-500',
 };
 
-const DAY_COLOR: Record<0 | 1 | 2 | 3, string> = {
-  0: 'text-slate-600',
+const REP_COLOR: Record<0 | 1 | 2 | 3, string> = {
+  0: '',
   1: 'text-violet-300',
-  2: 'text-violet-100',
+  2: 'text-white',
   3: 'text-white',
 };
 
@@ -78,21 +78,15 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
     <div>
       {/* Navigation */}
       <div className="mb-4 flex items-center justify-between">
-        <button
-          onClick={onPrev}
-          disabled={!canGoPrev}
+        <button onClick={onPrev} disabled={!canGoPrev}
           className="rounded-full p-1.5 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200 disabled:opacity-25"
-          aria-label="Vorheriger Monat"
-        >
+          aria-label="Vorheriger Monat">
           <ChevronLeft />
         </button>
         <span className="text-sm font-semibold text-slate-200">{monthLabel}</span>
-        <button
-          onClick={onNext}
-          disabled={!canGoNext}
+        <button onClick={onNext} disabled={!canGoNext}
           className="rounded-full p-1.5 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200 disabled:opacity-25"
-          aria-label="Nächster Monat"
-        >
+          aria-label="Nächster Monat">
           <ChevronRight />
         </button>
       </div>
@@ -100,9 +94,7 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
       {/* Wochentag-Header */}
       <div className="mb-1 grid grid-cols-7 gap-1.5">
         {WEEKDAY_LABELS.map((d) => (
-          <div key={d} className="text-center text-[10px] font-medium uppercase tracking-wide text-slate-600">
-            {d}
-          </div>
+          <div key={d} className="text-center text-[10px] font-medium uppercase tracking-wide text-slate-600">{d}</div>
         ))}
       </div>
 
@@ -120,17 +112,26 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
           return (
             <button
               key={dateStr}
-              onClick={() =>
-                setSelected(isSelected ? null : (entry ?? { date: dateStr, amount: 0, sessions: 0 }))
-              }
+              onClick={() => setSelected(isSelected ? null : (entry ?? { date: dateStr, amount: 0, sessions: 0 }))}
               className={`
-                relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold transition-all
+                relative flex aspect-square flex-col items-center justify-center gap-px rounded-lg transition-all
                 ${CELL_BG[level]}
                 ${isToday ? 'ring-2 ring-brand-400 ring-offset-1 ring-offset-ink-900' : ''}
                 ${isSelected ? 'scale-110 shadow-lg shadow-brand-900/50' : 'hover:scale-105'}
               `}
             >
-              <span className={DAY_COLOR[level]}>{day}</span>
+              {/* Datum – klein und gedimmt oben */}
+              <span className={`text-[9px] font-medium leading-none ${isToday ? 'text-brand-300' : level === 0 ? 'text-slate-600' : 'text-white/50'}`}>
+                {day}
+              </span>
+              {/* Liegestützen – groß und farbig unten, nur wenn > 0 */}
+              {amount > 0 ? (
+                <span className={`text-[11px] font-extrabold leading-none ${REP_COLOR[level]}`}>
+                  {amount}
+                </span>
+              ) : (
+                <span className="text-[11px] leading-none text-transparent select-none">0</span>
+              )}
             </button>
           );
         })}
