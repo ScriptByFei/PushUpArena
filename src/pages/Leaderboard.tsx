@@ -117,9 +117,6 @@ export default function Leaderboard() {
                         <span className="ml-1 font-normal text-brand-300">(du)</span>
                       )}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-slate-400">
-                      {row.current_streak}🔥 · {row.today_amount} heute
-                    </p>
                     <p className={`mt-2 text-xl font-extrabold ${valueColor}`}>
                       {row[sortKey]}
                     </p>
@@ -157,9 +154,6 @@ export default function Leaderboard() {
                         {row.is_me && (
                           <span className="ml-1 text-xs text-brand-300">(du)</span>
                         )}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {row.current_streak}🔥 · heute {row.today_amount}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
