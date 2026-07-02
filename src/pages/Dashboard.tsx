@@ -91,13 +91,13 @@ export default function Dashboard() {
       {/* Statistik-Kacheln */}
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Heute" value={statsLoading ? '–' : stats.today_amount} accent="text-brand-300" />
-        <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
         <StatTile
           label="Streak"
           value={statsLoading ? '–' : `${stats.current_streak}🔥`}
           accent="text-amber-300"
           glowStyle={streakGlow}
         />
+        <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
 
       {/* Schnell-Eingabe */}
