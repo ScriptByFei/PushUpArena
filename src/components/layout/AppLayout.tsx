@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon } from '@/components/ui/icons';
+import { SettingsIcon, BellIcon } from '@/components/ui/icons';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -19,8 +19,14 @@ export function AppLayout() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Platzhalter links (gleiche Breite wie Settings-Icon rechts) */}
-        <div className="h-9 w-9 shrink-0" />
+        {/* Glocken-Icon links */}
+        <Link
+          to="/settings"
+          aria-label="Benachrichtigungen"
+          className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
+        >
+          <BellIcon className="h-5 w-5" />
+        </Link>
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
           {title}
