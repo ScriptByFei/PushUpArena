@@ -15,7 +15,7 @@ export default defineConfig({
     VitePWA({
       // 'autoUpdate': neue Versionen werden im Hintergrund installiert und beim Erkennen
       // automatisch aktiviert + neu geladen (kein Banner, kein Tippen).
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: [
         'favicon.svg',
         'offline.html',
