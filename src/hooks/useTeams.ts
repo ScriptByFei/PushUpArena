@@ -134,6 +134,16 @@ export function useTeams(exerciseSlug: string | undefined) {
     [myTeam, load],
   );
 
+  const deleteTeam = useCallback(
+    async (teamId: string): Promise<{ error: string | null }> => {
+      const { error: err } = await supabase.from('teams').delete().eq('id', teamId);
+      if (err) return { error: err.message };
+      await load();
+      return { error: null };
+    },
+    [load],
+  );
+
   const myWeeklyTotal = memberStats.find((m) => m.user_id === user?.id)?.weekly_amount ?? 0;
   const myRank = leaderboard.findIndex((t) => t.my_team) + 1;
 
@@ -151,5 +161,6 @@ export function useTeams(exerciseSlug: string | undefined) {
     joinTeam,
     leaveTeam,
     updateTeam,
+    deleteTeam,
   };
 }
