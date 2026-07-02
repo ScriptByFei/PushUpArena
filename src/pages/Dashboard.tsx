@@ -94,7 +94,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Statistik-Kacheln */}
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Heute" value={statsLoading ? '–' : stats.today_amount} accent="text-brand-300" />
@@ -167,7 +167,7 @@ export default function Dashboard() {
       {/* Freunde einladen */}
       <button
         onClick={onInvite}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 bg-ink-800/40 py-3 text-sm font-medium text-brand-400 hover:border-brand-500 hover:bg-ink-800/70 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 bg-ink-800/40 py-2 text-sm font-medium text-brand-400 hover:border-brand-500 hover:bg-ink-800/70 transition-colors -mt-1"
       >
         <ShareIcon className="h-4 w-4" />
         Freunde einladen
