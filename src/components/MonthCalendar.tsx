@@ -114,24 +114,20 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
               key={dateStr}
               onClick={() => setSelected(isSelected ? null : (entry ?? { date: dateStr, amount: 0, sessions: 0 }))}
               className={`
-                relative flex aspect-square flex-col items-center justify-center gap-px rounded-lg transition-all
+                relative flex aspect-square flex-col items-start justify-between rounded-lg p-1 transition-all
                 ${CELL_BG[level]}
                 ${isToday ? 'ring-2 ring-brand-400 ring-offset-1 ring-offset-ink-900' : ''}
                 ${isSelected ? 'scale-110 shadow-lg shadow-brand-900/50' : 'hover:scale-105'}
               `}
             >
-              {/* Datum – klein und gedimmt oben */}
-              <span className={`text-xs font-semibold leading-none ${isToday ? 'text-brand-300' : level === 0 ? 'text-slate-600' : 'text-white/50'}`}>
+              {/* Datum – oben links */}
+              <span className={`text-[13px] font-semibold leading-none ${isToday ? 'text-brand-300' : level === 0 ? 'text-slate-600' : 'text-white/60'}`}>
                 {day}
               </span>
-              {/* Liegestützen – groß und farbig unten, nur wenn > 0 */}
-              {amount > 0 ? (
-                <span className={`text-[10px] font-extrabold leading-none ${REP_COLOR[level]}`}>
-                  {amount}
-                </span>
-              ) : (
-                <span className="text-[10px] leading-none text-transparent select-none">0</span>
-              )}
+              {/* Liegestützen – unten rechts, nur wenn > 0 */}
+              <span className={`self-end text-[10px] font-extrabold leading-none ${amount > 0 ? REP_COLOR[level] : 'text-transparent select-none'}`}>
+                {amount > 0 ? amount : '0'}
+              </span>
             </button>
           );
         })}
