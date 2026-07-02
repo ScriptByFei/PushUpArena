@@ -11,8 +11,8 @@ interface NavItem {
 const items: NavItem[] = [
   { to: '/', label: 'Start', Icon: HomeIcon },
   { to: '/friends', label: 'Freunde', Icon: UsersIcon },
-  { to: '/activity', label: 'Aktivität', Icon: CalendarIcon },
   { to: '/leaderboard', label: 'Rangliste', Icon: TrophyIcon },
+  { to: '/activity', label: 'Aktivität', Icon: CalendarIcon },
   { to: '/profile', label: 'Profil', Icon: UserIcon },
 ];
 
