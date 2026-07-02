@@ -495,19 +495,26 @@ function TeamRow({
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
-  const [swiped, setSwiped] = useState(false);
-  const touchStartX = useRef<number | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const startXRef = useRef<number | null>(null);
+  const startSwipeRef = useRef(0);
+  const dragging = startXRef.current !== null;
 
   function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
+    startXRef.current = e.touches[0].clientX;
+    startSwipeRef.current = swipeX;
   }
 
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return;
-    const dx = touchStartX.current - e.changedTouches[0].clientX;
-    if (dx > 40) setSwiped(true);
-    else if (dx < -20) setSwiped(false);
-    touchStartX.current = null;
+  function handleTouchMove(e: React.TouchEvent) {
+    if (startXRef.current === null) return;
+    const dx = startXRef.current - e.touches[0].clientX;
+    setSwipeX(Math.max(0, Math.min(DELETE_BTN_W, startSwipeRef.current + dx)));
+  }
+
+  function handleTouchEnd() {
+    if (startXRef.current === null) return;
+    startXRef.current = null;
+    setSwipeX(swipeX > DELETE_BTN_W / 2 ? DELETE_BTN_W : 0);
   }
 
   return (
@@ -515,7 +522,7 @@ function TeamRow({
       {/* Red delete button revealed behind the row */}
       {canDelete && (
         <button
-          onClick={() => { setSwiped(false); onDelete?.(); }}
+          onClick={() => { setSwipeX(0); onDelete?.(); }}
           className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-600 text-xs font-semibold text-white active:bg-red-700"
           style={{ width: DELETE_BTN_W }}
         >
@@ -523,13 +530,18 @@ function TeamRow({
         </button>
       )}
 
-      {/* Row content slides left on swipe */}
+      {/* Row content — slides left on swipe; touch-action:pan-y lets iOS scroll vertically but gives us horizontal */}
       <div
-        className="flex items-center gap-3 bg-ink-900 py-3 transition-transform duration-200 ease-out"
-        style={{ transform: swiped && canDelete ? `translateX(-${DELETE_BTN_W}px)` : 'translateX(0)' }}
+        className="flex items-center gap-3 bg-ink-900 py-3"
+        style={{
+          transform: `translateX(-${swipeX}px)`,
+          transition: dragging ? 'none' : 'transform 200ms ease-out',
+          touchAction: canDelete ? 'pan-y' : undefined,
+        }}
         onTouchStart={canDelete ? handleTouchStart : undefined}
+        onTouchMove={canDelete ? handleTouchMove : undefined}
         onTouchEnd={canDelete ? handleTouchEnd : undefined}
-        onClick={swiped ? () => setSwiped(false) : undefined}
+        onClick={swipeX > 0 ? () => setSwipeX(0) : undefined}
       >
         <RankBadge rank={rank} />
         <TeamLogo url={team.avatar_url} name={team.name} size={40} />
