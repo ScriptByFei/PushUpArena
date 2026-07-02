@@ -166,10 +166,6 @@ export default function Leaderboard() {
         </>
       )}
 
-      <p className="px-1 text-center text-xs text-slate-500">
-        Es werden ausschließlich Vergleichsdaten deiner Freunde angezeigt – keine öffentliche
-        globale Rangliste, keine E-Mail-Adressen.
-      </p>
     </div>
   );
 }
