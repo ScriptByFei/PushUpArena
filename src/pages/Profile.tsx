@@ -179,7 +179,7 @@ export default function Profile() {
             <div className="mt-3 grid grid-cols-2 gap-2">
               <StatCell label="Gesamt" value={stats.totalAmount} />
               <StatCell label="Ø pro Trainingstag" value={stats.avgPerActiveDay} />
-              <StatCell label="Längste Streak" value={`${stats.longestStreak}🔥`} accent="text-amber-400" />
+              <StatCell label="Längste Streak" value={`${stats.longestStreak}👑`} accent="text-amber-400" />
               <StatCell label="Akt. Streak" value={`${stats.currentStreak}🔥`} accent="text-amber-300" />
               <StatCell
                 label="Bester Tag"
