@@ -177,19 +177,19 @@ export default function Friends() {
             )}
           </Card>
 
+          {/* Einladen */}
+          <button
+            onClick={onInvite}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 bg-ink-800/40 py-3 text-sm font-medium text-brand-400 hover:border-brand-500 hover:bg-ink-800/70 transition-colors"
+          >
+            <ShareIcon className="h-4 w-4" />
+            Freunde einladen
+          </button>
+
           {/* Alle Nutzer */}
           {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
             <Card>
-              <div className="flex items-center justify-between">
-                <CardTitle>Nutzer entdecken</CardTitle>
-                <button
-                  onClick={onInvite}
-                  className="flex items-center gap-1.5 text-xs font-medium text-brand-400 hover:text-brand-300"
-                >
-                  <ShareIcon className="h-4 w-4" />
-                  Einladen
-                </button>
-              </div>
+              <CardTitle>Nutzer entdecken</CardTitle>
               <ul className="mt-2 divide-y divide-ink-700">
                 {allUsers.filter((p) => !friendIds.has(p.id)).map((p) => {
                   const isFriend = friendIds.has(p.id);
