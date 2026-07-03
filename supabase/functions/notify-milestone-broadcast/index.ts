@@ -34,17 +34,15 @@ Deno.serve(async (req: Request) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!;
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@pushuparena.app';
 
-    // Verify caller
     const userClient = createClient(url, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) return json({ error: 'Unauthorized' }, 401);
 
-    const { milestone } = await req.json();
+    const { total } = await req.json();
     const admin = createClient(url, serviceKey);
 
-    // Get the user's display name
     const { data: profile } = await admin
       .from('profiles')
       .select('display_name, username')
@@ -52,7 +50,6 @@ Deno.serve(async (req: Request) => {
       .single();
     const name = profile?.display_name || profile?.username || 'Jemand';
 
-    // Get all push subscriptions
     const { data: subs } = await admin
       .from('push_subscriptions')
       .select('user_id, subscription');
@@ -63,17 +60,16 @@ Deno.serve(async (req: Request) => {
 
     const payload = JSON.stringify({
       title: 'PushUpArena 🔥',
-      body: `${name} hat heute ${milestone}+ Liegestützen erreicht!`,
+      body: `${name} hat heute ${total} Liegestützen gemacht!`,
     });
 
     let sent = 0;
     await Promise.allSettled(
-      subs.map(async (row) => {
+      subs.map(async (row: { user_id: string; subscription: unknown }) => {
         try {
           await webpush.sendNotification(row.subscription, payload);
           sent++;
         } catch (e) {
-          // Stale subscription — remove it
           if ((e as any)?.statusCode === 410) {
             await admin.from('push_subscriptions').delete().eq('user_id', row.user_id);
           }

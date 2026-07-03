@@ -66,7 +66,7 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
           .catch((e) => console.error('[milestone] invoke error:', e));
         // Broadcast to all subscribed users
         supabase.functions
-          .invoke('notify-milestone-broadcast', { body: { milestone: MILESTONE } })
+          .invoke('notify-milestone-broadcast', { body: { milestone: MILESTONE, total: newTotal } })
           .then(({ data, error }) => {
             console.log('[milestone-broadcast] invoke result:', JSON.stringify(data), error);
           })
