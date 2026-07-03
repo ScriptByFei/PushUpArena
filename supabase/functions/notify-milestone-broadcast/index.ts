@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
     webpush.setVapidDetails(vapidSubject, VAPID_PUBLIC_KEY, vapidPrivateKey);
 
     const payload = JSON.stringify({
-      title: 'PushUpArena',
+      title: '🔥 Meilenstein erreicht!',
       body: `🔥 ${name} hat heute ${total} Liegestützen gemacht!`,
     });
 

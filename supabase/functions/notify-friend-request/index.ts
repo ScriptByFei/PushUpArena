@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     await webpush.sendNotification(
       sub.subscription,
       JSON.stringify({
-        title: 'PushUpArena',
+        title: '🤝 Neue Anfrage',
         body: `🤝 ${senderName} möchte dein Freund sein!`,
       }),
     );
