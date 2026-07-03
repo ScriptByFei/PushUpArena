@@ -187,7 +187,7 @@ export default function Friends() {
               aria-expanded={friendsOpen}
             >
               <CardTitle>Meine Freunde ({friends.length})</CardTitle>
-              <span className={`text-slate-400 transition-transform duration-200 ${friendsOpen ? 'rotate-180' : ''}`}>
+              <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${friendsOpen ? 'rotate-180' : ''}`}>
                 ▾
               </span>
             </button>
