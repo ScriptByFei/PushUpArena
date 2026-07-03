@@ -35,7 +35,7 @@ export function InstallHint() {
   const ios = isIOS();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <div className="fixed top-0 left-0 right-0 z-50 p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
       <div className="mx-auto max-w-md rounded-2xl border border-ink-600 bg-ink-800/95 p-4 shadow-2xl backdrop-blur-md">
         <div className="flex items-start gap-3">
           <img src="/icons/icon-192.png" alt="PushUpArena" className="h-10 w-10 flex-shrink-0 rounded-xl" />

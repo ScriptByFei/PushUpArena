@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { AuthLayout } from '@/components/layout/AuthLayout';
@@ -16,6 +16,10 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  // Prevent keyboard from popping up automatically on mobile
+  useEffect(() => { emailRef.current?.blur(); }, []);
 
   const from = (location.state as { from?: Location })?.from?.pathname ?? '/';
 
@@ -70,6 +74,7 @@ export default function Login() {
         )}
         <Field label="E-Mail" htmlFor="email">
           <Input
+            ref={emailRef}
             id="email"
             name="email"
             type="email"
