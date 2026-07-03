@@ -46,6 +46,7 @@ export default function Friends() {
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
+  const [friendsOpen, setFriendsOpen] = useState(false);
 
   async function onInvite() {
     const url = window.location.origin;
@@ -178,31 +179,42 @@ export default function Friends() {
             </Card>
           )}
 
-          {/* Freundesliste */}
+          {/* Freundesliste – einklappbar */}
           <Card>
-            <CardTitle>Meine Freunde ({friends.length})</CardTitle>
-            {friends.length === 0 ? (
-              <EmptyState
-                icon="🤝"
-                title="Noch keine Freunde"
-                description="Entdecke Nutzer weiter unten und sende ihnen eine Anfrage."
-              />
-            ) : (
-              <ul className="mt-2 divide-y divide-ink-700">
-                {friends.map((f) => (
-                  <PersonRow key={f.friend.id} profile={f.friend}>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setRemoveTarget(f.friend)}
-                      aria-label="Entfernen"
-                    >
-                      <UserIcon className="h-4 w-4" />
-                      <span className="text-rose-300">Entfernen</span>
-                    </Button>
-                  </PersonRow>
-                ))}
-              </ul>
+            <button
+              className="flex w-full items-center justify-between"
+              onClick={() => setFriendsOpen((o) => !o)}
+              aria-expanded={friendsOpen}
+            >
+              <CardTitle>Meine Freunde ({friends.length})</CardTitle>
+              <span className={`text-slate-400 transition-transform duration-200 ${friendsOpen ? 'rotate-180' : ''}`}>
+                ▾
+              </span>
+            </button>
+            {friendsOpen && (
+              friends.length === 0 ? (
+                <EmptyState
+                  icon="🤝"
+                  title="Noch keine Freunde"
+                  description="Entdecke Nutzer weiter unten und sende ihnen eine Anfrage."
+                />
+              ) : (
+                <ul className="mt-2 divide-y divide-ink-700">
+                  {friends.map((f) => (
+                    <PersonRow key={f.friend.id} profile={f.friend}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setRemoveTarget(f.friend)}
+                        aria-label="Entfernen"
+                      >
+                        <UserIcon className="h-4 w-4" />
+                        <span className="text-rose-300">Entfernen</span>
+                      </Button>
+                    </PersonRow>
+                  ))}
+                </ul>
+              )
             )}
           </Card>
 
