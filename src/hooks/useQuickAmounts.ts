@@ -25,6 +25,15 @@ export function useQuickAmounts() {
     void load();
   }, [load]);
 
+  // Neu laden wenn App wieder sichtbar wird (z.B. nach Rückkehr von Settings)
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') void load();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
+
   const save = useCallback(
     async (newAmounts: number[]) => {
       if (!user) return { error: 'Not logged in' };
@@ -40,5 +49,5 @@ export function useQuickAmounts() {
     [user],
   );
 
-  return { amounts, saving, save };
+  return { amounts, saving, save, refetch: load };
 }
