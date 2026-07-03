@@ -111,7 +111,7 @@ export default function Dashboard() {
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Schnell eintragen</CardTitle>
-          <Link to="/settings" className="text-xs text-slate-500 hover:text-brand-300">
+          <Link to="/settings" className="text-xs text-brand-400 hover:text-brand-300">
             Anpassen
           </Link>
         </div>
