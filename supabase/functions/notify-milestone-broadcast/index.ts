@@ -1,5 +1,5 @@
 // Edge Function: notify-milestone-broadcast
-// When a user hits 100+ reps in a day, broadcasts a push to all subscribed users.
+// Broadcasts when a user hits 100+ reps. Excludes the sender (they get notify-milestone instead).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // @ts-ignore
@@ -50,9 +50,11 @@ Deno.serve(async (req: Request) => {
       .single();
     const name = profile?.display_name || profile?.username || 'Jemand';
 
+    // Exclude sender so they don't get a duplicate (they get notify-milestone)
     const { data: subs } = await admin
       .from('push_subscriptions')
-      .select('user_id, subscription');
+      .select('user_id, subscription')
+      .neq('user_id', user.id);
 
     if (!subs || subs.length === 0) return json({ ok: true, sent: 0 });
 
