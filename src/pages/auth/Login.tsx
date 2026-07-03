@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { AuthLayout } from '@/components/layout/AuthLayout';
+import { useInstallHintActive } from '@/components/InstallHint';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -16,6 +17,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const installHintActive = useInstallHintActive();
   const emailRef = useRef<HTMLInputElement>(null);
 
   // Prevent keyboard from popping up automatically on mobile
@@ -72,7 +74,7 @@ export default function Login() {
             {error}
           </div>
         )}
-        <Field label="E-Mail" htmlFor="email">
+        {!installHintActive && <Field label="E-Mail" htmlFor="email">
           <Input
             ref={emailRef}
             id="email"
@@ -84,8 +86,8 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="du@example.com"
           />
-        </Field>
-        <Field label="Passwort" htmlFor="password">
+        </Field>}
+        {!installHintActive && <Field label="Passwort" htmlFor="password">
           <PasswordInput
             id="password"
             name="password"
@@ -95,7 +97,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
           />
-        </Field>
+        </Field>}
 
         <div className="text-right">
           <Link to="/forgot-password" className="text-sm text-slate-400 hover:text-slate-200">
