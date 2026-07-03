@@ -238,26 +238,6 @@ export interface Database {
         }[];
       };
     };
-      notification_logs: {
-        Row: {
-          id: string;
-          user_id: string;
-          trigger_type: string;
-          sent_at: string;
-          metadata: Record<string, unknown> | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          trigger_type: string;
-          sent_at?: string;
-          metadata?: Record<string, unknown> | null;
-        };
-        Update: never;
-        Relationships: [];
-      };
-    };
     Enums: {
       friend_request_status: FriendRequestStatus;
     };
