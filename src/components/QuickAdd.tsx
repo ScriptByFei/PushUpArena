@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useWorkoutLogger } from '@/hooks/useWorkoutLogger';
+import { useQuickAmounts } from '@/hooks/useQuickAmounts';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-
-const PRESETS = [5, 10, 20, 25];
 
 export function QuickAdd({
   exerciseId,
@@ -15,6 +14,7 @@ export function QuickAdd({
   onLogged?: (info: { amount: number; entryId: string }) => void;
 }) {
   const { submit, submitting } = useWorkoutLogger(exerciseId, unit);
+  const { amounts: presets } = useQuickAmounts();
   const [custom, setCustom] = useState('');
   const [active, setActive] = useState<number | null>(null);
 
@@ -32,7 +32,7 @@ export function QuickAdd({
   return (
     <div>
       <div className="grid grid-cols-4 gap-2">
-        {PRESETS.map((n) => {
+        {presets.filter(n => n > 0).map((n) => {
           const isActive = active === n;
           return (
             <button

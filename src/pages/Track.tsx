@@ -10,11 +10,9 @@ import { Field, Input } from '@/components/ui/Input';
 import { DateTimeInput } from '@/components/ui/DateTimeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
-import { EditIcon, TrashIcon, SettingsIcon } from '@/components/ui/icons';
-import { Link } from 'react-router-dom';
+import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import { formatRelativeDay, formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
-import { useQuickAmounts } from '@/hooks/useQuickAmounts';
 
 export default function Track() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
@@ -23,7 +21,6 @@ export default function Track() {
   const { entries, loading, error, refetch, updateEntry, deleteEntry } = useWorkouts(exercise?.id);
   const { stats, refetch: refetchStats } = useStats(exercise?.id);
   const toast = useToast();
-  const { amounts: quickAmounts } = useQuickAmounts();
 
   const [amount, setAmount] = useState('');
   const [when, setWhen] = useState(toDateTimeLocalValue());
