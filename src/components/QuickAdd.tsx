@@ -51,27 +51,31 @@ export function QuickAdd({
           );
         })}
       </div>
-      <form
-        className="mt-3 flex items-center justify-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          log(parseInt(custom, 10) || 0);
-        }}
-      >
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={100000}
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder="Eigene Anzahl"
-          className="w-36 text-center"
-        />
-        <Button type="submit" size="lg" loading={submitting && active === null} disabled={!custom}>
-          Los
-        </Button>
-      </form>
+      <div className="mt-3 flex gap-2">
+        {/* Platzhalter-Button links – gleiche Größe wie Preset-Buttons */}
+        <div className="w-16 shrink-0 rounded-xl bg-ink-700" />
+        <form
+          className="flex flex-1 gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            log(parseInt(custom, 10) || 0);
+          }}
+        >
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100000}
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder="Eigene Anzahl"
+            className="text-center"
+          />
+          <Button type="submit" size="lg" loading={submitting && active === null} disabled={!custom}>
+            Los
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
