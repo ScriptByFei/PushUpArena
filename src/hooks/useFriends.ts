@@ -92,6 +92,10 @@ export function useFriends() {
       });
       if (err) return { error: err.message };
       await load();
+      // Fire-and-forget: notify receiver via push
+      supabase.functions
+        .invoke('notify-friend-request', { body: { receiver_id: receiverId } })
+        .catch((e) => console.warn('[friend-request notify]', e));
       return { error: null, status: data ?? undefined };
     },
     [load],
