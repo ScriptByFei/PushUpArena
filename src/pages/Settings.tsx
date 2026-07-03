@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
 import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
+import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
@@ -42,6 +43,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
 
   const pushSupported = typeof Notification !== 'undefined';
   const { pushPermission, busy: pushBusy, togglePush } = usePush();
+  const { settings: notifSettings, saving: notifSaving, save: saveNotif } = useNotificationSettings();
 
   useEffect(() => {
     if (goal) {
@@ -217,6 +219,84 @@ const [deleteOpen, setDeleteOpen] = useState(false);
           </>
         )}
       </Card>
+
+      {/* 4b · Benachrichtigungs-Einstellungen (nur wenn Push aktiv) */}
+      {pushPermission === 'granted' && (
+        <Card>
+          <div className="flex items-center gap-2">
+            <BellIcon className="h-4 w-4 text-brand-300" />
+            <CardTitle>Benachrichtigungs-Typen</CardTitle>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">Wähle welche Benachrichtigungen du erhalten möchtest.</p>
+          <div className="mt-3 space-y-0 divide-y divide-ink-700">
+            {[
+              { key: 'motivations_push_enabled' as const, label: 'Motivations-Tipps', desc: 'Comeback- und Motivationsnachrichten' },
+              { key: 'daily_goal_push_enabled' as const, label: 'Tagesziel-Erinnerungen', desc: 'Morgen-Start und Aktivitäts-Reminder' },
+              { key: 'weekly_goal_push_enabled' as const, label: 'Wochenziel-Reminder', desc: 'Wenn du am Wochenende hinter dem Plan liegst' },
+              { key: 'streak_push_enabled' as const, label: 'Streak-Retter', desc: 'Abends, wenn deine Streak in Gefahr ist' },
+            ].map(({ key, label, desc }) => (
+              <div key={key} className="flex items-center justify-between py-3">
+                <div className="min-w-0 flex-1 pr-3">
+                  <p className="text-sm font-medium text-slate-200">{label}</p>
+                  <p className="text-xs text-slate-400">{desc}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={notifSaving}
+                  onClick={() => void saveNotif({ [key]: !notifSettings[key] })}
+                  className={[
+                    'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
+                    notifSettings[key] ? 'bg-brand-500' : 'bg-ink-600',
+                    notifSaving ? 'opacity-50' : '',
+                  ].join(' ')}
+                  aria-label={label}
+                >
+                  <span
+                    className={[
+                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform',
+                      notifSettings[key] ? 'translate-x-5' : 'translate-x-0',
+                    ].join(' ')}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+          {/* Ruhestunden */}
+          <div className="mt-3 border-t border-ink-700 pt-3">
+            <p className="text-sm font-medium text-slate-200">Ruhestunden</p>
+            <p className="mt-0.5 text-xs text-slate-400">In dieser Zeit bekommst du keine Motivations-Benachrichtigungen.</p>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-slate-400">Von</label>
+                <select
+                  value={notifSettings.quiet_hours_start}
+                  disabled={notifSaving}
+                  onChange={(e) => void saveNotif({ quiet_hours_start: parseInt(e.target.value, 10) })}
+                  className="w-full rounded-xl border border-ink-600 bg-ink-800 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00 Uhr</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-slate-400">Bis</label>
+                <select
+                  value={notifSettings.quiet_hours_end}
+                  disabled={notifSaving}
+                  onChange={(e) => void saveNotif({ quiet_hours_end: parseInt(e.target.value, 10) })}
+                  className="w-full rounded-xl border border-ink-600 bg-ink-800 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00 Uhr</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* 5 · Sicherheit – nur für E-Mail-User */}
       {!isOAuthUser && (

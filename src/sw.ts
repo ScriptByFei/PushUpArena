@@ -26,7 +26,7 @@ self.addEventListener('message', (event) => {
 // ── Push-Benachrichtigungen ────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
   if (!event.data) return;
-  let data: { title?: string; body?: string } = {};
+  let data: { title?: string; body?: string; data?: Record<string, string> } = {};
   try {
     data = event.data.json();
   } catch {
@@ -39,11 +39,24 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     vibrate: [200, 100, 200],
+    data: data.data ?? {},
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow('/'));
+  const deepLink: string = (event.notification.data as Record<string, string>)?.deep_link ?? '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Fokus auf bestehendes Fenster wenn möglich
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          void (client as WindowClient).navigate(deepLink);
+          return (client as WindowClient).focus();
+        }
+      }
+      return self.clients.openWindow(deepLink);
+    }),
+  );
 });

@@ -14,6 +14,12 @@ export interface Database {
           avatar_url: string | null;
           bio: string | null;
           is_searchable: boolean;
+          motivations_push_enabled: boolean;
+          daily_goal_push_enabled: boolean;
+          weekly_goal_push_enabled: boolean;
+          streak_push_enabled: boolean;
+          quiet_hours_start: number;
+          quiet_hours_end: number;
           created_at: string;
           updated_at: string;
         };
@@ -24,6 +30,12 @@ export interface Database {
           avatar_url?: string | null;
           bio?: string | null;
           is_searchable?: boolean;
+          motivations_push_enabled?: boolean;
+          daily_goal_push_enabled?: boolean;
+          weekly_goal_push_enabled?: boolean;
+          streak_push_enabled?: boolean;
+          quiet_hours_start?: number;
+          quiet_hours_end?: number;
         };
         Update: {
           username?: string;
@@ -31,6 +43,12 @@ export interface Database {
           avatar_url?: string | null;
           bio?: string | null;
           is_searchable?: boolean;
+          motivations_push_enabled?: boolean;
+          daily_goal_push_enabled?: boolean;
+          weekly_goal_push_enabled?: boolean;
+          streak_push_enabled?: boolean;
+          quiet_hours_start?: number;
+          quiet_hours_end?: number;
         };
         Relationships: [];
       };
@@ -218,6 +236,26 @@ export interface Database {
           role: string;
           weekly_amount: number;
         }[];
+      };
+    };
+      notification_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          trigger_type: string;
+          sent_at: string;
+          metadata: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          trigger_type: string;
+          sent_at?: string;
+          metadata?: Record<string, unknown> | null;
+        };
+        Update: never;
+        Relationships: [];
       };
     };
     Enums: {
