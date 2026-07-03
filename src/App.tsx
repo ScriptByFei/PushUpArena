@@ -5,6 +5,7 @@ import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
 import { PushProvider } from '@/context/PushContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { InstallHint } from '@/components/InstallHint';
 
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
@@ -45,6 +46,7 @@ export default function App() {
   return (
     <>
       <PWAUpdater />
+      <InstallHint />
       <Routes>
       {/* Öffentliche Routen */}
       <Route path="/login" element={<Login />} />
