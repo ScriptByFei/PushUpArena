@@ -3,9 +3,7 @@ import { useEffect, useState } from 'react';
 const STORAGE_KEY = 'pwa-install-hint-dismissed';
 
 function isStandalone(): boolean {
-  // Standard display-mode check (Android/Chrome/Edge)
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
-  // iOS Safari
   if ((window.navigator as Navigator & { standalone?: boolean }).standalone === true) return true;
   return false;
 }
@@ -18,9 +16,7 @@ export function InstallHint() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Never show in standalone/PWA mode
     if (isStandalone()) return;
-    // Don't show if already dismissed
     if (localStorage.getItem(STORAGE_KEY) === '1') return;
     setVisible(true);
   }, []);
@@ -35,30 +31,54 @@ export function InstallHint() {
   const ios = isIOS();
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
-      <div className="mx-auto max-w-md rounded-2xl border border-ink-600 bg-ink-800/95 p-4 shadow-2xl backdrop-blur-md">
-        <div className="flex items-start gap-3">
-          <img src="/icons/icon-192.png" alt="PushUpArena" className="h-10 w-10 flex-shrink-0 rounded-xl" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-100">PushUpArena installieren</p>
-            {ios ? (
-              <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-                Tippe auf das <span className="text-brand-400 font-medium">Teilen-Symbol</span> unten → <span className="text-brand-400 font-medium">„Zum Home-Bildschirm"</span> → „Hinzufügen"
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-                Tippe auf <span className="text-brand-400 font-medium">⋮</span> oben rechts → <span className="text-brand-400 font-medium">„App installieren"</span> oder „Zum Startbildschirm"
-              </p>
-            )}
-          </div>
+    // Full-screen overlay that blurs the content behind
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-ink-950/80 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-3xl border border-ink-600 bg-ink-800 shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-brand-500/10 border-b border-ink-600 px-6 pt-6 pb-5 text-center">
+          <img src="/icons/icon-192.png" alt="PushUpArena" className="mx-auto mb-3 h-16 w-16 rounded-2xl shadow-lg" />
+          <h2 className="text-lg font-bold text-slate-100">App installieren</h2>
+          <p className="mt-1 text-sm text-slate-400">Für das beste Erlebnis inkl. Push-Benachrichtigungen</p>
+        </div>
+
+        {/* Instructions */}
+        <div className="px-6 py-5">
+          {ios ? (
+            <ol className="space-y-3 text-sm text-slate-300">
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/20 text-xs font-bold text-brand-400">1</span>
+                <span>Tippe auf das <span className="font-semibold text-slate-100">Teilen-Symbol</span> <span className="text-slate-400">↑</span> in der Safari-Leiste unten</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/20 text-xs font-bold text-brand-400">2</span>
+                <span>Wähle <span className="font-semibold text-slate-100">„Zum Home-Bildschirm"</span></span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/20 text-xs font-bold text-brand-400">3</span>
+                <span>Tippe oben rechts auf <span className="font-semibold text-slate-100">„Hinzufügen"</span></span>
+              </li>
+            </ol>
+          ) : (
+            <ol className="space-y-3 text-sm text-slate-300">
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/20 text-xs font-bold text-brand-400">1</span>
+                <span>Tippe auf <span className="font-semibold text-slate-100">⋮</span> oben rechts im Browser</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/20 text-xs font-bold text-brand-400">2</span>
+                <span>Wähle <span className="font-semibold text-slate-100">„App installieren"</span> oder „Zum Startbildschirm"</span>
+              </li>
+            </ol>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-ink-700 px-6 py-4 text-center">
           <button
             onClick={dismiss}
-            className="flex-shrink-0 rounded-lg p-1 text-slate-400 hover:text-slate-200 transition-colors"
-            aria-label="Schließen"
+            className="text-xs text-slate-500 hover:text-slate-400 transition-colors underline underline-offset-2"
           >
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            Trotzdem im Browser fortfahren
           </button>
         </div>
       </div>
