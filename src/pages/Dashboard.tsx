@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { ShareIcon } from '@/components/ui/icons';
-import { QuickAdd } from '@/components/QuickAdd';
+import { QuickAdd, QuickAddCustom } from '@/components/QuickAdd';
 
 function StatTile({
   label,
@@ -107,7 +107,7 @@ export default function Dashboard() {
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
 
-      {/* Schnell-Eingabe */}
+      {/* Schnell-Eingabe – Preset-Buttons */}
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Schnell eintragen</CardTitle>
@@ -117,6 +117,13 @@ export default function Dashboard() {
         </div>
         <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
         <QuickAdd exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
+      </Card>
+
+      {/* Schnell-Eingabe – Eigene Anzahl */}
+      <Card>
+        <CardTitle>Eigene Anzahl</CardTitle>
+        <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
+        <QuickAddCustom exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
       </Card>
 
       {/* Rückgängig-Banner */}
