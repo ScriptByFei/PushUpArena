@@ -8,7 +8,7 @@ export function useLeaderboard(exerciseId?: string) {
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>('total_amount');
+  const [sortKey, setSortKey] = useState<SortKey>('today_amount');
 
   const load = useCallback(async () => {
     if (!exerciseId) return;
