@@ -109,6 +109,12 @@ export function useFriends() {
       });
       if (err) return { error: err.message };
       await load();
+      // Notify sender if accepted
+      if (accept) {
+        supabase.functions
+          .invoke('notify-friend-accepted', { body: { request_id: requestId } })
+          .catch((e) => console.warn('[friend-accepted notify]', e));
+      }
       return { error: null };
     },
     [load],
