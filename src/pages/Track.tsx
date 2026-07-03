@@ -116,13 +116,7 @@ export default function Track() {
 
       {/* Eingabeformular */}
       <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>{exercise.name} eintragen</CardTitle>
-          <Link to="/settings" className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-300">
-            <SettingsIcon className="h-3.5 w-3.5" />
-            Anpassen
-          </Link>
-        </div>
+        <CardTitle>{exercise.name} eintragen</CardTitle>
         <form onSubmit={onSubmit} className="mt-3 space-y-3">
           <Field label={`Anzahl (${unit})`} htmlFor="amount">
             <Input
@@ -138,21 +132,6 @@ export default function Track() {
               className="text-center text-2xl font-bold"
             />
           </Field>
-          {/* Schnelleingabe */}
-          {quickAmounts.length > 0 && (
-            <div className="flex gap-2">
-              {quickAmounts.filter(n => n > 0).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setAmount(String(n))}
-                  className="flex-1 rounded-xl border border-ink-600 bg-ink-800 py-2 text-sm font-semibold text-slate-200 hover:border-brand-500 hover:bg-brand-600/20 hover:text-brand-300 active:scale-95 transition-all"
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          )}
           <Field label="Datum & Uhrzeit" htmlFor="when">
             <DateTimeInput id="when" value={when} onChange={setWhen} />
           </Field>

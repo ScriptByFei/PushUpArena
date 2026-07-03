@@ -11,7 +11,6 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { ShareIcon } from '@/components/ui/icons';
 import { QuickAdd } from '@/components/QuickAdd';
-import { Link } from 'react-router-dom';
 import { SettingsIcon } from '@/components/ui/icons';
 
 function StatTile({
