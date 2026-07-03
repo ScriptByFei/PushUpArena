@@ -10,7 +10,8 @@ import { Field, Input } from '@/components/ui/Input';
 import { DateTimeInput } from '@/components/ui/DateTimeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
-import { EditIcon, TrashIcon } from '@/components/ui/icons';
+import { EditIcon, TrashIcon, SettingsIcon } from '@/components/ui/icons';
+import { Link } from 'react-router-dom';
 import { formatRelativeDay, formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
 import { useQuickAmounts } from '@/hooks/useQuickAmounts';
@@ -136,6 +137,14 @@ export default function Track() {
           </Field>
           {/* Schnelleingabe */}
           {quickAmounts.length > 0 && (
+            <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs text-slate-400">Schnelleingabe</span>
+              <Link to="/settings" className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-300">
+                <SettingsIcon className="h-3.5 w-3.5" />
+                Anpassen
+              </Link>
+            </div>
             <div className="flex gap-2">
               {quickAmounts.filter(n => n > 0).map((n) => (
                 <button
@@ -147,6 +156,7 @@ export default function Track() {
                   {n}
                 </button>
               ))}
+            </div>
             </div>
           )}
           <Field label="Datum & Uhrzeit" htmlFor="when">
