@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useWorkoutLogger } from '@/hooks/useWorkoutLogger';
@@ -24,6 +24,17 @@ export default function Track() {
 
   const [amount, setAmount] = useState('');
   const [when, setWhen] = useState(toDateTimeLocalValue());
+
+  // Refresh default time when app comes back to foreground (prevents stale date bug)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        setWhen(toDateTimeLocalValue());
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   const [editing, setEditing] = useState<WorkoutEntry | null>(null);
   const [deleting, setDeleting] = useState<WorkoutEntry | null>(null);
