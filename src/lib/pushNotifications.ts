@@ -31,9 +31,19 @@ export async function requestPushPermission(): Promise<NotificationPermission> {
   return permission;
 }
 
+/** Returns the service worker registration with a timeout guard. */
+async function getSwRegistration(timeoutMs = 8000): Promise<ServiceWorkerRegistration> {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('SW not ready within timeout')), timeoutMs)
+    ),
+  ]);
+}
+
 export async function ensureSubscription(): Promise<void> {
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await getSwRegistration();
     const existing = await registration.pushManager.getSubscription();
     const sub =
       existing ??
@@ -53,6 +63,7 @@ export async function ensureSubscription(): Promise<void> {
       });
   } catch (err) {
     console.error('[push] subscription error:', err);
+    throw err; // re-throw so callers can handle busy state
   }
 }
 

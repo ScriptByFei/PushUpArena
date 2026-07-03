@@ -27,14 +27,19 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
   async function togglePush() {
     setBusy(true);
-    if (pushPermission === 'granted') {
-      await removePushSubscription();
-      setPushPermission('default');
-    } else {
-      const permission = await requestPushPermission();
-      setPushPermission(permission);
+    try {
+      if (pushPermission === 'granted') {
+        await removePushSubscription();
+        setPushPermission('default');
+      } else {
+        const permission = await requestPushPermission();
+        setPushPermission(permission);
+      }
+    } catch (err) {
+      console.error('[push] togglePush error:', err);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   return (
