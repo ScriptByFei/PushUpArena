@@ -11,7 +11,6 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { ShareIcon } from '@/components/ui/icons';
 import { QuickAdd } from '@/components/QuickAdd';
-import { SettingsIcon } from '@/components/ui/icons';
 
 function StatTile({
   label,
@@ -112,8 +111,7 @@ export default function Dashboard() {
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Schnell eintragen</CardTitle>
-          <Link to="/settings" className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-300">
-            <SettingsIcon className="h-3.5 w-3.5" />
+          <Link to="/settings" className="text-xs text-slate-500 hover:text-brand-300">
             Anpassen
           </Link>
         </div>
