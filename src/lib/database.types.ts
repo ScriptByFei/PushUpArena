@@ -20,6 +20,7 @@ export interface Database {
           streak_push_enabled: boolean;
           quiet_hours_start: number;
           quiet_hours_end: number;
+          quick_amounts: number[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -49,6 +50,7 @@ export interface Database {
           streak_push_enabled?: boolean;
           quiet_hours_start?: number;
           quiet_hours_end?: number;
+          quick_amounts?: number[] | null;
         };
         Relationships: [];
       };
@@ -260,3 +262,4 @@ export type Team = Database['public']['Tables']['teams']['Row'];
 export type TeamMember = Database['public']['Tables']['team_members']['Row'];
 export type TeamLeaderboardRow = Database['public']['Functions']['get_team_leaderboard']['Returns'][number];
 export type TeamMemberStat = Database['public']['Functions']['get_team_member_stats']['Returns'][number];
+// quick_amounts is part of profiles.Row — added inline above

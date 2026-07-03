@@ -15,6 +15,7 @@ import { LoadingState } from '@/components/ui/States';
 import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
+import { useQuickAmounts } from '@/hooks/useQuickAmounts';
 
 const DELETE_PHRASE = 'LÖSCHEN';
 
@@ -44,6 +45,9 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const pushSupported = typeof Notification !== 'undefined';
   const { pushPermission, busy: pushBusy, togglePush } = usePush();
   const { settings: notifSettings, saving: notifSaving, save: saveNotif } = useNotificationSettings();
+  const { amounts: quickAmounts, saving: quickSaving, save: saveQuickAmounts } = useQuickAmounts();
+  const [quickFields, setQuickFields] = useState<string[]>(['', '', '', '']);
+  const [quickInitialized, setQuickInitialized] = useState(false);
 
   useEffect(() => {
     if (goal) {
@@ -51,6 +55,15 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       setWeekly(String(goal.weekly_goal));
     }
   }, [goal]);
+
+  useEffect(() => {
+    if (!quickInitialized && quickAmounts.length > 0) {
+      const fields = [...quickAmounts.map(String)];
+      while (fields.length < 4) fields.push('');
+      setQuickFields(fields.slice(0, 4));
+      setQuickInitialized(true);
+    }
+  }, [quickAmounts, quickInitialized]);
 
   if (profileLoading || goalLoading) return <LoadingState />;
 
@@ -159,6 +172,50 @@ const [deleteOpen, setDeleteOpen] = useState(false);
             Ziele speichern
           </Button>
         </form>
+      </Card>
+
+      {/* 3b · Schnelleingabe */}
+      <Card>
+        <CardTitle>Schnelleingabe · {exercise?.name}</CardTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          Diese 4 Zahlen erscheinen als Buttons beim Eintragen.
+        </p>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {quickFields.map((val, i) => (
+            <div key={i}>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100000}
+                value={val}
+                placeholder="–"
+                className="text-center font-bold"
+                onChange={(e) => {
+                  const next = [...quickFields];
+                  next[i] = e.target.value;
+                  setQuickFields(next);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        <Button
+          fullWidth
+          className="mt-3"
+          loading={quickSaving}
+          onClick={async () => {
+            const nums = quickFields
+              .map((v) => parseInt(v, 10))
+              .filter((n) => !isNaN(n) && n > 0);
+            if (nums.length === 0) { toast.error('Mindestens eine Zahl eingeben.'); return; }
+            const { error } = await saveQuickAmounts(nums);
+            if (error) toast.error(error);
+            else toast.success('Schnelleingabe gespeichert.');
+          }}
+        >
+          Speichern
+        </Button>
       </Card>
 
       {/* 4 · Benachrichtigungen */}

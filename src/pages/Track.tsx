@@ -13,6 +13,7 @@ import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { EditIcon, TrashIcon } from '@/components/ui/icons';
 import { formatRelativeDay, formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
+import { useQuickAmounts } from '@/hooks/useQuickAmounts';
 
 export default function Track() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
@@ -21,6 +22,7 @@ export default function Track() {
   const { entries, loading, error, refetch, updateEntry, deleteEntry } = useWorkouts(exercise?.id);
   const { stats, refetch: refetchStats } = useStats(exercise?.id);
   const toast = useToast();
+  const { amounts: quickAmounts } = useQuickAmounts();
 
   const [amount, setAmount] = useState('');
   const [when, setWhen] = useState(toDateTimeLocalValue());
@@ -132,6 +134,21 @@ export default function Track() {
               className="text-center text-2xl font-bold"
             />
           </Field>
+          {/* Schnelleingabe */}
+          {quickAmounts.length > 0 && (
+            <div className="flex gap-2">
+              {quickAmounts.filter(n => n > 0).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setAmount(String(n))}
+                  className="flex-1 rounded-xl border border-ink-600 bg-ink-800 py-2 text-sm font-semibold text-slate-200 hover:border-brand-500 hover:bg-brand-600/20 hover:text-brand-300 active:scale-95 transition-all"
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
           <Field label="Datum & Uhrzeit" htmlFor="when">
             <DateTimeInput id="when" value={when} onChange={setWhen} />
           </Field>
