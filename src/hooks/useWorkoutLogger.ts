@@ -57,12 +57,20 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
       // Meilenstein-Check: hat der User mit diesem Eintrag 100 heute geknackt?
       const newTotal = prevDailyTotal + amount;
       if (prevDailyTotal < MILESTONE && newTotal >= MILESTONE) {
+        // Notify the user themselves
         supabase.functions
           .invoke('notify-milestone', { body: { user_id: user.id, milestone: MILESTONE } })
           .then(({ data, error }) => {
             console.log('[milestone] invoke result:', JSON.stringify(data), error);
           })
           .catch((e) => console.error('[milestone] invoke error:', e));
+        // Broadcast to all subscribed users
+        supabase.functions
+          .invoke('notify-milestone-broadcast', { body: { milestone: MILESTONE } })
+          .then(({ data, error }) => {
+            console.log('[milestone-broadcast] invoke result:', JSON.stringify(data), error);
+          })
+          .catch((e) => console.error('[milestone-broadcast] invoke error:', e));
       }
 
       setSubmitting(false);
