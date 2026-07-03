@@ -32,7 +32,7 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'PushUpArena', body: event.data.text() };
   }
-  const title = data.title ?? 'PushUpArena 💪';
+  const title = data.title ?? 'PushUpArena';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options: any = {
     body: data.body ?? '',
