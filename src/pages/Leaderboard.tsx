@@ -7,8 +7,8 @@ import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 
 const TABS = [
   { key: 'today_amount' as const, label: 'Heute', icon: '⚡' },
-  { key: 'total_amount' as const, label: 'Gesamt', icon: '🏆' },
   { key: 'current_streak' as const, label: 'Streak', icon: '🔥' },
+  { key: 'total_amount' as const, label: 'Gesamt', icon: '🏆' },
 ];
 
 // Reihenfolge: P2 links, P1 Mitte (elevated), P3 rechts
