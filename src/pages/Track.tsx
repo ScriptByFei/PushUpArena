@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useWorkoutLogger } from '@/hooks/useWorkoutLogger';
+import { useRestDays } from '@/hooks/useRestDays';
 import { useStats } from '@/hooks/useStats';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
@@ -14,23 +15,39 @@ import { CalendarIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
 import { formatRelativeDay, formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
 
+const TZ = 'Europe/Berlin';
+function berlinToday() {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: TZ });
+}
+function maxRestDate() {
+  const [y, m, d] = berlinToday().split('-').map(Number);
+  return new Date(y, m - 1, d + 7).toLocaleDateString('sv-SE');
+}
+
 export default function Track() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
   const unit = exercise?.unit === 'reps' ? 'Wdh.' : exercise?.unit ?? '';
   const { submit, submitting } = useWorkoutLogger(exercise?.id, unit);
   const { entries, loading, error, refetch, updateEntry, deleteEntry } = useWorkouts(exercise?.id);
+  const { restDays, loading: rdLoading, refetch: refetchRD, addRestDay, deleteRestDay } = useRestDays(exercise?.id);
   const { stats, refetch: refetchStats } = useStats(exercise?.id);
   const toast = useToast();
 
+  // Form mode
+  type FormMode = 'training' | 'rest';
+  const [mode, setMode] = useState<FormMode>('training');
+
+  // Training fields
   const [amount, setAmount] = useState('');
   const [when, setWhen] = useState(toDateTimeLocalValue());
 
-  // Refresh default time when app comes back to foreground (prevents stale date bug)
+  // Rest day field
+  const [restDate, setRestDate] = useState(berlinToday());
+  const [savingRest, setSavingRest] = useState(false);
+
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        setWhen(toDateTimeLocalValue());
-      }
+      if (document.visibilityState === 'visible') setWhen(toDateTimeLocalValue());
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -38,6 +55,7 @@ export default function Track() {
 
   const [editing, setEditing] = useState<WorkoutEntry | null>(null);
   const [deleting, setDeleting] = useState<WorkoutEntry | null>(null);
+  const [deletingRD, setDeletingRD] = useState<{ id: string; rest_date: string } | null>(null);
 
   type Period = 'all' | 'today' | 'week' | 'month';
   type SortDir = 'desc' | 'asc';
@@ -46,67 +64,75 @@ export default function Track() {
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredEntries = useMemo(() => {
-    // Datumsvergleiche in Europe/Berlin – konsistent mit der DB (get_my_stats).
-    const TZ = 'Europe/Berlin';
-    const today = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); // "2026-07-02"
+  // Merge workout entries + rest days into one sorted list
+  type ListItem =
+    | { kind: 'workout'; entry: WorkoutEntry; sortKey: number }
+    | { kind: 'rest'; id: string; rest_date: string; sortKey: number };
 
-    // Datums-Filter hat Vorrang
-    if (dateFilter) {
-      return [...entries]
-        .filter((e) => new Date(e.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ }) === dateFilter)
-        .sort((a, b) => sortDir === 'desc'
-          ? new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime()
-          : new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime());
-    }
+  const mergedList = useMemo<ListItem[]>(() => {
+    const today = berlinToday();
     const [y, m, d] = today.split('-').map(Number);
-
-    // Montag der aktuellen Woche in Berlin
-    const tmpDate = new Date(y, m - 1, d); // nur für getDay()
-    const dow = (tmpDate.getDay() + 6) % 7; // 0 = Mo
+    const tmpDate = new Date(y, m - 1, d);
+    const dow = (tmpDate.getDay() + 6) % 7;
     const monDate = new Date(y, m - 1, d - dow);
     const pad = (n: number) => String(n).padStart(2, '0');
     const monday = `${monDate.getFullYear()}-${pad(monDate.getMonth() + 1)}-${pad(monDate.getDate())}`;
-
-    // Erster des aktuellen Monats in Berlin
     const firstOfMonth = `${y}-${pad(m)}-01`;
 
-    const filtered = entries.filter((e) => {
-      const eBerlin = new Date(e.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ });
-      if (period === 'today') return eBerlin === today;
-      if (period === 'week')  return eBerlin >= monday;
-      if (period === 'month') return eBerlin >= firstOfMonth;
-      return true;
-    });
+    const items: ListItem[] = [];
 
-    return [...filtered].sort((a, b) => {
-      const diff = new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime();
-      return sortDir === 'desc' ? -diff : diff;
-    });
-  }, [entries, period, sortDir, dateFilter]);
+    // Workout entries
+    for (const entry of entries) {
+      const eBerlin = new Date(entry.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ });
+      if (dateFilter && eBerlin !== dateFilter) continue;
+      if (!dateFilter) {
+        if (period === 'today' && eBerlin !== today) continue;
+        if (period === 'week' && eBerlin < monday) continue;
+        if (period === 'month' && eBerlin < firstOfMonth) continue;
+      }
+      items.push({ kind: 'workout', entry, sortKey: new Date(entry.performed_at).getTime() });
+    }
+
+    // Rest days
+    for (const rd of restDays) {
+      if (dateFilter && rd.rest_date !== dateFilter) continue;
+      if (!dateFilter) {
+        if (period === 'today' && rd.rest_date !== today) continue;
+        if (period === 'week' && rd.rest_date < monday) continue;
+        if (period === 'month' && rd.rest_date < firstOfMonth) continue;
+      }
+      // Sort rest days as noon of that day
+      const [ry, rm, rd2] = rd.rest_date.split('-').map(Number);
+      items.push({ kind: 'rest', id: rd.id, rest_date: rd.rest_date, sortKey: new Date(ry, rm - 1, rd2, 12).getTime() });
+    }
+
+    items.sort((a, b) => sortDir === 'desc' ? b.sortKey - a.sortKey : a.sortKey - b.sortKey);
+    return items;
+  }, [entries, restDays, period, sortDir, dateFilter]);
 
   if (exLoading) return <LoadingState />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmitTraining(e: FormEvent) {
     e.preventDefault();
     const n = parseInt(amount, 10);
-    if (!n || n <= 0) {
-      toast.error('Bitte eine gültige Anzahl eingeben.');
-      return;
-    }
+    if (!n || n <= 0) { toast.error('Bitte eine gültige Anzahl eingeben.'); return; }
     const { error: err } = await submit({
-      amount: n,
-      note: null,
+      amount: n, note: null,
       performedAt: when ? new Date(when).toISOString() : undefined,
       prevDailyTotal: stats.today_amount,
     });
-    if (!err) {
-      setAmount('');
-      setWhen(toDateTimeLocalValue());
-      void refetch();
-      void refetchStats();
-    }
+    if (!err) { setAmount(''); setWhen(toDateTimeLocalValue()); void refetch(); void refetchStats(); }
+  }
+
+  async function onSubmitRestDay(e: FormEvent) {
+    e.preventDefault();
+    setSavingRest(true);
+    const { error: err } = await addRestDay(restDate);
+    setSavingRest(false);
+    if (err) { toast.error(err); return; }
+    toast.success('Ruhetag gespeichert.');
+    setRestDate(berlinToday());
   }
 
   return (
@@ -127,32 +153,77 @@ export default function Track() {
 
       {/* Eingabeformular */}
       <Card>
-        <CardTitle>{exercise.name} eintragen</CardTitle>
-        <form onSubmit={onSubmit} className="mt-3 space-y-3">
-          <Field label={`Anzahl (${unit})`} htmlFor="amount">
-            <Input
-              id="amount"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={100000}
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="z. B. 20"
-              className="text-center text-2xl font-bold"
-            />
-          </Field>
-          <Field label="Datum & Uhrzeit" htmlFor="when">
-            <DateTimeInput id="when" value={when} onChange={setWhen} />
-          </Field>
-          <Button type="submit" fullWidth size="lg" loading={submitting}>
-            Eintragen
-          </Button>
-        </form>
+        {/* Mode Toggle */}
+        <div className="mb-4 flex rounded-xl bg-ink-900/60 p-1">
+          {(['training', 'rest'] as FormMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition-colors ${
+                mode === m
+                  ? 'bg-brand-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {m === 'training' ? '🏋️ Training' : '😴 Ruhetag'}
+            </button>
+          ))}
+        </div>
+
+        {mode === 'training' ? (
+          <>
+            <CardTitle>{exercise.name} eintragen</CardTitle>
+            <form onSubmit={onSubmitTraining} className="mt-3 space-y-3">
+              <Field label={`Anzahl (${unit})`} htmlFor="amount">
+                <Input
+                  id="amount" type="number" inputMode="numeric"
+                  min={1} max={100000} required
+                  value={amount} onChange={(e) => setAmount(e.target.value)}
+                  placeholder="z. B. 20" className="text-center text-2xl font-bold"
+                />
+              </Field>
+              <Field label="Datum & Uhrzeit" htmlFor="when">
+                <DateTimeInput id="when" value={when} onChange={setWhen} />
+              </Field>
+              <Button type="submit" fullWidth size="lg" loading={submitting}>Eintragen</Button>
+            </form>
+          </>
+        ) : (
+          <>
+            <CardTitle>Ruhetag eintragen</CardTitle>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Max. 2 Ruhetage pro Woche · nicht hintereinander
+            </p>
+            <form onSubmit={onSubmitRestDay} className="mt-3 space-y-3">
+              <Field label="Datum" htmlFor="restDate">
+                <div className="relative">
+                  <div className="input-base flex items-center justify-between">
+                    <span>
+                      {new Date(restDate + 'T00:00:00').toLocaleDateString('de-DE', {
+                        weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+                      })}
+                    </span>
+                    <CalendarIcon className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="restDate" type="date"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    value={restDate}
+                    min={new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE')}
+                    max={maxRestDate()}
+                    onChange={(e) => setRestDate(e.target.value || berlinToday())}
+                  />
+                </div>
+              </Field>
+              <Button type="submit" fullWidth size="lg" loading={savingRest}>
+                Ruhetag speichern
+              </Button>
+            </form>
+          </>
+        )}
       </Card>
 
-      {/* Historie */}
+      {/* Verlauf */}
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Verlauf</CardTitle>
@@ -163,7 +234,6 @@ export default function Track() {
             {sortDir === 'desc' ? '↓ Neueste' : '↑ Älteste'}
           </button>
         </div>
-        {/* Zeitraum-Filter + Datums-Picker */}
         <div className="mt-2 flex items-center gap-1.5">
           {(['all', 'today', 'week', 'month'] as Period[]).map((p) => (
             <button
@@ -178,7 +248,6 @@ export default function Track() {
               {p === 'all' ? 'Alle' : p === 'today' ? 'Heute' : p === 'week' ? 'Woche' : 'Monat'}
             </button>
           ))}
-          {/* Datums-Filter */}
           <div className="relative ml-auto mr-4 flex items-center gap-1">
             {dateFilter && (
               <span className="flex items-center gap-1 rounded-full bg-brand-600/20 px-2 py-0.5 text-[10px] text-brand-300">
@@ -189,55 +258,68 @@ export default function Track() {
             <div className="relative">
               <CalendarIcon className={`h-5 w-5 ${dateFilter ? 'text-brand-400' : 'text-slate-400'}`} />
               <input
-                ref={dateInputRef}
-                type="date"
+                ref={dateInputRef} type="date"
                 className="absolute inset-0 cursor-pointer opacity-0"
                 value={dateFilter ?? ''}
-                max={new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })}
+                max={berlinToday()}
                 onChange={(e) => { setPeriod('all'); setDateFilter(e.target.value || null); }}
               />
             </div>
           </div>
         </div>
         <div className="mt-3">
-          {loading ? (
+          {loading || rdLoading ? (
             <LoadingState label="Lade Einträge …" />
           ) : error ? (
             <ErrorState message={error} onRetry={refetch} />
-          ) : filteredEntries.length === 0 ? (
+          ) : mergedList.length === 0 ? (
             <EmptyState
               icon="📝"
-              title={entries.length === 0 ? 'Noch keine Einträge' : 'Keine Einträge im Zeitraum'}
-              description={entries.length === 0 ? 'Trage oben deinen ersten Satz ein.' : ''}
+              title={entries.length === 0 && restDays.length === 0 ? 'Noch keine Einträge' : 'Keine Einträge im Zeitraum'}
+              description={entries.length === 0 && restDays.length === 0 ? 'Trage oben deinen ersten Satz ein.' : ''}
             />
           ) : (
             <ul className="divide-y divide-ink-700">
-              {filteredEntries.map((entry) => (
-                <li key={entry.id} className="flex items-center gap-3 py-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/20 text-base font-bold text-brand-200">
-                    {entry.amount}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-200">
-                      {formatRelativeDay(entry.performed_at)} · {formatTime(entry.performed_at)}
-                    </p>
-                  </div>
-                  <button
-                    aria-label="Bearbeiten"
-                    onClick={() => setEditing(entry)}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-ink-700 hover:text-slate-200"
-                  >
-                    <EditIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    aria-label="Löschen"
-                    onClick={() => setDeleting(entry)}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-300"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </li>
-              ))}
+              {mergedList.map((item) =>
+                item.kind === 'workout' ? (
+                  <li key={`w-${item.entry.id}`} className="flex items-center gap-3 py-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/20 text-base font-bold text-brand-200">
+                      {item.entry.amount}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-200">
+                        {formatRelativeDay(item.entry.performed_at)} · {formatTime(item.entry.performed_at)}
+                      </p>
+                    </div>
+                    <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-ink-700 hover:text-slate-200">
+                      <EditIcon className="h-5 w-5" />
+                    </button>
+                    <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-300">
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </li>
+                ) : (
+                  <li key={`r-${item.id}`} className="flex items-center gap-3 py-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink-700 text-xl">
+                      😴
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-200">
+                        {new Date(item.rest_date + 'T00:00:00').toLocaleDateString('de-DE', {
+                          weekday: 'short', day: '2-digit', month: '2-digit',
+                        })}
+                      </p>
+                      <p className="text-xs text-slate-500">Ruhetag</p>
+                    </div>
+                    <button aria-label="Ruhetag löschen" onClick={() => setDeletingRD({ id: item.id, rest_date: item.rest_date })}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-300">
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </li>
+                )
+              )}
             </ul>
           )}
         </div>
@@ -245,87 +327,64 @@ export default function Track() {
 
       {editing && (
         <EditModal
-          entry={editing}
-          unit={unit}
+          entry={editing} unit={unit}
           onClose={() => setEditing(null)}
           onSave={async (patch) => {
             const { error: err } = await updateEntry(editing.id, patch);
             if (err) toast.error(err);
-            else {
-              toast.success('Eintrag aktualisiert.');
-              setEditing(null);
-              void refetchStats();
-            }
+            else { toast.success('Eintrag aktualisiert.'); setEditing(null); void refetchStats(); }
           }}
         />
       )}
 
-      <Modal
-        open={!!deleting}
-        title="Eintrag löschen?"
-        confirmLabel="Löschen"
-        confirmVariant="danger"
+      <Modal open={!!deleting} title="Eintrag löschen?" confirmLabel="Löschen" confirmVariant="danger"
         onClose={() => setDeleting(null)}
         onConfirm={async () => {
           if (!deleting) return;
           const { error: err } = await deleteEntry(deleting.id);
           if (err) toast.error(err);
-          else {
-            toast.success('Eintrag gelöscht.');
-            void refetchStats();
-          }
+          else { toast.success('Eintrag gelöscht.'); void refetchStats(); }
           setDeleting(null);
-        }}
-      >
+        }}>
         Dieser Eintrag ({deleting?.amount} {unit}) wird dauerhaft entfernt.
+      </Modal>
+
+      <Modal open={!!deletingRD} title="Ruhetag löschen?" confirmLabel="Löschen" confirmVariant="danger"
+        onClose={() => setDeletingRD(null)}
+        onConfirm={async () => {
+          if (!deletingRD) return;
+          await deleteRestDay(deletingRD.id);
+          toast.success('Ruhetag gelöscht.');
+          setDeletingRD(null);
+          void refetchRD();
+        }}>
+        Ruhetag vom {deletingRD && new Date(deletingRD.rest_date + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} wird entfernt.
       </Modal>
     </div>
   );
 }
 
-function EditModal({
-  entry,
-  unit,
-  onClose,
-  onSave,
-}: {
-  entry: WorkoutEntry;
-  unit: string;
+function EditModal({ entry, unit, onClose, onSave }: {
+  entry: WorkoutEntry; unit: string;
   onClose: () => void;
   onSave: (patch: { amount: number; note: string | null; performed_at: string }) => Promise<void>;
 }) {
   const [amount, setAmount] = useState(String(entry.amount));
   const [when, setWhen] = useState(toDateTimeLocalValue(new Date(entry.performed_at)));
   const [saving, setSaving] = useState(false);
-
   return (
-    <Modal
-      open
-      title="Eintrag bearbeiten"
-      confirmLabel="Speichern"
-      loading={saving}
+    <Modal open title="Eintrag bearbeiten" confirmLabel="Speichern" loading={saving}
       onClose={onClose}
       onConfirm={async () => {
         const n = parseInt(amount, 10);
         if (!n || n <= 0) return;
         setSaving(true);
-        await onSave({
-          amount: n,
-          note: null,
-          performed_at: new Date(when).toISOString(),
-        });
+        await onSave({ amount: n, note: null, performed_at: new Date(when).toISOString() });
         setSaving(false);
-      }}
-    >
+      }}>
       <div className="space-y-3 text-left">
         <Field label={`Anzahl (${unit})`}>
-          <Input
-            type="number"
-            min={1}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="text-center"
-          />
+          <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} className="text-center" />
         </Field>
         <Field label="Datum & Uhrzeit">
           <DateTimeInput value={when} onChange={setWhen} />

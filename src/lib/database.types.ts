@@ -251,6 +251,7 @@ export interface Database {
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Exercise = Database['public']['Tables']['exercises']['Row'];
 export type WorkoutEntry = Database['public']['Tables']['workout_entries']['Row'];
+export type RestDay = { id: string; user_id: string; exercise_id: string; rest_date: string; created_at: string };
 export type UserGoal = Database['public']['Tables']['user_goals']['Row'];
 export type FriendRequest = Database['public']['Tables']['friend_requests']['Row'];
 export type Achievement = Database['public']['Tables']['achievements']['Row'];
