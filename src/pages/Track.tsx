@@ -21,7 +21,7 @@ function berlinToday() {
 }
 function maxRestDate() {
   const [y, m, d] = berlinToday().split('-').map(Number);
-  return new Date(y, m - 1, d + 7).toLocaleDateString('sv-SE');
+  return new Date(y, m - 1, d + 14).toLocaleDateString('sv-SE');
 }
 
 export default function Track() {
@@ -192,7 +192,7 @@ export default function Track() {
           <>
             <CardTitle>Ruhetag eintragen</CardTitle>
             <p className="mt-0.5 text-xs text-slate-400">
-              Max. 2 Ruhetage pro Woche · nicht hintereinander
+              Plane bis zu 14 Tage im Voraus oder trage rückwirkend ein.
             </p>
             <form onSubmit={onSubmitRestDay} className="mt-3 space-y-3">
               <Field label="Datum" htmlFor="restDate">
