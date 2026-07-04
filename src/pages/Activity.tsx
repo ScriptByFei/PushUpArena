@@ -5,10 +5,12 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeeklyBarChart } from '@/components/WeeklyBarChart';
+import { useGoals } from '@/hooks/useGoals';
 
 export default function Activity() {
   const { exercise } = useExercise();
   const { stats, loading, error } = useProfileStats(exercise?.id);
+  const { goal } = useGoals(exercise?.id);
 
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -37,7 +39,7 @@ export default function Activity() {
         <Card>
           <CardTitle>Letzte 7 Tage</CardTitle>
           <div className="mt-3">
-            <WeeklyBarChart data={stats.last7DaysData} />
+            <WeeklyBarChart data={stats.last7DaysData} dailyGoal={goal?.daily_goal ?? undefined} />
           </div>
         </Card>
       )}
