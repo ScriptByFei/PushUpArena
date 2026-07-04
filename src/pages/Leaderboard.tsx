@@ -47,9 +47,7 @@ const PODIUM_SLOTS = [
 
 
 function restHearts(n: number): string {
-  if (n <= 0) return '🖤🖤';
-  if (n === 1) return '❤️🖤';
-  return '❤️❤️';
+  return '❤️'.repeat(Math.max(0, n));
 }
 
 export default function Leaderboard() {
