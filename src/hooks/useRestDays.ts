@@ -16,7 +16,8 @@ export function useRestDays(exerciseId?: string) {
   const load = useCallback(async () => {
     if (!exerciseId || !user) return;
     setLoading(true);
-    const { data } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
       .from('rest_days')
       .select('id, rest_date, created_at')
       .eq('exercise_id', exerciseId)
@@ -29,7 +30,8 @@ export function useRestDays(exerciseId?: string) {
 
   async function addRestDay(date: string): Promise<{ error: string | null }> {
     if (!exerciseId || !user) return { error: 'Nicht angemeldet' };
-    const { error } = await supabase.from('rest_days').upsert(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('rest_days').upsert(
       { user_id: user.id, exercise_id: exerciseId, rest_date: date },
       { onConflict: 'user_id,exercise_id,rest_date' }
     );
@@ -38,7 +40,8 @@ export function useRestDays(exerciseId?: string) {
   }
 
   async function deleteRestDay(id: string): Promise<void> {
-    await supabase.from('rest_days').delete().eq('id', id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('rest_days').delete().eq('id', id);
     setRestDays((prev) => prev.filter((r) => r.id !== id));
   }
 

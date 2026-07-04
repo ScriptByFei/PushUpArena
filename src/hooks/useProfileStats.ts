@@ -133,7 +133,8 @@ export function useProfileStats(exerciseId?: string) {
     const avgPerActiveDay = trainingDays > 0 ? Math.round(totalAmount / trainingDays) : 0;
 
     // Streak-Berechnung mit Ruhetag-Regeln (siehe src/lib/streakUtils.ts)
-    const { currentStreak, longestStreak, restDayInfo } = calculateStreakWithRestDays(byDay, today);
+    const byDayAmounts = new Map(Array.from(byDay.entries()).map(([d, v]) => [d, v.amount]));
+    const { currentStreak, longestStreak, restDayInfo } = calculateStreakWithRestDays(byDayAmounts, today);
 
     setStats({
       totalAmount,

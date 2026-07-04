@@ -107,7 +107,6 @@ export function calculateLongestStreak(
   let current = 0;
   let consecutiveRest = 0;
   let hasTraining = false;
-  let chainActive = false;
 
   for (let i = 0; i < totalDays; i++) {
     const d = shiftDate(startFrom, i);
@@ -115,7 +114,6 @@ export function calculateLongestStreak(
 
     if (getDayType(amount) === 'training') {
       consecutiveRest = 0;
-      chainActive = true;
       current++;
       hasTraining = true;
     } else {
@@ -126,7 +124,6 @@ export function calculateLongestStreak(
         current = 0;
         consecutiveRest = 0;
         hasTraining = false;
-        chainActive = false;
       }
       // Ruhetag innerhalb der Grenzen: Chain bleibt, aber current nicht erhöhen
     }
