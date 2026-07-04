@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
-type ToastVariant = 'success' | 'error' | 'info' | 'achievement';
+type ToastVariant = 'success' | 'error' | 'info' | 'achievement' | 'warning';
 
 interface Toast {
   id: number;
@@ -14,6 +14,7 @@ interface ToastContextValue {
   success: (message: string) => void;
   error: (message: string) => void;
   achievement: (message: string, icon?: string) => void;
+  warning: (message: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -42,6 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       success: (m) => notify(m, 'success'),
       error: (m) => notify(m, 'error'),
       achievement: (m, icon) => notify(m, 'achievement', icon),
+      warning: (m) => notify(m, 'warning'),
     }),
     [notify],
   );
@@ -62,6 +64,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               t.variant === 'info' && 'border-brand-500/40 bg-brand-500/15 text-brand-100',
               t.variant === 'achievement' &&
                 'border-amber-400/50 bg-amber-400/15 text-amber-100',
+              t.variant === 'warning' &&
+                'border-amber-500/40 bg-amber-500/15 text-amber-100',
             ]
               .filter(Boolean)
               .join(' ')}

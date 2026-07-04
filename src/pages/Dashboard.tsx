@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import { useRef, useState, useEffect, type ReactNode, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useExercise } from '@/context/ExerciseContext';
 import { useStats } from '@/hooks/useStats';
@@ -45,6 +45,17 @@ export default function Dashboard() {
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();
+  const warnedRef = useRef(false);
+  useEffect(() => {
+    if (restDay.loading) return;
+    if (restDay.consecutiveRestToday === 1 && !warnedRef.current) {
+      warnedRef.current = true;
+      toast.warning('⚠️ Achtung: Zwei Ruhetage hintereinander brechen deine Streak.');
+    }
+    if (restDay.consecutiveRestToday !== 1) {
+      warnedRef.current = false;
+    }
+  }, [restDay.loading, restDay.consecutiveRestToday]);
 
   const [lastEntry, setLastEntry] = useState<{ id: string; amount: number } | null>(null);
   const undoTimer = useRef<number | undefined>(undefined);
@@ -121,10 +132,7 @@ export default function Dashboard() {
         let color = 'text-slate-400';
 
         if (isRestDayToday && restDaysThisWeek <= 2) {
-          if (consecutiveRestToday === 1) {
-            msg = '⚠️ Achtung: Zwei Ruhetage hintereinander brechen deine Streak.';
-            color = 'text-amber-400';
-          } else {
+          if (consecutiveRestToday !== 1) {
             msg = '😴 Ruhetag aktiv – deine Streak bleibt erhalten.';
             color = 'text-brand-300';
           }
