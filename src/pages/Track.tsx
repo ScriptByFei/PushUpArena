@@ -186,21 +186,17 @@ export default function Track() {
                 <button onClick={() => setDateFilter(null)} className="leading-none hover:text-white">×</button>
               </span>
             )}
-            <button
-              onClick={() => dateInputRef.current?.showPicker()}
-              className={`rounded-lg p-1 transition-colors ${dateFilter ? 'text-brand-400 hover:text-brand-300' : 'text-slate-400 hover:bg-ink-700 hover:text-slate-200'}`}
-              aria-label="Tag auswählen"
-            >
-              <CalendarIcon className="h-5 w-5" />
-            </button>
-            <input
-              ref={dateInputRef}
-              type="date"
-              className="sr-only"
-              value={dateFilter ?? ''}
-              max={new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })}
-              onChange={(e) => { setPeriod('all'); setDateFilter(e.target.value || null); }}
-            />
+            <div className="relative">
+              <CalendarIcon className={`h-5 w-5 ${dateFilter ? 'text-brand-400' : 'text-slate-400'}`} />
+              <input
+                ref={dateInputRef}
+                type="date"
+                className="absolute inset-0 cursor-pointer opacity-0"
+                value={dateFilter ?? ''}
+                max={new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })}
+                onChange={(e) => { setPeriod('all'); setDateFilter(e.target.value || null); }}
+              />
+            </div>
           </div>
         </div>
         <div className="mt-3">
