@@ -39,21 +39,21 @@ function StatTile({
   );
 }
 
+// Modul-Variable: Toast nur einmal pro Tag anzeigen
+let _restWarnShownDate: string | null = null;
+
 export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();
-  const warnedRef = useRef(false);
   useEffect(() => {
     if (restDay.loading) return;
-    if (restDay.consecutiveRestToday === 1 && !warnedRef.current) {
-      warnedRef.current = true;
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+    if (restDay.consecutiveRestToday === 1 && _restWarnShownDate !== today) {
+      _restWarnShownDate = today;
       toast.warning('⚠️ Achtung: Zwei Ruhetage hintereinander brechen deine Streak.');
-    }
-    if (restDay.consecutiveRestToday !== 1) {
-      warnedRef.current = false;
     }
   }, [restDay.loading, restDay.consecutiveRestToday]);
 
@@ -131,12 +131,7 @@ export default function Dashboard() {
         let msg: string | null = null;
         let color = 'text-slate-400';
 
-        if (isRestDayToday && restDaysThisWeek <= 2) {
-          if (consecutiveRestToday !== 1) {
-            msg = '😴 Ruhetag aktiv – deine Streak bleibt erhalten.';
-            color = 'text-brand-300';
-          }
-        } else if (!isRestDayToday && restDaysThisWeek >= 2) {
+        if (!isRestDayToday && restDaysThisWeek >= 2) {
           msg = '✅ Alle Ruhetage für diese Woche genutzt.';
           color = 'text-slate-400';
         }
