@@ -54,8 +54,9 @@ export function QuickAdd({
       <div className="mt-3 grid grid-cols-4 gap-2">
         {/* Platzhalter – exakt 1 Spalte wie Preset-Buttons */}
         <div className="rounded-xl bg-ink-700" />
+        {/* form mit contents: Kinder nehmen direkt am Grid teil */}
         <form
-          className="col-span-3 flex gap-2"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault();
             log(parseInt(custom, 10) || 0);
@@ -69,7 +70,7 @@ export function QuickAdd({
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             placeholder="Eigene Anzahl"
-            className="flex-1 text-center"
+            className="col-span-2 text-center"
           />
           <Button type="submit" size="lg" loading={submitting && active === null} disabled={!custom}>
             Los
