@@ -196,7 +196,7 @@ export default function Track() {
           <>
             <CardTitle>Ruhetag eintragen</CardTitle>
             <p className="mt-0.5 text-xs text-slate-400">
-              Plane bis zu 14 Tage im Voraus oder trage rückwirkend ein.
+              Plane bis zu 14 Tage im Voraus.
             </p>
             <form onSubmit={onSubmitRestDay} className="mt-3 space-y-3">
               <Field label="Datum" htmlFor="restDate">
