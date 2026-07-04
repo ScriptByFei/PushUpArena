@@ -127,6 +127,10 @@ export default function Track() {
 
   async function onSubmitRestDay(e: FormEvent) {
     e.preventDefault();
+    const maxDate = maxRestDate();
+    const minDate = new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE');
+    if (restDate > maxDate) { toast.error('Maximal 14 Tage im Voraus planbar.'); return; }
+    if (restDate < minDate) { toast.error('Datum liegt zu weit in der Vergangenheit.'); return; }
     setSavingRest(true);
     const { error: err } = await addRestDay(restDate);
     setSavingRest(false);
@@ -211,7 +215,15 @@ export default function Track() {
                     value={restDate}
                     min={new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE')}
                     max={maxRestDate()}
-                    onChange={(e) => setRestDate(e.target.value || berlinToday())}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) { setRestDate(berlinToday()); return; }
+                      const minDate = new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE');
+                      const maxDate = maxRestDate();
+                      if (val < minDate) setRestDate(minDate);
+                      else if (val > maxDate) setRestDate(maxDate);
+                      else setRestDate(val);
+                    }}
                   />
                 </div>
               </Field>
