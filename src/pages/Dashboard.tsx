@@ -110,6 +110,9 @@ export default function Dashboard() {
       {/* Ruhetag-Hinweis */}
       {!restDay.loading && !statsLoading && (() => {
         const { restDaysThisWeek, isRestDayToday, consecutiveRestToday } = restDay;
+        const _d = new Date(); _d.setHours(0,0,0,0); _d.setDate(_d.getDate() + 3 - (_d.getDay() + 6) % 7);
+        const _w1 = new Date(_d.getFullYear(), 0, 4);
+        const isoKW = 1 + Math.round(((_d.getTime() - _w1.getTime()) / 86_400_000 - 3 + (_w1.getDay() + 6) % 7) / 7);
         const streakBroken = consecutiveRestToday >= 2 || restDaysThisWeek > 2;
 
         if (streakBroken) return null;
@@ -132,7 +135,7 @@ export default function Dashboard() {
 
         return (
           <div className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-2 text-xs">
-            <span className={color}>{msg ?? 'Ruhetage diese Woche:'}</span>
+            <span className={color}>{msg ?? `Ruhetage übrig für KW ${isoKW}:`}</span>
             <span className="text-sm leading-none">{"❤️".repeat(Math.max(0, 2 - restDaysThisWeek))}</span>
           </div>
         );
