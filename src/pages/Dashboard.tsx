@@ -9,7 +9,6 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
-import { ShareIcon } from '@/components/ui/icons';
 import { QuickAdd } from '@/components/QuickAdd';
 import { useRestDayInfo } from '@/hooks/useRestDayInfo';
 
@@ -80,19 +79,6 @@ export default function Dashboard() {
     toast.success('Rückgängig gemacht.');
     setLastEntry(null);
     void refetchStats();
-  }
-
-  async function onInvite() {
-    const url = window.location.origin;
-    const text = `Tritt mir auf PushupArena bei: ${url}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: 'PushupArena', text, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        toast.success('Link kopiert.');
-      }
-    } catch { /* abgebrochen */ }
   }
 
   return (
@@ -202,14 +188,6 @@ export default function Dashboard() {
         )}
       </Card>
 
-      {/* Freunde einladen */}
-      <button
-        onClick={onInvite}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 bg-ink-800/40 py-2 text-sm font-medium text-brand-400 hover:border-brand-500 hover:bg-ink-800/70 transition-colors -mt-1"
-      >
-        <ShareIcon className="h-4 w-4" />
-        Freunde einladen
-      </button>
     </div>
   );
 }
