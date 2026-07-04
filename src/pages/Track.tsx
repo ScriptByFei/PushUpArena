@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useWorkoutLogger } from '@/hooks/useWorkoutLogger';
@@ -10,7 +10,7 @@ import { Field, Input } from '@/components/ui/Input';
 import { DateTimeInput } from '@/components/ui/DateTimeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
-import { EditIcon, TrashIcon } from '@/components/ui/icons';
+import { CalendarIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
 import { formatRelativeDay, formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
 
@@ -43,11 +43,22 @@ export default function Track() {
   type SortDir = 'desc' | 'asc';
   const [period, setPeriod] = useState<Period>('all');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const filteredEntries = useMemo(() => {
     // Datumsvergleiche in Europe/Berlin – konsistent mit der DB (get_my_stats).
     const TZ = 'Europe/Berlin';
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); // "2026-07-02"
+
+    // Datums-Filter hat Vorrang
+    if (dateFilter) {
+      return [...entries]
+        .filter((e) => new Date(e.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ }) === dateFilter)
+        .sort((a, b) => sortDir === 'desc'
+          ? new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime()
+          : new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime());
+    }
     const [y, m, d] = today.split('-').map(Number);
 
     // Montag der aktuellen Woche in Berlin
@@ -72,7 +83,7 @@ export default function Track() {
       const diff = new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime();
       return sortDir === 'desc' ? -diff : diff;
     });
-  }, [entries, period, sortDir]);
+  }, [entries, period, sortDir, dateFilter]);
 
   if (exLoading) return <LoadingState />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
@@ -143,14 +154,40 @@ export default function Track() {
 
       {/* Historie */}
       <Card>
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <CardTitle>Verlauf</CardTitle>
-          <button
-            onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-ink-700 hover:text-slate-200"
-          >
-            {sortDir === 'desc' ? '↓ Neueste' : '↑ Älteste'}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-ink-700 hover:text-slate-200"
+            >
+              {sortDir === 'desc' ? '↓ Neueste' : '↑ Älteste'}
+            </button>
+            {/* Datums-Filter */}
+            <div className="flex items-center gap-1">
+              {dateFilter && (
+                <span className="flex items-center gap-1 rounded-full bg-brand-600/20 px-2 py-0.5 text-[10px] text-brand-300">
+                  {new Date(dateFilter + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                  <button onClick={() => setDateFilter(null)} className="leading-none hover:text-white">×</button>
+                </span>
+              )}
+              <button
+                onClick={() => dateInputRef.current?.showPicker()}
+                className={`rounded-lg p-1 text-xs transition-colors ${dateFilter ? 'text-brand-400 hover:text-brand-300' : 'text-slate-400 hover:bg-ink-700 hover:text-slate-200'}`}
+                aria-label="Tag auswählen"
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </button>
+              <input
+                ref={dateInputRef}
+                type="date"
+                className="sr-only"
+                value={dateFilter ?? ''}
+                max={new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })}
+                onChange={(e) => { setPeriod('all'); setDateFilter(e.target.value || null); }}
+              />
+            </div>
+          </div>
         </div>
         {/* Zeitraum-Filter */}
         <div className="mt-2 flex gap-1.5">
