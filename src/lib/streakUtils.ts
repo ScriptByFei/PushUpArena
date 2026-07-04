@@ -4,7 +4,7 @@
  * Regeln:
  *  1. Pro Woche: max. 2 Ruhetage (ISO-Woche Mo–So)
  *  2. Zwei aufeinanderfolgende Ruhetage brechen die Streak
- *  3. Erlaubte Ruhetage zählen als Streak-erhaltend (werden mitgezählt)
+ *  3. Erlaubte Ruhetage erhalten die Streak-Chain, zählen aber NICHT zur Streak-Zahl
  *  4. Streak = 0 wenn kein Trainingstag im gültigen Chain
  *
  * Alle Datumsoperationen rein kalendarisch (YYYY-MM-DD strings).
@@ -80,7 +80,7 @@ export function calculateCurrentStreak(
       if (consecutiveRest >= 2) break;
       // Regel: >2 Ruhetage in dieser Woche
       if ((weekRestCounts.get(getWeekKey(d)) ?? 0) > 2) break;
-      streak++;
+      // Ruhetag innerhalb der Grenzen: Chain bleibt, aber streak NICHT erhöhen
     }
   }
   return hasTraining ? streak : 0;
