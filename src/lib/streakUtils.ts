@@ -127,9 +127,8 @@ export function calculateLongestStreak(
         consecutiveRest = 0;
         hasTraining = false;
         chainActive = false;
-      } else if (chainActive) {
-        current++;
       }
+      // Ruhetag innerhalb der Grenzen: Chain bleibt, aber current nicht erhöhen
     }
   }
   if (hasTraining) longest = Math.max(longest, current);
