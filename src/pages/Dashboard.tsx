@@ -109,12 +109,24 @@ export default function Dashboard() {
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
 
+      {/* Schnell-Eingabe */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <CardTitle>Schnell eintragen</CardTitle>
+          <Link to="/settings" className="text-xs text-brand-400 hover:text-brand-300">
+            Anpassen
+          </Link>
+        </div>
+        <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
+        <QuickAdd exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
+      </Card>
+
       {/* Ruhetag-Hinweis */}
       {!restDay.loading && !statsLoading && (() => {
         const { restDaysThisWeek, isRestDayToday, consecutiveRestToday } = restDay;
         const streakBroken = consecutiveRestToday >= 2 || restDaysThisWeek > 2;
 
-        if (streakBroken) return null; // Streak bereits kaputt – kein Hinweis nötig
+        if (streakBroken) return null;
 
         let msg: string | null = null;
         let color = 'text-slate-400';
@@ -135,24 +147,10 @@ export default function Dashboard() {
         return (
           <div className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-2 text-xs">
             <span className={color}>{msg ?? `Ruhetage diese Woche: ${restDaysThisWeek}/2`}</span>
-            <span className="text-slate-500">
-              {restDaysThisWeek}/2
-            </span>
+            <span className="text-slate-500">{restDaysThisWeek}/2</span>
           </div>
         );
       })()}
-
-      {/* Schnell-Eingabe */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>Schnell eintragen</CardTitle>
-          <Link to="/settings" className="text-xs text-brand-400 hover:text-brand-300">
-            Anpassen
-          </Link>
-        </div>
-        <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
-        <QuickAdd exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
-      </Card>
 
       {/* Rückgängig-Banner */}
       {lastEntry && (
