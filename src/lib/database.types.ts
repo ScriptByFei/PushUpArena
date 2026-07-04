@@ -204,6 +204,7 @@ export interface Database {
           total_amount: number;
           level: number;
           current_streak: number;
+          rest_days_remaining: number;
           is_me: boolean;
         }[];
       };

@@ -45,6 +45,13 @@ const PODIUM_SLOTS = [
   },
 ] as const;
 
+
+function restHearts(n: number): string {
+  if (n <= 0) return '🖤🖤';
+  if (n === 1) return '❤️🖤';
+  return '❤️❤️';
+}
+
 export default function Leaderboard() {
   const { exercise, loading: exLoading } = useExercise();
   const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(exercise?.id);
@@ -119,6 +126,9 @@ export default function Leaderboard() {
                     <p className="text-[10px] uppercase tracking-wide text-slate-500">
                       {sortLabel}
                     </p>
+                    <p className="mt-1 text-sm leading-none" title="Freie Ruhetage diese Woche">
+                      {restHearts(row.rest_days_remaining)}
+                    </p>
                   </div>
                 );
               })}
@@ -153,6 +163,9 @@ export default function Leaderboard() {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
+                      <p className="text-[11px] leading-none text-slate-500 mb-0.5" title="Freie Ruhetage diese Woche">
+                        {restHearts(row.rest_days_remaining)}
+                      </p>
                       <p className="text-base font-extrabold text-brand-200">{row[sortKey]}</p>
                       <p className="text-[10px] uppercase tracking-wide text-slate-500">
                         {sortLabel}
