@@ -179,7 +179,7 @@ export default function Track() {
             </button>
           ))}
           {/* Datums-Filter */}
-          <div className="relative ml-auto flex items-center gap-1">
+          <div className="relative ml-auto mr-4 flex items-center gap-1">
             {dateFilter && (
               <span className="flex items-center gap-1 rounded-full bg-brand-600/20 px-2 py-0.5 text-[10px] text-brand-300">
                 {new Date(dateFilter + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
