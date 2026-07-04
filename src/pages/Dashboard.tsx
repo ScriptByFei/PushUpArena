@@ -11,6 +11,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { ShareIcon } from '@/components/ui/icons';
 import { QuickAdd } from '@/components/QuickAdd';
+import { useRestDayInfo } from '@/hooks/useRestDayInfo';
 
 function StatTile({
   label,
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
+  const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();
 
   const [lastEntry, setLastEntry] = useState<{ id: string; amount: number } | null>(null);
@@ -106,6 +108,39 @@ export default function Dashboard() {
         />
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
+
+      {/* Ruhetag-Hinweis */}
+      {!restDay.loading && !statsLoading && (() => {
+        const { restDaysThisWeek, isRestDayToday, consecutiveRestToday } = restDay;
+        const streakBroken = consecutiveRestToday >= 2 || restDaysThisWeek > 2;
+
+        if (streakBroken) return null; // Streak bereits kaputt – kein Hinweis nötig
+
+        let msg: string | null = null;
+        let color = 'text-slate-400';
+
+        if (isRestDayToday && restDaysThisWeek <= 2) {
+          if (consecutiveRestToday === 1) {
+            msg = '⚠️ Achtung: Zwei Ruhetage hintereinander brechen deine Streak.';
+            color = 'text-amber-400';
+          } else {
+            msg = '😴 Ruhetag aktiv – deine Streak bleibt erhalten.';
+            color = 'text-brand-300';
+          }
+        } else if (!isRestDayToday && restDaysThisWeek >= 2) {
+          msg = '✅ Alle Ruhetage für diese Woche genutzt.';
+          color = 'text-slate-400';
+        }
+
+        return (
+          <div className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-2 text-xs">
+            <span className={color}>{msg ?? `Ruhetage diese Woche: ${restDaysThisWeek}/2`}</span>
+            <span className="text-slate-500">
+              {restDaysThisWeek}/2
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Schnell-Eingabe */}
       <Card>

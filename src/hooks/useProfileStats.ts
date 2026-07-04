@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { calculateStreakWithRestDays } from '@/lib/streakUtils';
+import type { RestDayInfo } from '@/lib/streakUtils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+
+export type { RestDayInfo };
 
 export interface DayData {
   date: string; // YYYY-MM-DD in Europe/Berlin
@@ -17,6 +21,7 @@ export interface ProfileStats {
   trainingDays: number;
   last7Days: number;
   last30Days: number;
+  restDayInfo: RestDayInfo;
   /** Last 182 days (26 weeks) for heatmap */
   dailyData: DayData[];
   /** Last 7 days for bar chart */
@@ -32,6 +37,7 @@ const EMPTY: ProfileStats = {
   trainingDays: 0,
   last7Days: 0,
   last30Days: 0,
+  restDayInfo: { restDaysThisWeek: 0, isRestDayToday: false, isRestDayYesterday: false, consecutiveRestToday: 0 },
   dailyData: [],
   last7DaysData: [],
 };
@@ -126,37 +132,8 @@ export function useProfileStats(exerciseId?: string) {
 
     const avgPerActiveDay = trainingDays > 0 ? Math.round(totalAmount / trainingDays) : 0;
 
-    // Streak-Berechnung in Europe/Berlin
-    const activeDates = Array.from(byDay.keys()).sort();
-    const activeDateSet = new Set(activeDates);
-    const yesterday = shiftDate(today, -1);
-
-    let currentStreak = 0;
-    const streakStart = activeDateSet.has(today)
-      ? today
-      : activeDateSet.has(yesterday)
-        ? yesterday
-        : null;
-    if (streakStart) {
-      let cursor = streakStart;
-      while (activeDateSet.has(cursor)) {
-        currentStreak++;
-        cursor = shiftDate(cursor, -1);
-      }
-    }
-
-    let longestStreak = 0;
-    let run = 0;
-    for (let i = 0; i < activeDates.length; i++) {
-      if (i === 0) {
-        run = 1;
-      } else {
-        const diff =
-          (new Date(activeDates[i]).getTime() - new Date(activeDates[i - 1]).getTime()) / 86_400_000;
-        run = diff === 1 ? run + 1 : 1;
-      }
-      if (run > longestStreak) longestStreak = run;
-    }
+    // Streak-Berechnung mit Ruhetag-Regeln (siehe src/lib/streakUtils.ts)
+    const { currentStreak, longestStreak, restDayInfo } = calculateStreakWithRestDays(byDay, today);
 
     setStats({
       totalAmount,
@@ -167,6 +144,7 @@ export function useProfileStats(exerciseId?: string) {
       trainingDays,
       last7Days,
       last30Days,
+      restDayInfo,
       dailyData,
       last7DaysData,
     });
