@@ -126,9 +126,11 @@ export default function Leaderboard() {
                     <p className="text-[10px] uppercase tracking-wide text-slate-500">
                       {sortLabel}
                     </p>
-                    <p className="mt-1 text-sm leading-none" title="Freie Ruhetage diese Woche">
-                      {restHearts(row.rest_days_remaining)}
-                    </p>
+                    {sortKey === 'current_streak' && (
+                      <p className="mt-1 text-sm leading-none" title="Freie Ruhetage diese Woche">
+                        {restHearts(row.rest_days_remaining)}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -163,9 +165,11 @@ export default function Leaderboard() {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-[11px] leading-none text-slate-500 mb-0.5" title="Freie Ruhetage diese Woche">
-                        {restHearts(row.rest_days_remaining)}
-                      </p>
+                      {sortKey === 'current_streak' && (
+                        <p className="text-[11px] leading-none text-slate-500 mb-0.5" title="Freie Ruhetage diese Woche">
+                          {restHearts(row.rest_days_remaining)}
+                        </p>
+                      )}
                       <p className="text-base font-extrabold text-brand-200">{row[sortKey]}</p>
                       <p className="text-[10px] uppercase tracking-wide text-slate-500">
                         {sortLabel}
