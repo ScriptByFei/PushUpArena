@@ -132,7 +132,7 @@ export default function Dashboard() {
 
         return (
           <div className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-2 text-xs">
-            <span className={color}>{msg ?? `Ruhetage diese Woche: ${restDaysThisWeek}/2`}</span>
+            <span className={color}>{msg ?? 'Ruhetage diese Woche:'}</span>
             <span className="text-slate-500">{restDaysThisWeek}/2</span>
           </div>
         );
