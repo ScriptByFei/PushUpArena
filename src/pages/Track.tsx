@@ -154,49 +154,23 @@ export default function Track() {
 
       {/* Historie */}
       <Card>
-        <div className="flex items-start justify-between">
+        <div className="flex items-center justify-between">
           <CardTitle>Verlauf</CardTitle>
-          <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-ink-700 hover:text-slate-200"
-            >
-              {sortDir === 'desc' ? '↓ Neueste' : '↑ Älteste'}
-            </button>
-            {/* Datums-Filter */}
-            <div className="flex items-center gap-1">
-              {dateFilter && (
-                <span className="flex items-center gap-1 rounded-full bg-brand-600/20 px-2 py-0.5 text-[10px] text-brand-300">
-                  {new Date(dateFilter + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
-                  <button onClick={() => setDateFilter(null)} className="leading-none hover:text-white">×</button>
-                </span>
-              )}
-              <button
-                onClick={() => dateInputRef.current?.showPicker()}
-                className={`rounded-lg p-1 text-xs transition-colors ${dateFilter ? 'text-brand-400 hover:text-brand-300' : 'text-slate-400 hover:bg-ink-700 hover:text-slate-200'}`}
-                aria-label="Tag auswählen"
-              >
-                <CalendarIcon className="h-4 w-4" />
-              </button>
-              <input
-                ref={dateInputRef}
-                type="date"
-                className="sr-only"
-                value={dateFilter ?? ''}
-                max={new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })}
-                onChange={(e) => { setPeriod('all'); setDateFilter(e.target.value || null); }}
-              />
-            </div>
-          </div>
+          <button
+            onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-ink-700 hover:text-slate-200"
+          >
+            {sortDir === 'desc' ? '↓ Neueste' : '↑ Älteste'}
+          </button>
         </div>
-        {/* Zeitraum-Filter */}
-        <div className="mt-2 flex gap-1.5">
+        {/* Zeitraum-Filter + Datums-Picker */}
+        <div className="mt-2 flex items-center gap-1.5">
           {(['all', 'today', 'week', 'month'] as Period[]).map((p) => (
             <button
               key={p}
-              onClick={() => setPeriod(p)}
+              onClick={() => { setPeriod(p); setDateFilter(null); }}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                period === p
+                period === p && !dateFilter
                   ? 'bg-brand-600 text-white'
                   : 'bg-ink-700 text-slate-400 hover:bg-ink-600 hover:text-slate-200'
               }`}
@@ -204,6 +178,30 @@ export default function Track() {
               {p === 'all' ? 'Alle' : p === 'today' ? 'Heute' : p === 'week' ? 'Woche' : 'Monat'}
             </button>
           ))}
+          {/* Datums-Filter */}
+          <div className="relative ml-auto flex items-center gap-1">
+            {dateFilter && (
+              <span className="flex items-center gap-1 rounded-full bg-brand-600/20 px-2 py-0.5 text-[10px] text-brand-300">
+                {new Date(dateFilter + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                <button onClick={() => setDateFilter(null)} className="leading-none hover:text-white">×</button>
+              </span>
+            )}
+            <button
+              onClick={() => dateInputRef.current?.showPicker()}
+              className={`rounded-lg p-1 transition-colors ${dateFilter ? 'text-brand-400 hover:text-brand-300' : 'text-slate-400 hover:bg-ink-700 hover:text-slate-200'}`}
+              aria-label="Tag auswählen"
+            >
+              <CalendarIcon className="h-5 w-5" />
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              className="sr-only"
+              value={dateFilter ?? ''}
+              max={new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })}
+              onChange={(e) => { setPeriod('all'); setDateFilter(e.target.value || null); }}
+            />
+          </div>
         </div>
         <div className="mt-3">
           {loading ? (
