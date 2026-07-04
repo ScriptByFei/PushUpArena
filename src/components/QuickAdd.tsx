@@ -52,8 +52,8 @@ export function QuickAdd({
         })}
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2">
-        {/* Platzhalter – exakt 1 Spalte wie Preset-Buttons */}
-        <div className="rounded-xl bg-ink-700" />
+        {/* Icon – exakt 1 Spalte wie Preset-Buttons */}
+        <img src="/pushup-icon.png" alt="Push-up" className="h-full w-full rounded-xl object-cover" />
         {/* form mit contents: Kinder nehmen direkt am Grid teil */}
         <form
           className="contents"
