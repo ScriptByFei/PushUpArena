@@ -141,16 +141,17 @@ export default function Dashboard() {
           color = 'text-slate-400';
         }
 
+        const dow = new Date().getDay();
+        const isoDay = dow === 0 ? 7 : dow;
+        const daysAfterToday = Math.max(0, 7 - isoDay);
+        const hearts = Math.min(Math.max(0, 2 - restDaysThisWeek), daysAfterToday);
+
+        if (hearts === 0 && !msg) return null;
+
         return (
           <div className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-2 text-xs">
             <span className={color}>{msg ?? `Ruhetage übrig für KW ${isoKW}:`}</span>
-            <span className="text-sm leading-none">{(() => {
-              const dow = new Date().getDay(); // 0=Sun
-              const isoDay = dow === 0 ? 7 : dow; // 1=Mon..7=Sun
-              const daysAfterToday = Math.max(0, 7 - isoDay);
-              const hearts = Math.min(Math.max(0, 2 - restDaysThisWeek), daysAfterToday);
-              return '❤️'.repeat(hearts);
-            })()}</span>
+            <span className="text-sm leading-none">{'❤️'.repeat(hearts)}</span>
           </div>
         );
       })()}
