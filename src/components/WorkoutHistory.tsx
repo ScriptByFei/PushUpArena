@@ -43,7 +43,7 @@ interface Props {
   unit: string;
 }
 
-type Period = 'all' | 'today' | 'week' | 'month';
+type Period = 'all' | 'week' | 'month' | 'year';
 type SortDir = 'desc' | 'asc';
 
 type ListItem =
@@ -93,9 +93,9 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
       const eBerlin = new Date(entry.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ });
       if (dateFilter && eBerlin !== dateFilter) continue;
       if (!dateFilter) {
-        if (period === 'today' && eBerlin !== today) continue;
         if (period === 'week' && eBerlin < monday) continue;
         if (period === 'month' && eBerlin < firstOfMonth) continue;
+        if (period === 'year' && eBerlin < `${y}-01-01`) continue;
       }
       items.push({ kind: 'workout', entry, sortKey: new Date(entry.performed_at).getTime(), dateStr: eBerlin });
     }
@@ -103,9 +103,9 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
     for (const rd of restDays) {
       if (dateFilter && rd.rest_date !== dateFilter) continue;
       if (!dateFilter) {
-        if (period === 'today' && rd.rest_date !== today) continue;
         if (period === 'week' && rd.rest_date < monday) continue;
         if (period === 'month' && rd.rest_date < firstOfMonth) continue;
+        if (period === 'year' && rd.rest_date < `${y}-01-01`) continue;
       }
       const [ry, rm, rd2] = rd.rest_date.split('-').map(Number);
       items.push({ kind: 'rest', id: rd.id, rest_date: rd.rest_date, sortKey: new Date(ry, rm - 1, rd2, 12).getTime(), dateStr: rd.rest_date });
@@ -141,7 +141,7 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
         </div>
 
         <div className="mt-2 flex items-center gap-1.5">
-          {(['all', 'today', 'week', 'month'] as Period[]).map((p) => (
+          {(['all', 'week', 'month', 'year'] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => { setPeriod(p); setDateFilter(null); }}
@@ -151,7 +151,7 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
                   : 'bg-ink-700 text-slate-400 hover:bg-ink-600 hover:text-slate-200'
               }`}
             >
-              {p === 'all' ? 'Alle' : p === 'today' ? 'Heute' : p === 'week' ? 'Woche' : 'Monat'}
+              {p === 'all' ? 'Alle' : p === 'week' ? 'Woche' : p === 'month' ? 'Monat' : 'Jahr'}
             </button>
           ))}
           <div className="relative ml-auto mr-4 flex items-center gap-1">
