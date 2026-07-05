@@ -65,7 +65,7 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
   useEffect(() => {
     if (!selected) return;
     setTimeout(() => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      window.scrollTo({ top: 999999, behavior: 'smooth' });
     }, 50);
   }, [selected]);
 
