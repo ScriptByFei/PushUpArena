@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { DayData } from '@/hooks/useProfileStats';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -59,6 +59,15 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
   const [daySets, setDaySets] = useState<number[]>([]);
   const [setsLoading, setSetsLoading] = useState(false);
   const { user } = useAuth();
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  // Nach Auswahl: zur Detailansicht scrollen
+  useEffect(() => {
+    if (!selected) return;
+    setTimeout(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }, [selected]);
 
   // Beim Wechsel des ausgewählten Tages: Sätze laden
   useEffect(() => {
@@ -184,7 +193,7 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
 
       {/* Detailinfo */}
       {selected && (
-        <div className="mt-3 rounded-xl border border-ink-700 bg-ink-800/60 px-4 py-3">
+        <div ref={detailRef} className="mt-3 rounded-xl border border-ink-700 bg-ink-800/60 px-4 py-3">
           {/* Kopfzeile */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-slate-300">
