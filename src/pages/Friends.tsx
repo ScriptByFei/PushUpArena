@@ -45,10 +45,13 @@ export default function Friends() {
     removeFriend,
   } = useFriends();
   const toast = useToast();
-  const { exercise } = useExercise();
-  const { rows: leaderRows } = useLeaderboard(exercise?.id);
-  // Aktive Pushers = alle aus dem Leaderboard mit today_amount > 0 (sortiert nach heutiger Menge)
-  const activePushers = [...leaderRows]
+  const { exercise: activeExercise, enrolledExercises } = useExercise();
+  // Lokale Übungsauswahl nur für die Member-Kachel
+  const [memberExercise, setMemberExercise] = useState<typeof activeExercise>(null);
+  const shownExercise = memberExercise ?? activeExercise;
+  const { rows: leaderRows } = useLeaderboard(shownExercise?.id);
+  // Aktive Member = alle aus dem Leaderboard mit today_amount > 0 (sortiert nach heutiger Menge)
+  const activeMembers = [...leaderRows]
     .filter((r) => r.today_amount > 0)
     .sort((a, b) => b.today_amount - a.today_amount);
 
@@ -227,7 +230,7 @@ export default function Friends() {
             )}
           </Card>
 
-          {/* Aktive Pusher heute */}
+          {/* Aktive Member heute */}
           <Card>
             <button
               className="flex w-full items-center justify-between"
@@ -235,13 +238,13 @@ export default function Friends() {
               aria-expanded={pushersOpen}
             >
               <div className="flex items-center gap-2">
-                <CardTitle>Aktive Pusher heute</CardTitle>
+                <CardTitle>Aktive Member heute</CardTitle>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  activePushers.length > 0
+                  activeMembers.length > 0
                     ? 'bg-brand-600/30 text-brand-300'
                     : 'bg-ink-700 text-slate-500'
                 }`}>
-                  {activePushers.length > 0 ? `🔥 ${activePushers.length}` : '0'}
+                  {activeMembers.length > 0 ? `🔥 ${activeMembers.length}` : '0'}
                 </span>
               </div>
               <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${pushersOpen ? 'rotate-180' : ''}`}>
@@ -249,41 +252,63 @@ export default function Friends() {
               </span>
             </button>
             {pushersOpen && (
-              activePushers.length === 0 ? (
-                <p className="mt-3 text-center text-sm text-slate-500">
-                  Noch niemand aktiv — sei der Erste! 💪
-                </p>
-              ) : (
-                <ul className="mt-2 divide-y divide-ink-700">
-                  {activePushers.map((p) => (
-                    <li key={p.user_id} className="flex items-center gap-3 py-3">
-                      <Avatar
-                        url={p.avatar_url}
-                        name={p.display_name || p.username}
-                        size={40}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-200">
-                          {p.display_name || p.username}
-                          {p.is_me && (
-                            <span className="ml-1 text-xs text-brand-300">(du)</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <img
-                          src={exercise ? (EXERCISE_ICONS[exercise.slug] ?? '/pushup-icon.png') : '/pushup-icon.png'}
-                          alt=""
-                          className="h-5 w-5 rounded object-cover opacity-70"
+              <>
+                {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
+                {enrolledExercises.length > 1 && (
+                  <div className="mt-3 flex gap-2">
+                    {enrolledExercises.map((ex) => {
+                      const isActive = ex.id === shownExercise?.id;
+                      return (
+                        <button
+                          key={ex.id}
+                          onClick={() => setMemberExercise(ex)}
+                          className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                            isActive ? 'bg-brand-600 text-white' : 'bg-ink-700 text-slate-400 hover:bg-ink-600'
+                          }`}
+                        >
+                          <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-4 w-4 rounded object-cover" />
+                          {ex.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {activeMembers.length === 0 ? (
+                  <p className="mt-3 text-center text-sm text-slate-500">
+                    Noch niemand aktiv — sei der Erste! 💪
+                  </p>
+                ) : (
+                  <ul className="mt-2 divide-y divide-ink-700">
+                    {activeMembers.map((p) => (
+                      <li key={p.user_id} className="flex items-center gap-3 py-3">
+                        <Avatar
+                          url={p.avatar_url}
+                          name={p.display_name || p.username}
+                          size={40}
                         />
-                        <span className="text-base font-extrabold text-brand-300">
-                          {p.today_amount}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-200">
+                            {p.display_name || p.username}
+                            {p.is_me && (
+                              <span className="ml-1 text-xs text-brand-300">(du)</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <img
+                            src={shownExercise ? (EXERCISE_ICONS[shownExercise.slug] ?? '/pushup-icon.png') : '/pushup-icon.png'}
+                            alt=""
+                            className="h-5 w-5 rounded object-cover opacity-70"
+                          />
+                          <span className="text-base font-extrabold text-brand-300">
+                            {p.today_amount}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </Card>
 
