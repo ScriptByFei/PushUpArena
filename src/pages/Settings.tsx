@@ -41,6 +41,8 @@ export default function Settings() {
 const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [leaveTarget, setLeaveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
   const [exPushEnabled, setExPushEnabled] = useState<Record<string, boolean>>({});
   const [exPushSaving, setExPushSaving] = useState(false);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
@@ -203,16 +205,11 @@ const [deleteOpen, setDeleteOpen] = useState(false);
                     </span>
                   ) : isEnrolled ? (
                     <button
-                      disabled={!canLeave || enrollingId !== null}
-                      onClick={async () => {
-                        setEnrollingId(ex.id);
-                        await enroll(ex.id, 'declined');
-                        setEnrollingId(null);
-                        toast.success(`${ex.name} ausgetragen.`);
-                      }}
+                      disabled={!canLeave || leavingId !== null}
+                      onClick={() => setLeaveTarget({ id: ex.id, name: ex.name })}
                       className="shrink-0 rounded-xl border border-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10 disabled:opacity-40"
                     >
-                      {enrollingId === ex.id ? '…' : 'Verlassen'}
+                      Verlassen
                     </button>
                   ) : (
                     <Button
@@ -577,6 +574,33 @@ const [deleteOpen, setDeleteOpen] = useState(false);
             autoComplete="off"
             aria-label="Löschen bestätigen"
           />
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!leaveTarget}
+        title={`${leaveTarget?.name ?? ''} verlassen?`}
+        confirmLabel="Ja, verlassen"
+        confirmVariant="danger"
+        loading={leavingId !== null}
+        onClose={() => setLeaveTarget(null)}
+        onConfirm={async () => {
+          if (!leaveTarget) return;
+          setLeavingId(leaveTarget.id);
+          await enroll(leaveTarget.id, 'declined');
+          setLeavingId(null);
+          setLeaveTarget(null);
+          toast.success(`${leaveTarget.name} ausgetragen.`);
+        }}
+      >
+        <div className="space-y-3 text-left">
+          <p>
+            Wenn du <strong>{leaveTarget?.name}</strong> verlässt, werden dein Fortschritt,
+            deine Streak, Ziele und Statistiken für diese Übung nicht mehr angezeigt.
+          </p>
+          <p className="text-slate-400">
+            Dieser Schritt kann nicht rückgängig gemacht werden.
+          </p>
         </div>
       </Modal>
     </div>
