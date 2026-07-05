@@ -335,14 +335,24 @@ export default function Friends() {
                           size={40}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-200">
+                          <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-slate-200">
                             {p.display_name || p.username}
-                            {p.is_me && (
-                              <span className="ml-1 text-xs text-brand-300">(du)</span>
-                            )}
-                            {'is_friend' in p && !p.is_me && !p.is_friend && (
-                              <span className="ml-1 text-xs text-slate-500">· kein Freund</span>
-                            )}
+                            {p.is_me ? (
+                              <span className="text-xs text-brand-300">(du)</span>
+                            ) : 'is_friend' in p ? (
+                              p.is_friend ? (
+                                /* Freund-Symbol */
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-brand-400" aria-label="Freund">
+                                  <path d="M9 12.5l-3-3 1.06-1.06L9 10.38l4.94-4.94L15 6.5 9 12.5z"/>
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 110-12 6 6 0 010 12z" clipRule="evenodd"/>
+                                </svg>
+                              ) : (
+                                /* Kein Freund — Person mit + */
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-label="Kein Freund">
+                                  <path d="M11 5a3 3 0 11-6 0 3 3 0 016 0zM2.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 018 18a9.953 9.953 0 01-5.385-1.572zM16.25 5.75a.75.75 0 00-1.5 0v2h-2a.75.75 0 000 1.5h2v2a.75.75 0 001.5 0v-2h2a.75.75 0 000-1.5h-2v-2z"/>
+                                </svg>
+                              )
+                            ) : null}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
