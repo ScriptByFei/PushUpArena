@@ -64,13 +64,19 @@ function TodaySetsSheet({ row, exerciseId, onClose }: TodaySetsSheetProps) {
 
   // Fetch on mount
   useEffect(() => {
-    supabase
-      .rpc('get_friend_today_sets', { p_user_id: row.user_id, p_exercise: exerciseId })
-      .then(({ data }) => {
-        setSets((data ?? []).map((r: { amount: number }) => r.amount));
+    void (async () => {
+      try {
+        const { data } = await supabase.rpc('get_friend_today_sets', {
+          p_user_id: row.user_id,
+          p_exercise: exerciseId,
+        });
+        setSets((data ?? []).map((r) => r.amount));
+      } catch {
+        // ignore
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -208,6 +208,10 @@ export interface Database {
           is_me: boolean;
         }[];
       };
+      get_friend_today_sets: {
+        Args: { p_user_id: string; p_exercise: string };
+        Returns: { amount: number }[];
+      };
       evaluate_achievements: {
         Args: { p_exercise: string };
         Returns: { slug: string; name: string; icon: string }[];
