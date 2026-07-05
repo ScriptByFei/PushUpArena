@@ -7,8 +7,6 @@ export function PWAUpdater() {
   const { updateServiceWorker } = useRegisterSW({
     onNeedRefresh() {
       // Sofort automatisch neu laden — kein manuelles Banner nötig.
-      // Der neue Service Worker hat skipWaiting() und clients.claim(),
-      // daher ist ein sauberer Reload der sicherste Weg.
       updateServiceWorker(true);
     },
     onRegisteredSW(_swUrl, registration) {
@@ -17,6 +15,17 @@ export function PWAUpdater() {
       setInterval(() => registration.update().catch(() => {}), UPDATE_CHECK_INTERVAL);
     },
   });
+
+  // Wenn der neue SW die Kontrolle übernimmt → Seite sofort neu laden.
+  // Wichtig für iOS PWA, wo controllerchange nicht immer automatisch
+  // durch workbox-window abgefangen wird.
+  useEffect(() => {
+    function handleControllerChange() {
+      window.location.reload();
+    }
+    navigator.serviceWorker?.addEventListener('controllerchange', handleControllerChange);
+    return () => navigator.serviceWorker?.removeEventListener('controllerchange', handleControllerChange);
+  }, []);
 
   // Beim Zurückwechseln zur App sofort auf Updates prüfen.
   useEffect(() => {
@@ -29,6 +38,5 @@ export function PWAUpdater() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Kein Banner — Update läuft still im Hintergrund.
   return null;
 }

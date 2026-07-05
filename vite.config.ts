@@ -50,7 +50,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        cacheId: 'pushup-arena-v5',
+        cacheId: 'pushup-arena-v6',
         globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
         skipWaiting: true,
         clientsClaim: true,
