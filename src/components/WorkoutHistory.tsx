@@ -28,15 +28,6 @@ function minEntryDatetime() {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${twoDaysAgo.getFullYear()}-${pad(twoDaysAgo.getMonth() + 1)}-${pad(twoDaysAgo.getDate())}T00:00`;
 }
-function formatDayLabel(dateStr: string): string {
-  const today = berlinToday();
-  const yesterday = berlinYesterday();
-  if (dateStr === today) return 'Heute';
-  if (dateStr === yesterday) return 'Gestern';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('de-DE', {
-    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
-  });
-}
 
 interface Props {
   exerciseId: string | undefined;
