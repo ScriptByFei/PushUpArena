@@ -226,11 +226,14 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
               {setsLoading ? (
                 <p className="text-xs text-slate-500">Lade …</p>
               ) : daySets.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(daySets.length, 5)}, 1fr)` }}
+                >
                   {daySets.map((amount, i) => (
                     <div
                       key={i}
-                      className="flex flex-col items-center rounded-xl bg-ink-700 px-3 py-1.5 text-center"
+                      className="flex flex-col items-center rounded-xl bg-ink-700 px-2 py-1.5 text-center"
                     >
                       <span className="text-[10px] text-slate-500">Satz {i + 1}</span>
                       <span className="text-base font-extrabold text-brand-300">{amount}</span>
