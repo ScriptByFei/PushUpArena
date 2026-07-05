@@ -27,7 +27,13 @@ export function useLeaderboard(exerciseId?: string) {
     void load();
   }, [load]);
 
-  const sorted = [...rows].sort((a, b) => b[sortKey] - a[sortKey]);
+  const sorted = [...rows]
+    .filter((r) => {
+      if (sortKey === 'today_amount') return r.today_amount > 0;
+      if (sortKey === 'current_streak') return r.current_streak > 0;
+      return true; // 'total_amount' — alle (total_amount > 0 bereits garantiert)
+    })
+    .sort((a, b) => b[sortKey] - a[sortKey]);
 
   return { rows: sorted, loading, error, refetch: load, sortKey, setSortKey };
 }
