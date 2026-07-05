@@ -4,15 +4,18 @@ import { useQuickAmounts } from '@/hooks/useQuickAmounts';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import type { Exercise } from '@/lib/database.types';
 
 export function QuickAdd({
   exerciseId,
   unit = 'Wdh.',
   onLogged,
+  onExerciseSwitch,
 }: {
   exerciseId?: string;
   unit?: string;
   onLogged?: (info: { amount: number; entryId: string }) => void;
+  onExerciseSwitch?: (ex: Exercise) => void;
 }) {
   const { submit, submitting } = useWorkoutLogger(exerciseId, unit);
   const { amounts: presets } = useQuickAmounts(exerciseId);
@@ -120,7 +123,7 @@ export function QuickAdd({
                 return (
                   <button
                     key={ex.id}
-                    onClick={() => { switchExercise(ex); setShowSwitcher(false); }}
+                    onClick={() => { switchExercise(ex); onExerciseSwitch?.(ex); setShowSwitcher(false); }}
                     className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition ${
                       isActive
                         ? 'bg-brand-600/20 border border-brand-600/40'
