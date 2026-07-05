@@ -44,6 +44,7 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ display_name: '' });
   const [saving, setSaving] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -94,7 +95,7 @@ export default function Profile() {
           <p className="truncate text-xs text-slate-500">{user?.email}</p>
         </div>
         <button
-          onClick={async () => { await signOut(); navigate('/login', { replace: true }); }}
+          onClick={() => setConfirmLogout(true)}
           className="ml-3 shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
           title="Abmelden"
         >
@@ -166,6 +167,37 @@ export default function Profile() {
               <StatCell label="Letzte 30 Tage" value={stats.last30Days} />
             </div>
           </Card>
+      )}
+
+      {/* Abmelden-Bestätigung */}
+      {confirmLogout && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setConfirmLogout(false)}
+        >
+          <div
+            className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+            <p className="mb-1 text-center text-base font-bold text-slate-100">Wirklich abmelden?</p>
+            <p className="mb-6 text-center text-sm text-slate-500">Du kannst dich jederzeit wieder einloggen.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmLogout(false)}
+                className="flex-1 rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={async () => { await signOut(); navigate('/login', { replace: true }); }}
+                className="flex-1 rounded-2xl bg-red-500/20 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/30 transition"
+              >
+                Abmelden
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
