@@ -137,9 +137,9 @@ export default function Track() {
   async function onSubmitRestDay(e: FormEvent) {
     e.preventDefault();
     const maxDate = maxRestDate();
-    const minDate = new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE');
+    const today = berlinToday();
     if (restDate > maxDate) { toast.error('Maximal 14 Tage im Voraus planbar.'); return; }
-    if (restDate < minDate) { toast.error('Datum liegt zu weit in der Vergangenheit.'); return; }
+    if (restDate < today) { toast.error('Vergangene Tage ohne Training zählen automatisch als Ruhetag.'); return; }
     setSavingRest(true);
     const { error: err } = await addRestDay(restDate);
     setSavingRest(false);
@@ -204,11 +204,11 @@ export default function Track() {
           </>
         ) : (
           <>
-            <CardTitle>Ruhetag eintragen</CardTitle>
+            <CardTitle>Ruhetag planen</CardTitle>
             <p className="mt-0.5 text-xs text-slate-400">
-              Plane bis zu 14 Tage im Voraus.
+              Plane Ruhetage bis zu 14 Tage im Voraus. Tage ohne Training zählen automatisch als Ruhetag.
             </p>
-            <form onSubmit={onSubmitRestDay} className="mt-3 space-y-3">
+            <form onSubmit={onSubmitRestDay} className="mt-3 space-y-3" noValidate>
               <Field label="Datum" htmlFor="restDate">
                 <div className="relative">
                   <div className="input-base flex items-center justify-between">
@@ -223,14 +223,13 @@ export default function Track() {
                     id="restDate" type="date"
                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                     value={restDate}
-                    min={new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE')}
+                    min={berlinToday()}
                     max={maxRestDate()}
                     onChange={(e) => {
                       const val = e.target.value;
                       if (!val) { setRestDate(berlinToday()); return; }
-                      const minDate = new Date(new Date().getTime() - 90 * 864e5).toLocaleDateString('sv-SE');
                       const maxDate = maxRestDate();
-                      if (val < minDate) setRestDate(minDate);
+                      if (val < berlinToday()) setRestDate(berlinToday());
                       else if (val > maxDate) setRestDate(maxDate);
                       else setRestDate(val);
                     }}
