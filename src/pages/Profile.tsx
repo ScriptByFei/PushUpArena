@@ -1,14 +1,19 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
-import { useExercise } from '@/context/ExerciseContext';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
+import type { Exercise } from '@/lib/database.types';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Input';
+import { Field, Input, Textarea } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
+import { MonthCalendar } from '@/components/MonthCalendar';
+import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { formatDate } from '@/lib/date';
+
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
 interface StatCellProps {
   label: string;
@@ -27,19 +32,44 @@ function StatCell({ label, value, accent = 'text-brand-300' }: StatCellProps) {
 
 export default function Profile() {
   const { profile, loading: profileLoading, updateProfile } = useProfile();
-  const { exercise } = useExercise();
+  const { exercise: activeExercise, enrolledExercises } = useExercise();
+  const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
+  const exercise = localExercise ?? activeExercise;
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ display_name: '' });
+  const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
   const [saving, setSaving] = useState(false);
 
+  const now = new Date();
+  const todayYear = now.getUTCFullYear();
+  const todayMonth = now.getUTCMonth();
+  const [calYear, setCalYear] = useState(todayYear);
+  const [calMonth, setCalMonth] = useState(todayMonth);
+
+  // Daten reichen max. 182 Tage zurück (~6 Monate)
+  const minDate = new Date(Date.UTC(todayYear, todayMonth, now.getUTCDate()) - 181 * 86_400_000);
+  const canGoPrev =
+    calYear > minDate.getUTCFullYear() ||
+    (calYear === minDate.getUTCFullYear() && calMonth > minDate.getUTCMonth());
+  const canGoNext = calYear < todayYear || (calYear === todayYear && calMonth < todayMonth);
+
+  function goPrev() {
+    if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
+    else setCalMonth((m) => m - 1);
+  }
+  function goNext() {
+    if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1); }
+    else setCalMonth((m) => m + 1);
+  }
 
   useEffect(() => {
     if (profile) {
       setForm({
+        username: profile.username,
         display_name: profile.display_name ?? '',
+        bio: profile.bio ?? '',
       });
     }
   }, [profile]);
@@ -48,10 +78,15 @@ export default function Profile() {
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
+    if (!USERNAME_RE.test(form.username)) {
+      toast.error('Username: 3–20 Zeichen, nur Buchstaben, Zahlen und _.');
+      return;
+    }
     setSaving(true);
     const { error } = await updateProfile({
+      username: form.username,
       display_name: form.display_name.trim() || null,
-
+      bio: form.bio.trim() || null,
     });
     setSaving(false);
     if (error) toast.error(error);
@@ -80,6 +115,7 @@ export default function Profile() {
             <h2 className="truncate text-xl font-extrabold">
               {profile.display_name || profile.username}
             </h2>
+            <p className="text-sm text-slate-400">@{profile.username}</p>
           </div>
           {!editing && (
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
@@ -96,7 +132,15 @@ export default function Profile() {
         <Card>
           <CardTitle>Profil bearbeiten</CardTitle>
           <form onSubmit={onSave} className="mt-3 space-y-3">
-            <Field label="Name" htmlFor="display_name">
+            <Field label="Username" htmlFor="username" hint="3–20 Zeichen: a–z, 0–9, _">
+              <Input
+                id="username"
+                value={form.username}
+                autoCapitalize="none"
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+              />
+            </Field>
+            <Field label="Anzeigename" htmlFor="display_name">
               <Input
                 id="display_name"
                 maxLength={50}
@@ -104,7 +148,15 @@ export default function Profile() {
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })}
               />
             </Field>
-
+            <Field label="Bio (optional)" htmlFor="bio">
+              <Textarea
+                id="bio"
+                rows={3}
+                maxLength={280}
+                value={form.bio}
+                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              />
+            </Field>
             <div className="flex gap-2">
               <Button type="button" variant="secondary" fullWidth onClick={() => setEditing(false)}>
                 Abbrechen
@@ -115,6 +167,27 @@ export default function Profile() {
             </div>
           </form>
         </Card>
+      )}
+
+      {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
+      {enrolledExercises.length > 1 && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
+          {enrolledExercises.map((ex) => {
+            const isActive = ex.id === exercise?.id;
+            return (
+              <button
+                key={ex.id}
+                onClick={() => setLocalExercise(ex)}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
+                }`}
+              >
+                <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-5 w-5 rounded-md object-cover" />
+                {ex.name}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* Statistik */}
@@ -129,9 +202,9 @@ export default function Profile() {
             <CardTitle>Statistik</CardTitle>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <StatCell label="Gesamt" value={stats.totalAmount} />
+              <StatCell label="Akt. Streak" value={`${stats.currentStreak}🔥`} accent="text-amber-300" />
+              <StatCell label="Längste Streak" value={`${stats.longestStreak}🔥`} accent="text-amber-400" />
               <StatCell label="Ø pro Trainingstag" value={stats.avgPerActiveDay} />
-              <StatCell label="Längste Streak" value={`${stats.longestStreak} 👑`} accent="text-amber-400" />
-              <StatCell label="Akt. Streak" value={`${stats.currentStreak} 🔥`} accent="text-amber-300" />
               <StatCell
                 label="Bester Tag"
                 value={stats.bestDay ? stats.bestDay.amount : '–'}
@@ -143,7 +216,65 @@ export default function Profile() {
             </div>
           </Card>
 
+          {/* Letzte 7 Tage – Balkendiagramm */}
+          {stats.last7DaysData.length > 0 && (
+            <Card>
+              <CardTitle>Letzte 7 Tage</CardTitle>
+              <div className="mt-3">
+                <WeeklyBarChart data={stats.last7DaysData} />
+              </div>
+            </Card>
+          )}
 
+          {/* Monatskalender */}
+          <Card>
+            <CardTitle>Aktivitätskalender</CardTitle>
+            <MonthCalendar
+              data={stats.dailyData}
+              selectedYear={calYear}
+              selectedMonth={calMonth}
+              canGoPrev={canGoPrev}
+              canGoNext={canGoNext}
+              onPrev={goPrev}
+              onNext={goNext}
+            />
+          </Card>
+
+          {/* Letzte Einträge – gefiltert nach gewähltem Monat */}
+          {(() => {
+            const monthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+            const recent = stats.dailyData
+              .filter((d) => d.amount > 0 && d.date.startsWith(monthPrefix))
+              .slice()
+              .reverse()
+              .slice(0, 5);
+            if (recent.length === 0) return null;
+            return (
+              <Card>
+                <CardTitle>Letzte Einträge</CardTitle>
+                <ul className="mt-2 divide-y divide-ink-700">
+                  {recent.map((d) => (
+                    <li key={d.date} className="flex items-center justify-between py-2.5">
+                      <div>
+                        <p className="text-sm text-slate-200">
+                          {new Date(d.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            timeZone: 'UTC',
+                          })}
+                        </p>
+                        {d.sessions > 1 && (
+                          <p className="text-xs text-slate-400">{d.sessions} Sessions</p>
+                        )}
+                      </div>
+                      <span className="text-base font-bold text-brand-300">{d.amount}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            );
+          })()}
         </>
       )}
     </div>
