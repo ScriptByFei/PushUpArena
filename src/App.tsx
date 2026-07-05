@@ -3,6 +3,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
+import { EnrollmentModal } from '@/components/EnrollmentModal';
 import { PushProvider } from '@/context/PushContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { InstallHintProvider } from '@/components/InstallHint';
@@ -65,6 +66,7 @@ export default function App() {
             <ExerciseProvider>
               <PushProvider>
                 <AppLayout />
+                <EnrollmentModal />
               </PushProvider>
             </ExerciseProvider>
           </ProtectedRoute>

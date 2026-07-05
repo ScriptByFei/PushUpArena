@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useExercise } from '@/context/ExerciseContext';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -51,8 +52,11 @@ function restHearts(n: number): string {
 }
 
 export default function Leaderboard() {
-  const { exercise, loading: exLoading } = useExercise();
-  const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(exercise?.id);
+  const { exercise: activeExercise, enrolledExercises, loading: exLoading } = useExercise();
+  const [leaderExercise, setLeaderExercise] = useState<typeof activeExercise>(null);
+  // Track which exercise is shown in leaderboard (defaults to active)
+  const shownExercise = leaderExercise ?? activeExercise;
+  const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(shownExercise?.id);
 
   if (exLoading || loading) return <LoadingState label="Lade Rangliste …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -62,6 +66,27 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-4">
+
+      {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
+      {enrolledExercises.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {enrolledExercises.map((ex) => {
+            const isActive = ex.id === (shownExercise?.id);
+            return (
+              <button
+                key={ex.id}
+                onClick={() => setLeaderExercise(ex)}
+                className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
+                }`}
+              >
+                <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-5 w-5 rounded-md object-cover" />
+                {ex.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Tab-Leiste */}
       <div className="grid grid-cols-3 gap-2">
