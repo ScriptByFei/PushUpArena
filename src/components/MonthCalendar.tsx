@@ -3,6 +3,7 @@ import type { DayData } from '@/hooks/useProfileStats';
 
 interface Props {
   data: DayData[];
+  restDays?: Set<string>;
   selectedYear: number;
   selectedMonth: number;
   canGoPrev: boolean;
@@ -50,7 +51,7 @@ function ChevronRight() {
   );
 }
 
-export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, canGoNext, onPrev, onNext }: Props) {
+export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, canGoPrev, canGoNext, onPrev, onNext }: Props) {
   const [selected, setSelected] = useState<DayData | null>(null);
 
   const byDate = new Map(data.map((d) => [d.date, d]));
@@ -106,6 +107,7 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
           const entry = byDate.get(dateStr);
           const amount = entry?.amount ?? 0;
           const level = intensity(amount);
+          const isRestDay = amount === 0 && (restDays?.has(dateStr) ?? false);
           const isToday = dateStr === todayStr;
           const isSelected = selected?.date === dateStr;
 
@@ -115,7 +117,7 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
               onClick={() => setSelected(isSelected ? null : (entry ?? { date: dateStr, amount: 0, sessions: 0 }))}
               className={`
                 relative flex aspect-square flex-col items-start justify-between rounded-lg p-1 transition-all
-                ${CELL_BG[level]}
+                ${isRestDay ? 'bg-sky-900/60' : CELL_BG[level]}
                 ${isToday ? 'ring-2 ring-brand-400 ring-offset-1 ring-offset-ink-900' : ''}
                 ${isSelected ? 'scale-110 shadow-lg shadow-brand-900/50' : 'hover:scale-105'}
               `}
@@ -124,10 +126,14 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
               <span className={`text-[13px] font-semibold leading-none ${isToday ? 'text-brand-300' : level === 0 ? 'text-slate-600' : 'text-white/60'}`}>
                 {day}
               </span>
-              {/* Liegestützen – unten rechts, nur wenn > 0 */}
-              <span className={`self-end text-[10px] font-extrabold leading-none ${amount > 0 ? REP_COLOR[level] : 'text-transparent select-none'}`}>
-                {amount > 0 ? amount : '0'}
-              </span>
+              {/* Ruhetag-Icon oder Liegestützen-Zahl */}
+              {isRestDay ? (
+                <span className="self-end text-[12px] leading-none">😴</span>
+              ) : (
+                <span className={`self-end text-[10px] font-extrabold leading-none ${amount > 0 ? REP_COLOR[level] : 'text-transparent select-none'}`}>
+                  {amount > 0 ? amount : '0'}
+                </span>
+              )}
             </button>
           );
         })}
@@ -150,7 +156,9 @@ export function MonthCalendar({ data, selectedYear, selectedMonth, canGoPrev, ca
               weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
             })}
           </p>
-          {selected.amount === 0 ? (
+          {selected.amount === 0 && (restDays?.has(selected.date) ?? false) ? (
+            <span className="text-xs text-sky-400">😴 Eingetragener Ruhetag</span>
+          ) : selected.amount === 0 ? (
             <span className="text-xs text-slate-500">Kein Training</span>
           ) : (
             <span className="text-sm font-bold text-brand-300">

@@ -6,11 +6,14 @@ import { LoadingState, ErrorState } from '@/components/ui/States';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { useGoals } from '@/hooks/useGoals';
+import { useRestDays } from '@/hooks/useRestDays';
 
 export default function Activity() {
   const { exercise } = useExercise();
   const { stats, loading, error } = useProfileStats(exercise?.id);
   const { goal } = useGoals(exercise?.id);
+  const { restDays } = useRestDays(exercise?.id);
+  const restDaySet = new Set(restDays.map((r) => r.rest_date));
 
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -49,6 +52,7 @@ export default function Activity() {
         <CardTitle>Aktivitätskalender</CardTitle>
         <MonthCalendar
           data={stats.dailyData}
+          restDays={restDaySet}
           selectedYear={calYear}
           selectedMonth={calMonth}
           canGoPrev={canGoPrev}
