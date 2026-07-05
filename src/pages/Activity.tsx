@@ -9,6 +9,7 @@ import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { useGoals } from '@/hooks/useGoals';
 import { useRestDays } from '@/hooks/useRestDays';
 import { PeriodSummaryCard } from '@/components/PeriodSummaryCard';
+import { WorkoutHistory } from '@/components/WorkoutHistory';
 
 export default function Activity() {
   const { exercise: activeExercise, enrolledExercises } = useExercise();
@@ -90,6 +91,9 @@ export default function Activity() {
           exerciseId={exercise?.id}
         />
       </Card>
+
+      {/* Verlauf mit Bearbeitungsmöglichkeit */}
+      <WorkoutHistory exerciseId={exercise?.id} unit={exercise?.unit === 'reps' ? 'Wdh.' : exercise?.unit ?? ''} />
     </div>
   );
 }
