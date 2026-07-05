@@ -8,7 +8,7 @@ import { FABSheet } from '@/components/FABSheet';
 function GlobalStatsFab({ badge }: { badge?: number | boolean }) {
   return (
     <NavLink to="/global-stats" aria-label="Globale Statistik" className="relative mb-[1px] flex items-center justify-center transition active:scale-95">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Globus (Hintergrund) */}
         <g opacity="0.65" stroke="white" fill="none">
           <circle cx="12" cy="11" r="9" strokeWidth="1.2"/>
