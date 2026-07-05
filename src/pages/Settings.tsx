@@ -21,7 +21,7 @@ const DELETE_PHRASE = 'LÖSCHEN';
 
 export default function Settings() {
   const { user, signOut, updatePassword } = useAuth();
-  const { exercise } = useExercise();
+  const { exercise, enrolledExercises } = useExercise();
   const { loading: profileLoading } = useProfile();
   const { goal, loading: goalLoading, saveGoals } = useGoals(exercise?.id);
   const toast = useToast();
@@ -41,6 +41,36 @@ export default function Settings() {
 const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Load per-exercise push enabled state
+  useEffect(() => {
+    if (!user || enrolledExercises.length === 0) return;
+    void (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
+        .from('exercise_enrollments')
+        .select('exercise_id, push_enabled')
+        .eq('user_id', user.id);
+      const map: Record<string, boolean> = {};
+      for (const row of data ?? []) {
+        map[row.exercise_id] = row.push_enabled ?? true;
+      }
+      setExPushEnabled(map);
+    })();
+  }, [user, enrolledExercises.length]);
+
+  async function toggleExPush(exerciseId: string) {
+    const newVal = !(exPushEnabled[exerciseId] ?? true);
+    setExPushEnabled((prev) => ({ ...prev, [exerciseId]: newVal }));
+    setExPushSaving(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from('exercise_enrollments')
+      .update({ push_enabled: newVal })
+      .eq('user_id', user?.id)
+      .eq('exercise_id', exerciseId);
+    setExPushSaving(false);
+  }
 
   const pushSupported = typeof Notification !== 'undefined';
   const { pushPermission, busy: pushBusy, togglePush } = usePush();
@@ -352,6 +382,38 @@ const [deleteOpen, setDeleteOpen] = useState(false);
               </div>
             </div>
           </div>
+
+          {/* Per-Exercise Push */}
+          {enrolledExercises.length > 1 && (
+            <div className="mt-3 border-t border-ink-700 pt-3">
+              <p className="text-sm font-medium text-slate-200">Benachrichtigungen pro Übung</p>
+              <p className="mt-0.5 text-xs text-slate-400">Streak-Retter und Ziel-Erinnerungen pro Übung ein- oder ausschalten.</p>
+              <div className="mt-2 space-y-0 divide-y divide-ink-700">
+                {enrolledExercises.map((ex) => (
+                  <div key={ex.id} className="flex items-center justify-between py-3">
+                    <p className="text-sm font-medium text-slate-200">{ex.name}</p>
+                    <button
+                      type="button"
+                      disabled={exPushSaving}
+                      onClick={() => void toggleExPush(ex.id)}
+                      className={[
+                        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
+                        (exPushEnabled[ex.id] ?? true) ? 'bg-brand-500' : 'bg-ink-600',
+                        exPushSaving ? 'opacity-50' : '',
+                      ].join(' ')}
+                      aria-label={ex.name}
+                    >
+                      <span className={[
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
+                        (exPushEnabled[ex.id] ?? true) ? 'translate-x-5' : 'translate-x-0',
+                      ].join(' ')} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
