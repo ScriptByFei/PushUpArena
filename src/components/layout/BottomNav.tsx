@@ -62,7 +62,7 @@ export function BottomNav() {
           {({ isActive }) => (
             <span
               className={`flex flex-col items-center justify-center transition active:scale-95 ${
-                isActive ? 'opacity-100' : 'opacity-50'
+                isActive ? 'scale-110 opacity-100' : 'opacity-80'
               }`}
             >
               <span className="text-[16px] leading-none">🥇🥈</span>
