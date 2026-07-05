@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { Card, CardTitle } from '@/components/ui/Card';
 import type { Exercise } from '@/lib/database.types';
 
 // ─── Helpers ────────────────────────────────────────────────────────
