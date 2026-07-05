@@ -180,7 +180,7 @@ export default function Profile() {
               <StatCell label="Gesamt" value={stats.totalAmount} />
               <StatCell label="Ø pro Trainingstag" value={stats.avgPerActiveDay} />
               <StatCell label="Akt. Streak" value={`${stats.currentStreak}🔥`} accent="text-amber-300" />
-              <StatCell label="Längste Streak" value={`${stats.longestStreak}🔥`} accent="text-amber-400" />
+              <StatCell label="Längste Streak" value={`${stats.longestStreak}👑`} accent="text-amber-400" />
               <StatCell
                 label="Bester Tag"
                 value={stats.bestDay ? stats.bestDay.amount : '–'}
