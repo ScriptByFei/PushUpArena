@@ -65,8 +65,8 @@ export function BottomNav() {
                 isActive ? 'bg-brand-600' : 'bg-ink-800'
               }`}
             >
-              <span className="text-[9px] leading-none">🥇🥈</span>
-              <span className="text-[9px] leading-none">🥉</span>
+              <span className="text-[12px] leading-none">🥇🥈</span>
+              <span className="text-[12px] leading-none">🥉</span>
             </span>
           )}
         </NavLink>
