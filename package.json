@@ -6,7 +6,7 @@
   "description": "Gamifizierte Fitness-PWA zum Tracken von Liegestützen (erweiterbar auf weitere Übungen).",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/gen-version.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
