@@ -8,13 +8,12 @@ import type { Exercise } from '@/lib/database.types';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Textarea } from '@/components/ui/Input';
+import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { LogoutIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
 
-const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
 // ─── StatCell ───────────────────────────────────────────────────────
 interface StatCellProps {
@@ -43,15 +42,13 @@ export default function Profile() {
   const toast = useToast();
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
+  const [form, setForm] = useState({ display_name: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setForm({
-        username: profile.username,
         display_name: profile.display_name ?? '',
-        bio: profile.bio ?? '',
       });
     }
   }, [profile]);
@@ -60,15 +57,9 @@ export default function Profile() {
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
-    if (!USERNAME_RE.test(form.username)) {
-      toast.error('Username: 3–20 Zeichen, nur Buchstaben, Zahlen und _.');
-      return;
-    }
     setSaving(true);
     const { error } = await updateProfile({
-      username: form.username,
       display_name: form.display_name.trim() || null,
-      bio: form.bio.trim() || null,
     });
     setSaving(false);
     if (error) toast.error(error);
@@ -136,7 +127,6 @@ export default function Profile() {
             </Button>
           )}
         </div>
-        {profile.bio && !editing && <p className="mt-3 text-sm text-slate-300">{profile.bio}</p>}
         <p className="mt-3 text-xs text-slate-500">Dabei seit {formatDate(profile.created_at)}</p>
       </Card>
 
@@ -145,17 +135,9 @@ export default function Profile() {
         <Card>
           <CardTitle>Profil bearbeiten</CardTitle>
           <form onSubmit={onSave} className="mt-3 space-y-3">
-            <Field label="Username" htmlFor="username" hint="3–20 Zeichen: a–z, 0–9, _">
-              <Input id="username" value={form.username} autoCapitalize="none"
-                onChange={(e) => setForm({ ...form, username: e.target.value })} />
-            </Field>
-            <Field label="Anzeigename" htmlFor="display_name">
+            <Field label="Name" htmlFor="display_name">
               <Input id="display_name" maxLength={50} value={form.display_name}
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
-            </Field>
-            <Field label="Bio (optional)" htmlFor="bio">
-              <Textarea id="bio" rows={3} maxLength={280} value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })} />
             </Field>
             <div className="flex gap-2">
               <Button type="button" variant="secondary" fullWidth onClick={() => setEditing(false)}>Abbrechen</Button>
