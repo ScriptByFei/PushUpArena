@@ -179,7 +179,8 @@ const [deleteOpen, setDeleteOpen] = useState(false);
           <div className="mt-3 flex flex-col gap-2">
             {[...enrolledExercises, ...declinedExercises].map((ex) => {
               const isEnrolled = enrolledExercises.some((e) => e.id === ex.id);
-              const canLeave = isEnrolled && enrolledExercises.length > 1 && ex.slug !== 'pushups';
+              const isMandatory = ex.slug === 'pushups';
+              const canLeave = isEnrolled && enrolledExercises.length > 1 && !isMandatory;
               return (
                 <div
                   key={ex.id}
@@ -196,7 +197,11 @@ const [deleteOpen, setDeleteOpen] = useState(false);
                       {isEnrolled ? 'Aktiv' : 'Nicht dabei'}
                     </p>
                   </div>
-                  {isEnrolled ? (
+                  {isMandatory ? (
+                    <span className="shrink-0 rounded-xl bg-ink-700 px-3 py-1.5 text-xs font-semibold text-slate-500">
+                      Standard
+                    </span>
+                  ) : isEnrolled ? (
                     <button
                       disabled={!canLeave || enrollingId !== null}
                       onClick={async () => {
