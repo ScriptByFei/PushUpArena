@@ -107,24 +107,24 @@ export default function Profile() {
             </h2>
             <p className="text-sm text-slate-400">@{profile.username}</p>
           </div>
-          {!editing && (
-            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-              Bearbeiten
-            </Button>
-          )}
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
+            title="Abmelden"
+          >
+            <LogoutIcon className="h-5 w-5" />
+          </button>
         </div>
         <div className="mt-3 flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
           </div>
-          <button
-            onClick={() => setConfirmLogout(true)}
-            className="ml-3 shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
-            title="Abmelden"
-          >
-            <LogoutIcon className="h-5 w-5" />
-          </button>
+          {!editing && (
+            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+              Bearbeiten
+            </Button>
+          )}
         </div>
       </Card>
 
