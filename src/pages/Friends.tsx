@@ -321,7 +321,12 @@ export default function Friends() {
                 onClick={() => setDiscoverOpen((o) => !o)}
                 aria-expanded={discoverOpen}
               >
-                <CardTitle>Nutzer entdecken</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle>Nutzer entdecken</CardTitle>
+                  <span className="rounded-full bg-ink-700 px-2.5 py-0.5 text-xs font-bold text-slate-400">
+                    {allUsers.filter((p) => !friendIds.has(p.id)).length}
+                  </span>
+                </div>
                 <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${discoverOpen ? 'rotate-180' : ''}`}>
                   ▾
                 </span>
