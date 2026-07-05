@@ -28,7 +28,7 @@ export function useWorkouts(exerciseId?: string) {
     if (err) setError(err.message);
     else setEntries(data ?? []);
     setLoading(false);
-  }, [user, exerciseId, limit]);
+  }, [user, exerciseId]);
 
   useEffect(() => {
     void load();
