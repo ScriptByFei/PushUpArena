@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ComponentType, SVGProps } from 'react';
-import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon } from '@/components/ui/icons';
+import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, CalendarIcon } from '@/components/ui/icons';
 
 interface NavItem {
   to: string;
@@ -12,6 +12,7 @@ const items: NavItem[] = [
   { to: '/', label: 'Start', Icon: HomeIcon },
   { to: '/friends', label: 'Freunde', Icon: UsersIcon },
   { to: '/leaderboard', label: 'Rangliste', Icon: TrophyIcon },
+  { to: '/activity', label: 'Aktivität', Icon: CalendarIcon },
   { to: '/profile', label: 'Profil', Icon: UserIcon },
 ];
 
@@ -71,7 +72,7 @@ export function BottomNav() {
       </div>
 
       {/* 4 Nav-Items gleichmäßig verteilt */}
-      <div className="mx-auto grid max-w-md grid-cols-4 items-center px-2">
+      <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2">
         {items.map((item) => (
           <SideItem key={item.to} {...item} />
         ))}

@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import type { Exercise } from '@/lib/database.types';
 import { usePodiumHistory } from '@/hooks/usePodiumHistory';
 import { Avatar } from '@/components/ui/Avatar';
-import { Button } from '@/components/ui/Button';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 
 const MEDALS = ['🥇', '🥈', '🥉'] as const;
@@ -47,11 +45,6 @@ export default function Achievements() {
           icon="🏆"
           title="Noch keine Medaillen"
           description="Medaillen werden täglich um Mitternacht vergeben — wenn mindestens 3 User trainiert haben. Die Zählung startete ab dem 6. Juli 2026."
-          action={
-            <Link to="/friends">
-              <Button size="sm">Freunde hinzufügen</Button>
-            </Link>
-          }
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-800/70">
