@@ -349,9 +349,10 @@ export default function Track() {
                       onClick={() => toggleDay(dateStr)}
                       className="flex w-full items-center gap-2 py-3 text-left"
                     >
-                      <span className="flex-1 text-sm font-semibold text-slate-200">{formatDayLabel(dateStr)}</span>
-                      {hasRest && <span className="text-base">😴</span>}
-                      <span className="w-20 text-right text-sm font-bold text-brand-300">
+                      <span className="w-32 shrink-0 truncate text-sm font-semibold text-slate-200">{formatDayLabel(dateStr)}</span>
+                      <span className="flex-1" />
+                      <span className="w-5 shrink-0 text-center text-base">{hasRest ? '😴' : ''}</span>
+                      <span className="w-20 shrink-0 text-right text-sm font-bold text-brand-300">
                         {dayTotal > 0 ? `${dayTotal} ${unit}` : ''}
                       </span>
                       <svg viewBox="0 0 20 20" fill="currentColor"
