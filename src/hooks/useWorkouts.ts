@@ -9,7 +9,7 @@ interface NewEntry {
   performed_at?: string;
 }
 
-export function useWorkouts(exerciseId?: string, limit = 100) {
+export function useWorkouts(exerciseId?: string) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<WorkoutEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,8 +24,7 @@ export function useWorkouts(exerciseId?: string, limit = 100) {
       .select('*')
       .eq('user_id', user.id)
       .eq('exercise_id', exerciseId)
-      .order('performed_at', { ascending: false })
-      .limit(limit);
+      .order('performed_at', { ascending: false });
     if (err) setError(err.message);
     else setEntries(data ?? []);
     setLoading(false);
