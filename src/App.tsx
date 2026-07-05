@@ -52,6 +52,7 @@ import Achievements from '@/pages/Achievements';
 import Leaderboard from '@/pages/Leaderboard';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
+import GlobalStats from '@/pages/GlobalStats';
 import Privacy from '@/pages/Privacy';
 import Imprint from '@/pages/Imprint';
 import NotFound from '@/pages/NotFound';
@@ -114,6 +115,7 @@ export default function App() {
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="global-stats" element={<GlobalStats />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
