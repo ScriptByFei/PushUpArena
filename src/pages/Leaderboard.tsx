@@ -111,14 +111,17 @@ function TodaySetsSheet({ row, exerciseId, onClose }: TodaySetsSheetProps) {
         ) : !sets || sets.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">Keine Einträge heute</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${Math.min(sets.length, 5)}, 1fr)` }}
+          >
             {sets.map((amount, i) => (
               <div
                 key={i}
-                className="flex flex-col items-center rounded-xl bg-ink-800 px-4 py-2 text-center"
+                className="flex flex-col items-center rounded-xl bg-ink-800 px-2 py-2 text-center"
               >
-                <span className="text-[11px] text-slate-500">Satz {i + 1}</span>
-                <span className="text-lg font-extrabold text-brand-300">{amount}</span>
+                <span className="text-[10px] text-slate-500">Satz {i + 1}</span>
+                <span className="text-base font-extrabold text-brand-300">{amount}</span>
               </div>
             ))}
           </div>
