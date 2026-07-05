@@ -481,7 +481,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
           <div className="mt-3 flex flex-col gap-2">
             {[...enrolledExercises, ...declinedExercises].map((ex) => {
               const isEnrolled = enrolledExercises.some((e) => e.id === ex.id);
-              const canLeave = isEnrolled && enrolledExercises.length > 1;
+              const canLeave = isEnrolled && enrolledExercises.length > 1 && ex.slug !== 'pushups';
               return (
                 <div
                   key={ex.id}
