@@ -76,8 +76,8 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       if (row.status === 'declined') declined.add(row.exercise_id);
     }
 
-    // Neue User: automatisch in Pushups einschreiben wenn noch kein Enrollment existiert
-    if (responded.size === 0 && exData && exData.length > 0) {
+    // Safety net: Pushups immer enrolled halten — falls kein einziges Enrollment aktiv ist
+    if (enrolled.size === 0 && exData && exData.length > 0) {
       const pushups = exData.find((e) => e.slug === 'pushups');
       if (pushups) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

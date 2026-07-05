@@ -16,6 +16,8 @@ export function EnrollmentModal() {
   const ex: Exercise | undefined = unenrolledExercises[idx];
   if (!ex) return null;
 
+  const isMandatory = ex.slug === 'pushups';
+
   async function respond(status: 'enrolled' | 'declined') {
     if (busy) return;
     setBusy(true);
@@ -43,8 +45,13 @@ export function EnrollmentModal() {
             Bei {ex.name} mitmachen?
           </h2>
           <p className="mt-2 text-sm text-slate-400 max-w-xs">
-            Tracke deine {ex.name}, sieh dich in der Rangliste und halte deine Streak aufrecht. Du kannst jederzeit in den Einstellungen austragen.
+            Tracke deine {ex.name}, sieh dich in der Rangliste und halte deine Streak aufrecht.{!isMandatory && ' Du kannst jederzeit in den Einstellungen austragen.'}
           </p>
+          {isMandatory && (
+            <p className="mt-1 text-xs text-brand-400 max-w-xs">
+              Pflichtübung — immer dabei.
+            </p>
+          )}
         </div>
 
         <div className="mt-6 flex flex-col gap-3">
@@ -56,13 +63,15 @@ export function EnrollmentModal() {
           >
             Mitmachen 💪
           </Button>
-          <button
-            onClick={() => void respond('declined')}
-            disabled={busy}
-            className="w-full rounded-xl py-3 text-sm text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            Nein danke
-          </button>
+          {!isMandatory && (
+            <button
+              onClick={() => void respond('declined')}
+              disabled={busy}
+              className="w-full rounded-xl py-3 text-sm text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Nein danke
+            </button>
+          )}
         </div>
       </div>
     </div>
