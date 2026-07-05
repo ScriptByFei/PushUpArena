@@ -13,9 +13,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 'autoUpdate': neue Versionen werden im Hintergrund installiert und beim Erkennen
-      // automatisch aktiviert + neu geladen (kein Banner, kein Tippen).
-      registerType: 'prompt',
+      // 'autoUpdate': neue Versionen werden im Hintergrund installiert und sofort
+      // aktiviert + Seite automatisch neu geladen (kein Banner, kein Tippen nötig).
+      registerType: 'autoUpdate',
       includeAssets: [
         'favicon.svg',
         'offline.html',
@@ -50,12 +50,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Nur Assets cachen – index.html NIEMALS precachen oder abfangen.
-        // Navigation geht immer direkt ans Netzwerk → garantiert frische App-Version.
-        cacheId: 'pushup-arena-v4',
+        cacheId: 'pushup-arena-v5',
         globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
-        // Keine navigateFallback, kein runtimeCaching für Navigation.
-        // Offline-Nutzung: Supabase-Anfragen scheitern ohnehin; UI-Assets sind gecacht.
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [],
       },
       devOptions: {
