@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { ComponentType, SVGProps } from 'react';
 import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, CalendarIcon } from '@/components/ui/icons';
+import { FABSheet } from '@/components/FABSheet';
 
 interface NavItem {
   to: string;
@@ -37,6 +39,8 @@ function SideItem({ to, label, Icon }: NavItem) {
 }
 
 export function BottomNav() {
+  const [showSheet, setShowSheet] = useState(false);
+
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
@@ -45,17 +49,13 @@ export function BottomNav() {
       {/* FAB + Erfolge-Trophy — zusammen zentriert, über der Nav-Leiste */}
       <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full flex items-end gap-2 pb-1">
         {/* FAB */}
-        <NavLink to="/track" aria-label="Eintragen">
-          {({ isActive }) => (
-            <span
-              className={`flex h-11 w-11 items-center justify-center rounded-full text-white shadow-glow ring-2 ring-ink-900 transition active:scale-95 ${
-                isActive ? 'bg-brand-500' : 'bg-gradient-to-br from-brand-400 to-brand-600'
-              }`}
-            >
-              <PlusIcon className="h-5 w-5" />
-            </span>
-          )}
-        </NavLink>
+        <button
+          aria-label="Eintragen"
+          onClick={() => setShowSheet(true)}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-glow ring-2 ring-ink-900 transition active:scale-95"
+        >
+          <PlusIcon className="h-5 w-5" />
+        </button>
 
         {/* Erfolge-Trophy */}
         <NavLink to="/achievements" aria-label="Erfolge">
@@ -76,6 +76,9 @@ export function BottomNav() {
           <SideItem key={item.to} {...item} />
         ))}
       </div>
+
+      {/* Trainings-Auswahl Bottom Sheet */}
+      {showSheet && <FABSheet onClose={() => setShowSheet(false)} />}
     </nav>
   );
 }
