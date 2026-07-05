@@ -1,4 +1,5 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
@@ -14,11 +15,35 @@ const titles: Record<string, string> = {
   '/settings': 'Einstellungen',
 };
 
+// Nach 5 Minuten im Hintergrund → beim Öffnen zurück zum Dashboard
+const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
+
 export function AppLayout() {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? 'PushupArena';
   const { pushPermission, busy, togglePush } = usePush();
   const pushActive = pushPermission === 'granted';
+  const navigate = useNavigate();
+  const hiddenAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAtRef.current = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        if (
+          hiddenAtRef.current !== null &&
+          Date.now() - hiddenAtRef.current > BACKGROUND_THRESHOLD_MS
+        ) {
+          navigate('/');
+        }
+        hiddenAtRef.current = null;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [navigate]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
