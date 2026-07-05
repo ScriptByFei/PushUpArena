@@ -61,16 +61,20 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
   const { user } = useAuth();
   const detailRef = useRef<HTMLDivElement>(null);
 
-  // Nach Auswahl: scrollen sobald der Detail-Block im DOM ist
+  // Nach Auswahl: scrollen so dass Detail-Block über der fixen Bottom Nav liegt
   useEffect(() => {
     if (!selected) return;
-    // Zwei rAF-Frames warten → DOM ist gemalt, Höhe korrekt
-    const r1 = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      });
-    });
-    return () => cancelAnimationFrame(r1);
+    const id = setTimeout(() => {
+      if (!detailRef.current) return;
+      const rect = detailRef.current.getBoundingClientRect();
+      const bottomNavHeight = 90; // Höhe Bottom Nav inkl. Safe Area
+      const padding = 16;
+      const hiddenBy = rect.bottom - (window.innerHeight - bottomNavHeight - padding);
+      if (hiddenBy > 0) {
+        window.scrollBy({ top: hiddenBy, behavior: 'smooth' });
+      }
+    }, 150);
+    return () => clearTimeout(id);
   }, [selected]);
 
   // Beim Wechsel des ausgewählten Tages: Sätze laden
