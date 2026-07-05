@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useFriends, type FriendProfile } from '@/hooks/useFriends';
 import { useToast } from '@/context/ToastContext';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -43,6 +45,12 @@ export default function Friends() {
     removeFriend,
   } = useFriends();
   const toast = useToast();
+  const { exercise } = useExercise();
+  const { rows: leaderRows } = useLeaderboard(exercise?.id);
+  // Aktive Pushers = alle aus dem Leaderboard mit today_amount > 0 (sortiert nach heutiger Menge)
+  const activePushers = [...leaderRows]
+    .filter((r) => r.today_amount > 0)
+    .sort((a, b) => b.today_amount - a.today_amount);
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
@@ -215,6 +223,57 @@ export default function Friends() {
                   ))}
                 </ul>
               )
+            )}
+          </Card>
+
+          {/* Aktive Pushers heute */}
+          <Card>
+            <div className="flex items-center justify-between">
+              <CardTitle>
+                Aktive Pushers heute
+              </CardTitle>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                activePushers.length > 0
+                  ? 'bg-brand-600/30 text-brand-300'
+                  : 'bg-ink-700 text-slate-500'
+              }`}>
+                {activePushers.length > 0 ? `🔥 ${activePushers.length}` : '0'}
+              </span>
+            </div>
+            {activePushers.length === 0 ? (
+              <p className="mt-3 text-center text-sm text-slate-500">
+                Noch niemand aktiv — sei der Erste! 💪
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y divide-ink-700">
+                {activePushers.map((p) => (
+                  <li key={p.user_id} className="flex items-center gap-3 py-3">
+                    <Avatar
+                      url={p.avatar_url}
+                      name={p.display_name || p.username}
+                      size={40}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-200">
+                        {p.display_name || p.username}
+                        {p.is_me && (
+                          <span className="ml-1 text-xs text-brand-300">(du)</span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <img
+                        src={exercise ? (EXERCISE_ICONS[exercise.slug] ?? '/pushup-icon.png') : '/pushup-icon.png'}
+                        alt=""
+                        className="h-5 w-5 rounded object-cover opacity-70"
+                      />
+                      <span className="text-base font-extrabold text-brand-300">
+                        {p.today_amount}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 
