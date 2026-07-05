@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon } from '@/components/ui/icons';
+import { SettingsIcon, BellIcon } from '@/components/ui/icons';
+import { usePush } from '@/context/PushContext';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -16,14 +17,23 @@ const titles: Record<string, string> = {
 export function AppLayout() {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? 'PushupArena';
+  const { pushPermission, busy, togglePush } = usePush();
+  const pushActive = pushPermission === 'granted';
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Logo links */}
-        <Link to="/" aria-label="Start" className="shrink-0">
-          <img src="/logo.png" alt="" className="h-12 w-12 object-contain" />
-        </Link>
+        {/* Glocke links — Benachrichtigungen an/aus */}
+        <button
+          onClick={togglePush}
+          disabled={busy}
+          aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
+          className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${
+            pushActive ? 'text-brand-400' : 'text-slate-500'
+          }`}
+        >
+          <BellIcon className="h-5 w-5" />
+        </button>
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
           {title}
