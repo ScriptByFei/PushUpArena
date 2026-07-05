@@ -342,7 +342,7 @@ export default function Track() {
                       className="flex w-full items-center gap-2 py-3 text-left"
                     >
                       <span className="flex w-36 shrink-0 items-center">
-                        <span className="w-9 shrink-0 pr-1.5 text-right text-sm font-semibold text-slate-400">
+                        <span className="w-9 shrink-0 text-sm font-semibold text-slate-400">
                           {(dateStr !== berlinToday() && dateStr !== berlinYesterday())
                             ? new Date(dateStr + 'T00:00:00').toLocaleDateString('de-DE', { weekday: 'short' }) + '.'
                             : ''}
