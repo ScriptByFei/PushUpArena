@@ -104,7 +104,7 @@ export default function Leaderboard() {
         ))}
       </div>
 
-      {rows.length <= 1 ? (
+      {rows.length === 0 ? (
         <EmptyState
           icon="🏆"
           title="Noch niemand in der Rangliste"
