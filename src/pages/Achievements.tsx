@@ -41,6 +41,7 @@ export default function Achievements() {
   const exercise = localExercise ?? activeExercise;
 
   const { rows, loading, error, refetch } = usePodiumHistory(exercise?.id);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   if (exLoading || loading) return <LoadingState label="Lade Erfolge …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -75,39 +76,54 @@ export default function Achievements() {
         </div>
       )}
 
-      {/* Info zu Schwellenwerten */}
+      {/* Info zu Schwellenwerten — auf/zuklappbar */}
       {hasThresholds && thresholds && (
         <div className="rounded-2xl border border-ink-700 bg-ink-900/80 overflow-hidden">
-          <div className="px-4 py-3 border-b border-ink-700">
+          <button
+            onClick={() => setRulesOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+          >
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">So verdienst du Medaillen</p>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-ink-700">
-            {[
-              { medal: '🥇', label: 'Gold',   value: thresholds.gold,   color: 'text-amber-300' },
-              { medal: '🥈', label: 'Silber', value: thresholds.silver, color: 'text-slate-300' },
-              { medal: '🥉', label: 'Bronze', value: thresholds.bronze, color: 'text-orange-400' },
-            ].map(({ medal, label, value, color }) => (
-              <div key={label} className="flex flex-col items-center py-4 gap-1">
-                <span className="text-2xl leading-none">{medal}</span>
-                <span className={`text-xl font-extrabold ${color}`}>{value}</span>
-                <span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span>
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`h-4 w-4 text-slate-500 transition-transform ${rulesOpen ? 'rotate-180' : ''}`}
+            >
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
+          </button>
+
+          {rulesOpen && (
+            <>
+              <div className="grid grid-cols-3 divide-x divide-ink-700 border-t border-ink-700">
+                {[
+                  { medal: '🥇', label: 'Gold',   value: thresholds.gold,   color: 'text-amber-300' },
+                  { medal: '🥈', label: 'Silber', value: thresholds.silver, color: 'text-slate-300' },
+                  { medal: '🥉', label: 'Bronze', value: thresholds.bronze, color: 'text-orange-400' },
+                ].map(({ medal, label, value, color }) => (
+                  <div key={label} className="flex flex-col items-center py-4 gap-1">
+                    <span className="text-2xl leading-none">{medal}</span>
+                    <span className={`text-xl font-extrabold ${color}`}>{value}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="divide-y divide-ink-700 border-t border-ink-700 bg-ink-800/40">
-            <div className="flex items-start gap-3 px-4 py-2.5">
-              <span className="text-base leading-none mt-0.5">🥇</span>
-              <p className="text-xs text-slate-400">Volle Medaille: mind. 3 User aktiv + Podest + Schwelle erreicht</p>
-            </div>
-            <div className="flex items-start gap-3 px-4 py-2.5">
-              <span className="text-base leading-none mt-0.5">🪙</span>
-              <p className="text-xs text-slate-400">Halbe Münze: Schwelle erreicht — egal ob auf Podest oder nicht, egal wie viele aktiv waren</p>
-            </div>
-            <div className="flex items-start gap-3 px-4 py-2.5">
-              <span className="text-base leading-none mt-0.5">✨</span>
-              <p className="text-xs text-slate-400">2 halbe Münzen gleicher Farbe → automatisch eine volle Medaille</p>
-            </div>
-          </div>
+              <div className="divide-y divide-ink-700 border-t border-ink-700 bg-ink-800/40">
+                <div className="flex items-start gap-3 px-4 py-2.5">
+                  <span className="text-base leading-none mt-0.5">🥇</span>
+                  <p className="text-xs text-slate-400">Volle Medaille: mind. 3 User aktiv + Podest + Schwelle erreicht</p>
+                </div>
+                <div className="flex items-start gap-3 px-4 py-2.5">
+                  <span className="text-base leading-none mt-0.5">🪙</span>
+                  <p className="text-xs text-slate-400">Halbe Münze: Schwelle erreicht — egal ob auf Podest oder nicht, egal wie viele aktiv waren</p>
+                </div>
+                <div className="flex items-start gap-3 px-4 py-2.5">
+                  <span className="text-base leading-none mt-0.5">✨</span>
+                  <p className="text-xs text-slate-400">2 halbe Münzen gleicher Farbe → automatisch eine volle Medaille</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
