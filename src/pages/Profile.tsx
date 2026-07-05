@@ -78,19 +78,19 @@ export default function Profile() {
   return (
     <div className="space-y-4">
       {/* Konto */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>Konto</CardTitle>
-          <button
-            onClick={async () => { await signOut(); navigate('/login', { replace: true }); }}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
-            title="Abmelden"
-          >
-            <LogoutIcon className="h-5 w-5" />
-          </button>
+      <div className="flex items-center justify-between rounded-2xl border border-ink-700 bg-ink-800/70 px-4 py-2.5">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-300">Konto</p>
+          <p className="truncate text-xs text-slate-500">{user?.email}</p>
         </div>
-        <p className="mt-2 text-xs text-slate-500">Angemeldet als {user?.email}</p>
-      </Card>
+        <button
+          onClick={async () => { await signOut(); navigate('/login', { replace: true }); }}
+          className="ml-3 shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
+          title="Abmelden"
+        >
+          <LogoutIcon className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* Profil-Header */}
       <Card>
