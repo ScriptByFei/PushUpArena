@@ -9,6 +9,9 @@ export interface PodiumRow {
   gold_count: number;
   silver_count: number;
   bronze_count: number;
+  half_gold: number;
+  half_silver: number;
+  half_bronze: number;
   is_me: boolean;
 }
 

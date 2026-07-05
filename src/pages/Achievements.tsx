@@ -5,7 +5,35 @@ import { usePodiumHistory } from '@/hooks/usePodiumHistory';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 
-const MEDALS = ['🥇', '🥈', '🥉'] as const;
+// Halbmünze als kleines SVG-Badge
+function HalfCoin({ color }: { color: 'gold' | 'silver' | 'bronze' }) {
+  const fill: Record<string, string> = {
+    gold:   '#fbbf24',
+    silver: '#94a3b8',
+    bronze: '#c2773a',
+  };
+  return (
+    <svg viewBox="0 0 20 20" className="inline h-4 w-4" aria-label="halbe Münze">
+      {/* rechte Hälfte ausgefüllt, linke leer */}
+      <circle cx="10" cy="10" r="9" fill="none" stroke={fill[color]} strokeWidth="1.5" />
+      <path d="M10 1 A9 9 0 0 1 10 19 Z" fill={fill[color]} />
+      <text x="10" y="14" textAnchor="middle" fontSize="8" fill="white" fontWeight="bold">½</text>
+    </svg>
+  );
+}
+
+function HalfCoins({
+  half_gold, half_silver, half_bronze,
+}: { half_gold: number; half_silver: number; half_bronze: number }) {
+  if (!half_gold && !half_silver && !half_bronze) return null;
+  return (
+    <div className="flex items-center gap-1 mt-0.5">
+      {half_gold   > 0 && <HalfCoin color="gold"   />}
+      {half_silver > 0 && <HalfCoin color="silver" />}
+      {half_bronze > 0 && <HalfCoin color="bronze" />}
+    </div>
+  );
+}
 
 export default function Achievements() {
   const { exercise: activeExercise, enrolledExercises, loading: exLoading } = useExercise();
@@ -16,6 +44,8 @@ export default function Achievements() {
 
   if (exLoading || loading) return <LoadingState label="Lade Erfolge …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
+
+  const isPushups = exercise?.slug === 'pushups';
 
   return (
     <div className="space-y-4">
@@ -40,6 +70,15 @@ export default function Achievements() {
         </div>
       )}
 
+      {/* Info zu Schwellenwerten (nur PushUps) */}
+      {isPushups && (
+        <div className="rounded-xl border border-ink-700 bg-ink-800/50 px-4 py-3 text-xs text-slate-400 leading-relaxed">
+          <p className="font-semibold text-slate-300 mb-1">Medaillen-Schwellen 🏅</p>
+          <p>🥇 Gold: 100 · 🥈 Silber: 75 · 🥉 Bronze: 50 PushUps</p>
+          <p className="mt-1">Podest ohne Schwelle → halbe Münze 🪙 · 2× gleiche Münze → Medaille</p>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <EmptyState
           icon="🏆"
@@ -51,15 +90,19 @@ export default function Achievements() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-ink-700 px-4 py-2">
             <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Spieler</span>
-            <div className="flex gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+            <div className="flex gap-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
               <span className="w-8 text-center">🥇</span>
               <span className="w-8 text-center">🥈</span>
               <span className="w-8 text-center">🥉</span>
+              {isPushups && <span className="w-8 text-center text-[10px]">½</span>}
             </div>
           </div>
+
           <ul className="divide-y divide-ink-700">
             {rows.map((row, idx) => {
+              const MEDALS = ['🥇', '🥈', '🥉'] as const;
               const medal = MEDALS[idx] ?? null;
+              const hasHalf = row.half_gold > 0 || row.half_silver > 0 || row.half_bronze > 0;
               return (
                 <li
                   key={row.user_id}
@@ -69,14 +112,30 @@ export default function Achievements() {
                     {medal ?? <span className="text-sm font-bold text-slate-500">{idx + 1}</span>}
                   </span>
                   <Avatar url={row.avatar_url} name={row.display_name || row.username} size={36} />
-                  <p className="flex-1 truncate text-sm font-semibold text-slate-200">
-                    {row.display_name || row.username}
-                    {row.is_me && <span className="ml-1 text-xs text-brand-300">(du)</span>}
-                  </p>
-                  <div className="flex shrink-0 gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-200">
+                      {row.display_name || row.username}
+                      {row.is_me && <span className="ml-1 text-xs text-brand-300">(du)</span>}
+                    </p>
+                    {isPushups && hasHalf && (
+                      <HalfCoins
+                        half_gold={row.half_gold}
+                        half_silver={row.half_silver}
+                        half_bronze={row.half_bronze}
+                      />
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-3 items-center">
                     <span className="w-8 text-center text-sm font-bold text-amber-300">{row.gold_count}</span>
                     <span className="w-8 text-center text-sm font-bold text-slate-300">{row.silver_count}</span>
                     <span className="w-8 text-center text-sm font-bold text-orange-400">{row.bronze_count}</span>
+                    {isPushups && (
+                      <div className="w-8 flex flex-col items-center gap-0.5">
+                        {row.half_gold   > 0 && <HalfCoin color="gold"   />}
+                        {row.half_silver > 0 && <HalfCoin color="silver" />}
+                        {row.half_bronze > 0 && <HalfCoin color="bronze" />}
+                      </div>
+                    )}
                   </div>
                 </li>
               );
