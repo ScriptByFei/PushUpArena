@@ -76,6 +76,20 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       if (row.status === 'declined') declined.add(row.exercise_id);
     }
 
+    // Neue User: automatisch in Pushups einschreiben wenn noch kein Enrollment existiert
+    if (responded.size === 0 && exData && exData.length > 0) {
+      const pushups = exData.find((e) => e.slug === 'pushups');
+      if (pushups) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from('exercise_enrollments').upsert(
+          { user_id: user.id, exercise_id: pushups.id, status: 'enrolled', responded_at: new Date().toISOString() },
+          { onConflict: 'user_id,exercise_id' },
+        );
+        enrolled.add(pushups.id);
+        responded.add(pushups.id);
+      }
+    }
+
     setAllExercises(exData ?? []);
     setEnrolledIds(enrolled);
     setDeclinedIds(declined);
