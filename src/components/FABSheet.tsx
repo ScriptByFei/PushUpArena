@@ -173,7 +173,7 @@ function RestDayTab({ exerciseId, onClose }: { exerciseId: string; onClose: () =
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-400">
-        Plane Ruhetage bis zu 14 Tage im Voraus. Vergangene Tage ohne Training zählen automatisch.
+        Plane Ruhetage bis zu 14 Tage im Voraus. Vergangene Tage ohne Training zählen automatisch als Ruhetag.
       </p>
       <div className="relative">
         <div className="input-base flex items-center justify-between">
