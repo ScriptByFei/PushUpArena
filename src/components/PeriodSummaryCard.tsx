@@ -191,7 +191,13 @@ export function PeriodSummaryCard({ exercise }: Props) {
             <ChevronLeft />
           </button>
           <span className="text-center text-xs font-semibold text-slate-200 leading-tight">{weekLabel}</span>
-          <button onClick={nextWeek} disabled={toDateStr(weekMonday) >= todayStr}
+          <button
+            onClick={nextWeek}
+            disabled={(() => {
+              const nextW = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
+              const nextY = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
+              return toDateStr(getMondayOfISOWeek(nextW, nextY)) > todayStr;
+            })()}
             className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25">
             <ChevronRight />
           </button>
