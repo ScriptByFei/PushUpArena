@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DayData } from '@/hooks/useProfileStats';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 interface Props {
   data: DayData[];
@@ -10,6 +12,7 @@ interface Props {
   canGoNext: boolean;
   onPrev: () => void;
   onNext: () => void;
+  exerciseId?: string;
 }
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -51,8 +54,39 @@ function ChevronRight() {
   );
 }
 
-export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, canGoPrev, canGoNext, onPrev, onNext }: Props) {
+export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, canGoPrev, canGoNext, onPrev, onNext, exerciseId }: Props) {
   const [selected, setSelected] = useState<DayData | null>(null);
+  const [daySets, setDaySets] = useState<number[]>([]);
+  const [setsLoading, setSetsLoading] = useState(false);
+  const { user } = useAuth();
+
+  // Beim Wechsel des ausgewählten Tages: Sätze laden
+  useEffect(() => {
+    if (!selected || selected.amount === 0 || !exerciseId || !user) {
+      setDaySets([]);
+      return;
+    }
+    setSetsLoading(true);
+    const start = selected.date + 'T00:00:00+02:00'; // Europe/Berlin CEST
+    const end   = selected.date + 'T23:59:59+02:00';
+    void (async () => {
+      try {
+        const { data: rows } = await supabase
+          .from('workout_entries')
+          .select('amount, performed_at')
+          .eq('user_id', user.id)
+          .eq('exercise_id', exerciseId)
+          .gte('performed_at', new Date(start).toISOString())
+          .lte('performed_at', new Date(end).toISOString())
+          .order('performed_at', { ascending: true });
+        setDaySets((rows ?? []).map((r) => r.amount));
+      } catch {
+        // ignore
+      } finally {
+        setSetsLoading(false);
+      }
+    })();
+  }, [selected, exerciseId, user]);
 
   const byDate = new Map(data.map((d) => [d.date, d]));
   const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
@@ -150,23 +184,44 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
 
       {/* Detailinfo */}
       {selected && (
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800/60 px-4 py-2.5">
-          <p className="text-sm font-medium text-slate-300">
-            {new Date(selected.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
-              weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
-            })}
-          </p>
-          {selected.amount === 0 && (restDays?.has(selected.date) ?? false) ? (
-            <span className="text-xs text-sky-400">😴 Eingetragener Ruhetag</span>
-          ) : selected.amount === 0 ? (
-            <span className="text-xs text-slate-500">Kein Training</span>
-          ) : (
-            <span className="text-sm font-bold text-brand-300">
-              {selected.amount}
-              {selected.sessions > 1 && (
-                <span className="ml-1.5 text-xs font-normal text-slate-400">· {selected.sessions}×</span>
-              )}
-            </span>
+        <div className="mt-3 rounded-xl border border-ink-700 bg-ink-800/60 px-4 py-3">
+          {/* Kopfzeile */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-300">
+              {new Date(selected.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
+                weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+              })}
+            </p>
+            {selected.amount === 0 && (restDays?.has(selected.date) ?? false) ? (
+              <span className="text-xs text-sky-400">😴 Eingetragener Ruhetag</span>
+            ) : selected.amount === 0 ? (
+              <span className="text-xs text-slate-500">Kein Training</span>
+            ) : (
+              <span className="text-sm font-bold text-brand-300">
+                {selected.amount} gesamt
+              </span>
+            )}
+          </div>
+
+          {/* Satz-Chips */}
+          {selected.amount > 0 && (
+            <div className="mt-3">
+              {setsLoading ? (
+                <p className="text-xs text-slate-500">Lade …</p>
+              ) : daySets.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {daySets.map((amount, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col items-center rounded-xl bg-ink-700 px-3 py-1.5 text-center"
+                    >
+                      <span className="text-[10px] text-slate-500">Satz {i + 1}</span>
+                      <span className="text-base font-extrabold text-brand-300">{amount}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
       )}

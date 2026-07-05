@@ -83,6 +83,7 @@ export default function Activity() {
           canGoNext={canGoNext}
           onPrev={goPrev}
           onNext={goNext}
+          exerciseId={exercise?.id}
         />
       </Card>
     </div>
