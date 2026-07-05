@@ -223,17 +223,17 @@ export default function Leaderboard() {
                         <span className="ml-1 font-normal text-brand-300">(du)</span>
                       )}
                     </p>
-                    <p className={`mt-2 text-xl font-extrabold ${valueColor}`}>
+                    <p className={`mt-2 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
+                      {sortKey === 'current_streak' && row.rest_days_remaining > 0 && (
+                        <span className="text-base leading-none" title="Freie Ruhetage diese Woche">
+                          {restHearts(row.rest_days_remaining)}
+                        </span>
+                      )}
                       {row[sortKey]}
                     </p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-500">
                       {sortLabel}
                     </p>
-                    {sortKey === 'current_streak' && (
-                      <p className="mt-1 text-sm leading-none" title="Freie Ruhetage diese Woche">
-                        {restHearts(row.rest_days_remaining)}
-                      </p>
-                    )}
                   </div>
                 );
               })}
@@ -269,12 +269,14 @@ export default function Leaderboard() {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      {sortKey === 'current_streak' && (
-                        <p className="text-[11px] leading-none text-slate-500 mb-0.5" title="Freie Ruhetage diese Woche">
-                          {restHearts(row.rest_days_remaining)}
-                        </p>
-                      )}
-                      <p className="text-base font-extrabold text-brand-200">{row[sortKey]}</p>
+                      <p className="flex items-center justify-end gap-1 text-base font-extrabold text-brand-200">
+                        {sortKey === 'current_streak' && row.rest_days_remaining > 0 && (
+                          <span className="text-sm leading-none" title="Freie Ruhetage diese Woche">
+                            {restHearts(row.rest_days_remaining)}
+                          </span>
+                        )}
+                        {row[sortKey]}
+                      </p>
                       <p className="text-[10px] uppercase tracking-wide text-slate-500">
                         {sortLabel}
                       </p>
