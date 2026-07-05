@@ -40,6 +40,10 @@ function getMondayOfISOWeek(week: number, year: number): Date {
 function toDateStr(d: Date): string {
   return d.toISOString().split('T')[0];
 }
+// Berlin-aware date string — use for week/day comparisons to avoid UTC offset bugs
+function toBerlinDateStr(d: Date): string {
+  return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+}
 
 function ChevronLeft() {
   return (
@@ -66,7 +70,7 @@ type PeriodTab = 'month' | 'week' | 'custom';
 export function PeriodSummaryCard({ exercise }: Props) {
   const { user } = useAuth();
   const now = new Date();
-  const todayStr = toDateStr(now);
+  const todayStr = toBerlinDateStr(now);
 
   const [periodTab, setPeriodTab] = useState<PeriodTab>('month');
   const [pYear, setPYear] = useState(now.getFullYear());
@@ -95,11 +99,10 @@ export function PeriodSummaryCard({ exercise }: Props) {
     else setPWeek((w) => w - 1);
   }
   function nextWeek() {
-    // Prüfen ob die NÄCHSTE Woche schon begonnen hat (nicht die aktuelle)
     const nextW = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
     const nextY = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
     const nextMonday = getMondayOfISOWeek(nextW, nextY);
-    if (toDateStr(nextMonday) > todayStr) return;
+    if (toBerlinDateStr(nextMonday) > todayStr) return;
     if (pWeek === getWeeksInYear(pWeekYear)) { setPWeekYear((y) => y + 1); setPWeek(1); }
     else setPWeek((w) => w + 1);
   }
@@ -196,7 +199,7 @@ export function PeriodSummaryCard({ exercise }: Props) {
             disabled={(() => {
               const nextW = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
               const nextY = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
-              return toDateStr(getMondayOfISOWeek(nextW, nextY)) > todayStr;
+              return toBerlinDateStr(getMondayOfISOWeek(nextW, nextY)) > todayStr;
             })()}
             className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25">
             <ChevronRight />
