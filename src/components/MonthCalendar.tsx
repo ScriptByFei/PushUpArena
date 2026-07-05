@@ -61,12 +61,16 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
   const { user } = useAuth();
   const detailRef = useRef<HTMLDivElement>(null);
 
-  // Nach Auswahl: ganz nach unten scrollen damit Sätze sichtbar sind
+  // Nach Auswahl: scrollen sobald der Detail-Block im DOM ist
   useEffect(() => {
     if (!selected) return;
-    setTimeout(() => {
-      window.scrollTo({ top: 999999, behavior: 'smooth' });
-    }, 50);
+    // Zwei rAF-Frames warten → DOM ist gemalt, Höhe korrekt
+    const r1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
+    });
+    return () => cancelAnimationFrame(r1);
   }, [selected]);
 
   // Beim Wechsel des ausgewählten Tages: Sätze laden
