@@ -12,6 +12,11 @@ const TABS = [
   { key: 'total_amount' as const, label: 'Gesamt', icon: '🏆' },
 ];
 
+const MEDAL_THRESHOLDS: Record<string, { gold: number; silver: number; bronze: number }> = {
+  pushups: { gold: 100, silver: 75, bronze: 50 },
+  pullups: { gold: 20,  silver: 10, bronze: 5  },
+};
+
 // Reihenfolge: P2 links, P1 Mitte (elevated), P3 rechts
 const PODIUM_SLOTS = [
   {
@@ -189,6 +194,18 @@ export default function Leaderboard() {
           </button>
         ))}
       </div>
+
+      {/* Medaillen-Schwellen Info (nur Heute-Tab, nur wenn Schwellen definiert) */}
+      {isToday && shownExercise?.slug && MEDAL_THRESHOLDS[shownExercise.slug] && (() => {
+        const t = MEDAL_THRESHOLDS[shownExercise.slug!]!;
+        return (
+          <div className="rounded-xl border border-ink-700 bg-ink-800/50 px-4 py-3 text-xs text-slate-400 leading-relaxed">
+            <p className="font-semibold text-slate-300 mb-1">Medaillen-Schwellen 🏅</p>
+            <p>🥇 Gold: {t.gold} · 🥈 Silber: {t.silver} · 🥉 Bronze: {t.bronze}</p>
+            <p className="mt-1">Podest ohne Schwelle → halbe Münze 🪙 · 2× gleiche Münze → Medaille</p>
+          </div>
+        );
+      })()}
 
       {rows.length === 0 ? (
         <EmptyState
