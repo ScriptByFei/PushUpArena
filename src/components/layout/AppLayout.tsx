@@ -1,13 +1,13 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
-import { usePush } from '@/context/PushContext';
+import { SettingsIcon } from '@/components/ui/icons';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
   '/track': 'Eintragen',
   '/friends': 'Freunde',
-  '/activity': 'Aktivität',
+  '/teams': 'Teams',
+  '/achievements': 'Erfolge',
   '/leaderboard': 'Rangliste',
   '/profile': 'Profil',
   '/settings': 'Einstellungen',
@@ -16,30 +16,18 @@ const titles: Record<string, string> = {
 export function AppLayout() {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? 'PushupArena';
-  const { pushPermission, busy, togglePush } = usePush();
-
-  const notificationsOn = pushPermission === 'granted';
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Glocken-Icon links */}
-        <button
-          onClick={togglePush}
-          disabled={busy}
-          aria-label={notificationsOn ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
-          className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200 disabled:opacity-50"
-        >
-          {notificationsOn
-            ? <BellIcon className="h-5 w-5 text-brand-400" />
-            : <BellOffIcon className="h-5 w-5" />}
-        </button>
-
+        {/* Logo links */}
+        <Link to="/" aria-label="Start" className="shrink-0">
+          <img src="/logo.png" alt="" className="h-12 w-12 object-contain" />
+        </Link>
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
           {title}
         </span>
-
         {/* Settings rechts */}
         <Link
           to="/settings"

@@ -149,16 +149,6 @@ export const BellIcon = (p: IconProps) => (
   </svg>
 );
 
-export const BellOffIcon = (p: IconProps) => (
-  <svg {...base(p)}>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    <path d="M18.63 13A17.9 17.9 0 0 1 18 8" />
-    <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
-    <path d="M18 8a6 6 0 0 0-9.33-5" />
-    <line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-
 export const ShieldIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M12 2 3 7v5c0 5.25 3.75 10.2 9 11.4 5.25-1.2 9-6.15 9-11.4V7L12 2Z" />
@@ -169,5 +159,13 @@ export const CameraIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
     <circle cx="12" cy="13" r="4" />
+  </svg>
+);
+
+export const MedalIcon = (p: IconProps) => (
+  <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="15" r="6" />
+    <path d="M8.5 2h7M8.5 2l-2 5M15.5 2l2 5M10.5 7h3" />
+    <path d="M12 12v2l1 1" />
   </svg>
 );
