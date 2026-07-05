@@ -61,7 +61,7 @@ export function BottomNav() {
         <NavLink to="/achievements" aria-label="Erfolge">
           {() => (
             <span className="mb-[1px] flex items-center justify-center opacity-100 transition active:scale-95">
-              <img src="/medals.png" alt="Erfolge" className="h-11 w-11 object-contain" />
+              <img src="/medals.png" alt="Erfolge" style={{ width: 52, height: 52 }} className="object-contain" />
             </span>
           )}
         </NavLink>
