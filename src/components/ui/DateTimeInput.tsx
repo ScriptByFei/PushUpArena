@@ -8,10 +8,14 @@ export function DateTimeInput({
   value,
   onChange,
   id,
+  min,
+  max,
 }: {
   value: string; // "YYYY-MM-DDTHH:mm"
   onChange: (v: string) => void;
   id?: string;
+  min?: string;
+  max?: string;
 }) {
   const display = value ? `${formatGermanDateTime(value)} Uhr` : 'Datum & Uhrzeit wählen';
   return (
@@ -24,6 +28,8 @@ export function DateTimeInput({
         id={id}
         type="datetime-local"
         value={value}
+        min={min}
+        max={max}
         onChange={(e) => onChange(e.target.value)}
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         aria-label="Datum und Uhrzeit"

@@ -23,6 +23,13 @@ function maxRestDate() {
   const [y, m, d] = berlinToday().split('-').map(Number);
   return new Date(y, m - 1, d + 14).toLocaleDateString('sv-SE');
 }
+// Frühestes erlaubtes Eintragsdatum: vor 2 Tagen um 00:00 Uhr Berlin-Zeit
+function minEntryDatetime() {
+  const [y, m, d] = berlinToday().split('-').map(Number);
+  const twoDaysAgo = new Date(y, m - 1, d - 2);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${twoDaysAgo.getFullYear()}-${pad(twoDaysAgo.getMonth() + 1)}-${pad(twoDaysAgo.getDate())}T00:00`;
+}
 
 export default function Track() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
@@ -117,6 +124,7 @@ export default function Track() {
     e.preventDefault();
     const n = parseInt(amount, 10);
     if (!n || n <= 0) { toast.error('Bitte eine gültige Anzahl eingeben.'); return; }
+    if (when && when < minEntryDatetime()) { toast.error('Einträge können maximal 2 Tage rückwirkend erfasst werden.'); return; }
     const { error: err } = await submit({
       amount: n, note: null,
       performedAt: when ? new Date(when).toISOString() : undefined,
@@ -187,7 +195,7 @@ export default function Track() {
                 />
               </Field>
               <Field label="Datum & Uhrzeit" htmlFor="when">
-                <DateTimeInput id="when" value={when} onChange={setWhen} />
+                <DateTimeInput id="when" value={when} onChange={setWhen} min={minEntryDatetime()} max={toDateTimeLocalValue()} />
               </Field>
               <Button type="submit" fullWidth size="lg" loading={submitting}>Eintragen</Button>
             </form>
@@ -399,7 +407,7 @@ function EditModal({ entry, unit, onClose, onSave }: {
           <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} className="text-center" />
         </Field>
         <Field label="Datum & Uhrzeit">
-          <DateTimeInput value={when} onChange={setWhen} />
+          <DateTimeInput value={when} onChange={setWhen} min={minEntryDatetime()} max={toDateTimeLocalValue()} />
         </Field>
       </div>
     </Modal>
