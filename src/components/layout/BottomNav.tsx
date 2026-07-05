@@ -65,8 +65,8 @@ export function BottomNav() {
                 isActive ? 'opacity-100' : 'opacity-80'
               }`}
             >
-              <span className="text-[14px] leading-snug">🥇🥈</span>
-              <span className="text-[14px] leading-snug">🥉</span>
+              <span className="text-[17px] leading-snug">🥇🥈</span>
+              <span className="text-[17px] leading-snug">🥉</span>
             </span>
           )}
         </NavLink>
