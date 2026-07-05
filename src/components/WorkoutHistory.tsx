@@ -160,10 +160,12 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
                         {formatRelativeDay(item.entry.performed_at)} · {formatTime(item.entry.performed_at)}
                       </p>
                     </div>
-                    <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
-                      className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-ink-700 hover:text-slate-200">
-                      <EditIcon className="h-5 w-5" />
-                    </button>
+                    {new Date(item.entry.performed_at) >= new Date(minEntryDatetime()) && (
+                      <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
+                        className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-ink-700 hover:text-slate-200">
+                        <EditIcon className="h-5 w-5" />
+                      </button>
+                    )}
                     <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
                       className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-300">
                       <TrashIcon className="h-5 w-5" />
