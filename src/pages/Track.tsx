@@ -12,7 +12,7 @@ import { DateTimeInput } from '@/components/ui/DateTimeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { CalendarIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
-import { formatRelativeDay, formatTime, toDateTimeLocalValue } from '@/lib/date';
+import { formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
 
 const TZ = 'Europe/Berlin';
@@ -29,6 +29,20 @@ function minEntryDatetime() {
   const twoDaysAgo = new Date(y, m - 1, d - 2);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${twoDaysAgo.getFullYear()}-${pad(twoDaysAgo.getMonth() + 1)}-${pad(twoDaysAgo.getDate())}T00:00`;
+}
+function berlinYesterday() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString('sv-SE', { timeZone: TZ });
+}
+function formatDayLabel(dateStr: string): string {
+  const today = berlinToday();
+  const yesterday = berlinYesterday();
+  if (dateStr === today) return 'Heute';
+  if (dateStr === yesterday) return 'Gestern';
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('de-DE', {
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
+  });
 }
 
 export default function Track() {
@@ -64,17 +78,26 @@ export default function Track() {
   const [deleting, setDeleting] = useState<WorkoutEntry | null>(null);
   const [deletingRD, setDeletingRD] = useState<{ id: string; rest_date: string } | null>(null);
 
-  type Period = 'all' | 'today' | 'week' | 'month';
+  type Period = 'all' | 'week' | 'month' | 'year';
   type SortDir = 'desc' | 'asc';
   const [period, setPeriod] = useState<Period>('all');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(() => new Set([berlinToday()]));
 
-  // Merge workout entries + rest days into one sorted list
+  function toggleDay(dateStr: string) {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dateStr)) next.delete(dateStr);
+      else next.add(dateStr);
+      return next;
+    });
+  }
+
   type ListItem =
-    | { kind: 'workout'; entry: WorkoutEntry; sortKey: number }
-    | { kind: 'rest'; id: string; rest_date: string; sortKey: number };
+    | { kind: 'workout'; entry: WorkoutEntry; sortKey: number; dateStr: string }
+    | { kind: 'rest'; id: string; rest_date: string; sortKey: number; dateStr: string };
 
   const mergedList = useMemo<ListItem[]>(() => {
     const today = berlinToday();
@@ -88,34 +111,41 @@ export default function Track() {
 
     const items: ListItem[] = [];
 
-    // Workout entries
     for (const entry of entries) {
       const eBerlin = new Date(entry.performed_at).toLocaleDateString('sv-SE', { timeZone: TZ });
       if (dateFilter && eBerlin !== dateFilter) continue;
       if (!dateFilter) {
-        if (period === 'today' && eBerlin !== today) continue;
         if (period === 'week' && eBerlin < monday) continue;
         if (period === 'month' && eBerlin < firstOfMonth) continue;
+        if (period === 'year' && eBerlin < `${y}-01-01`) continue;
       }
-      items.push({ kind: 'workout', entry, sortKey: new Date(entry.performed_at).getTime() });
+      items.push({ kind: 'workout', entry, sortKey: new Date(entry.performed_at).getTime(), dateStr: eBerlin });
     }
 
-    // Rest days
     for (const rd of restDays) {
       if (dateFilter && rd.rest_date !== dateFilter) continue;
       if (!dateFilter) {
-        if (period === 'today' && rd.rest_date !== today) continue;
         if (period === 'week' && rd.rest_date < monday) continue;
         if (period === 'month' && rd.rest_date < firstOfMonth) continue;
+        if (period === 'year' && rd.rest_date < `${y}-01-01`) continue;
       }
-      // Sort rest days as noon of that day
       const [ry, rm, rd2] = rd.rest_date.split('-').map(Number);
-      items.push({ kind: 'rest', id: rd.id, rest_date: rd.rest_date, sortKey: new Date(ry, rm - 1, rd2, 12).getTime() });
+      items.push({ kind: 'rest', id: rd.id, rest_date: rd.rest_date, sortKey: new Date(ry, rm - 1, rd2, 12).getTime(), dateStr: rd.rest_date });
     }
 
     items.sort((a, b) => sortDir === 'desc' ? b.sortKey - a.sortKey : a.sortKey - b.sortKey);
     return items;
   }, [entries, restDays, period, sortDir, dateFilter]);
+
+  const groupedDays = useMemo(() => {
+    const map = new Map<string, ListItem[]>();
+    for (const item of mergedList) {
+      const existing = map.get(item.dateStr) ?? [];
+      existing.push(item);
+      map.set(item.dateStr, existing);
+    }
+    return Array.from(map.entries());
+  }, [mergedList]);
 
   if (exLoading) return <LoadingState />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
@@ -262,7 +292,7 @@ export default function Track() {
           </button>
         </div>
         <div className="mt-2 flex items-center gap-1.5">
-          {(['all', 'today', 'week', 'month'] as Period[]).map((p) => (
+          {(['all', 'week', 'month', 'year'] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => { setPeriod(p); setDateFilter(null); }}
@@ -272,7 +302,7 @@ export default function Track() {
                   : 'bg-ink-700 text-slate-400 hover:bg-ink-600 hover:text-slate-200'
               }`}
             >
-              {p === 'all' ? 'Alle' : p === 'today' ? 'Heute' : p === 'week' ? 'Woche' : 'Monat'}
+              {p === 'all' ? 'Alle' : p === 'week' ? 'Woche' : p === 'month' ? 'Monat' : 'Jahr'}
             </button>
           ))}
           <div className="relative ml-auto mr-4 flex items-center gap-1">
@@ -299,57 +329,71 @@ export default function Track() {
             <LoadingState label="Lade Einträge …" />
           ) : error ? (
             <ErrorState message={error} onRetry={refetch} />
-          ) : mergedList.length === 0 ? (
+          ) : groupedDays.length === 0 ? (
             <EmptyState
               icon="📝"
               title={entries.length === 0 && restDays.length === 0 ? 'Noch keine Einträge' : 'Keine Einträge im Zeitraum'}
               description={entries.length === 0 && restDays.length === 0 ? 'Trage oben deinen ersten Satz ein.' : ''}
             />
           ) : (
-            <ul className="divide-y divide-ink-700">
-              {mergedList.map((item) =>
-                item.kind === 'workout' ? (
-                  <li key={`w-${item.entry.id}`} className="flex items-center gap-3 py-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/20 text-base font-bold text-brand-200">
-                      {item.entry.amount}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-200">
-                        {formatRelativeDay(item.entry.performed_at)} · {formatTime(item.entry.performed_at)}
-                      </p>
-                    </div>
-                    {new Date(item.entry.performed_at) >= new Date(minEntryDatetime()) && (
-                      <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
-                        className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-ink-700 hover:text-slate-200">
-                        <EditIcon className="h-5 w-5" />
-                      </button>
+            <div className="divide-y divide-ink-700">
+              {groupedDays.map(([dateStr, items]) => {
+                const isOpen = expandedDays.has(dateStr);
+                const dayTotal = items
+                  .filter((i) => i.kind === 'workout')
+                  .reduce((s, i) => s + (i.kind === 'workout' ? i.entry.amount : 0), 0);
+                const hasRest = items.some((i) => i.kind === 'rest');
+                return (
+                  <div key={dateStr}>
+                    <button
+                      onClick={() => toggleDay(dateStr)}
+                      className="flex w-full items-center gap-2 py-3 text-left"
+                    >
+                      <span className="flex-1 text-sm font-semibold text-slate-200">{formatDayLabel(dateStr)}</span>
+                      {hasRest && <span className="text-base">😴</span>}
+                      {dayTotal > 0 && <span className="text-sm font-bold text-brand-300">{dayTotal} {unit}</span>}
+                      <svg viewBox="0 0 20 20" fill="currentColor"
+                        className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <div className="pb-2 space-y-1">
+                        {items.map((item) =>
+                          item.kind === 'workout' ? (
+                            <div key={`w-${item.entry.id}`} className="flex items-center gap-3 rounded-xl bg-ink-800/60 px-3 py-2">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600/20 text-sm font-bold text-brand-200">
+                                {item.entry.amount}
+                              </div>
+                              <p className="flex-1 text-xs text-slate-400">{formatTime(item.entry.performed_at)}</p>
+                              {new Date(item.entry.performed_at) >= new Date(minEntryDatetime()) && (
+                                <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-ink-700 hover:text-slate-200">
+                                  <EditIcon className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div key={`r-${item.id}`} className="flex items-center gap-3 rounded-xl bg-ink-800/60 px-3 py-2">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ink-700 text-base">😴</div>
+                              <p className="flex-1 text-xs text-slate-400">Ruhetag</p>
+                              <button aria-label="Ruhetag löschen" onClick={() => setDeletingRD({ id: item.id, rest_date: item.rest_date })}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
                     )}
-                    <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
-                      className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-300">
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </li>
-                ) : (
-                  <li key={`r-${item.id}`} className="flex items-center gap-3 py-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink-700 text-xl">
-                      😴
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-200">
-                        {new Date(item.rest_date + 'T00:00:00').toLocaleDateString('de-DE', {
-                          weekday: 'short', day: '2-digit', month: '2-digit',
-                        })}
-                      </p>
-                      <p className="text-xs text-slate-500">Ruhetag</p>
-                    </div>
-                    <button aria-label="Ruhetag löschen" onClick={() => setDeletingRD({ id: item.id, rest_date: item.rest_date })}
-                      className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-300">
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </li>
-                )
-              )}
-            </ul>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </Card>
