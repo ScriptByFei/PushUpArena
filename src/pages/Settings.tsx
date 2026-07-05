@@ -169,7 +169,69 @@ const [deleteOpen, setDeleteOpen] = useState(false);
         </Button>
       </Card>
 
-      {/* 2 · Ziele */}
+      {/* 2 · Übungen verwalten */}
+      {(enrolledExercises.length + declinedExercises.length) > 1 && (
+        <Card>
+          <CardTitle>Übungen verwalten</CardTitle>
+          <p className="mt-1 text-xs text-slate-400">
+            Ein- oder austragen – mindestens eine Übung muss aktiv bleiben.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {[...enrolledExercises, ...declinedExercises].map((ex) => {
+              const isEnrolled = enrolledExercises.some((e) => e.id === ex.id);
+              const canLeave = isEnrolled && enrolledExercises.length > 1 && ex.slug !== 'pushups';
+              return (
+                <div
+                  key={ex.id}
+                  className="flex items-center gap-3 rounded-2xl bg-ink-800 px-4 py-3"
+                >
+                  <img
+                    src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'}
+                    alt={ex.name}
+                    className="h-10 w-10 rounded-xl object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-200">{ex.name}</p>
+                    <p className={`text-xs ${isEnrolled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      {isEnrolled ? 'Aktiv' : 'Nicht dabei'}
+                    </p>
+                  </div>
+                  {isEnrolled ? (
+                    <button
+                      disabled={!canLeave || enrollingId !== null}
+                      onClick={async () => {
+                        setEnrollingId(ex.id);
+                        await enroll(ex.id, 'declined');
+                        setEnrollingId(null);
+                        toast.success(`${ex.name} ausgetragen.`);
+                      }}
+                      className="shrink-0 rounded-xl border border-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10 disabled:opacity-40"
+                    >
+                      {enrollingId === ex.id ? '…' : 'Verlassen'}
+                    </button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      loading={enrollingId === ex.id}
+                      disabled={enrollingId !== null}
+                      onClick={async () => {
+                        setEnrollingId(ex.id);
+                        await enroll(ex.id, 'enrolled');
+                        setEnrollingId(null);
+                        toast.success(`${ex.name} hinzugefügt 💪`);
+                      }}
+                    >
+                      Mitmachen
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* 3 · Ziele */}
       <Card>
         <CardTitle>Ziele · {exercise?.name}</CardTitle>
         <form onSubmit={onSaveGoals} className="mt-3">
@@ -470,68 +532,6 @@ const [deleteOpen, setDeleteOpen] = useState(false);
           </Link>
         </div>
       </Card>
-
-      {/* Übungen verwalten */}
-      {(enrolledExercises.length + declinedExercises.length) > 1 && (
-        <Card>
-          <CardTitle>Übungen verwalten</CardTitle>
-          <p className="mt-1 text-xs text-slate-400">
-            Ein- oder austragen – mindestens eine Übung muss aktiv bleiben.
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
-            {[...enrolledExercises, ...declinedExercises].map((ex) => {
-              const isEnrolled = enrolledExercises.some((e) => e.id === ex.id);
-              const canLeave = isEnrolled && enrolledExercises.length > 1 && ex.slug !== 'pushups';
-              return (
-                <div
-                  key={ex.id}
-                  className="flex items-center gap-3 rounded-2xl bg-ink-800 px-4 py-3"
-                >
-                  <img
-                    src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'}
-                    alt={ex.name}
-                    className="h-10 w-10 rounded-xl object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200">{ex.name}</p>
-                    <p className={`text-xs ${isEnrolled ? 'text-emerald-400' : 'text-slate-500'}`}>
-                      {isEnrolled ? 'Aktiv' : 'Nicht dabei'}
-                    </p>
-                  </div>
-                  {isEnrolled ? (
-                    <button
-                      disabled={!canLeave || enrollingId !== null}
-                      onClick={async () => {
-                        setEnrollingId(ex.id);
-                        await enroll(ex.id, 'declined');
-                        setEnrollingId(null);
-                        toast.success(`${ex.name} ausgetragen.`);
-                      }}
-                      className="shrink-0 rounded-xl border border-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10 disabled:opacity-40"
-                    >
-                      {enrollingId === ex.id ? '…' : 'Verlassen'}
-                    </button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      loading={enrollingId === ex.id}
-                      disabled={enrollingId !== null}
-                      onClick={async () => {
-                        setEnrollingId(ex.id);
-                        await enroll(ex.id, 'enrolled');
-                        setEnrollingId(null);
-                        toast.success(`${ex.name} hinzugefügt 💪`);
-                      }}
-                    >
-                      Mitmachen
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
 
       {/* Gefahrenzone */}
       <Card className="border-rose-500/40 bg-rose-500/5">
