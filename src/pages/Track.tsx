@@ -15,6 +15,16 @@ import { CalendarIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
 import { formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
 
+function currentBerlinTime(): string {
+  return new Date().toLocaleTimeString('sv-SE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' });
+}
+function berlinTimeToISO(time: string): string {
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+  const month = parseInt(today.split('-')[1]);
+  const offset = month >= 4 && month <= 10 ? '+02:00' : '+01:00';
+  return new Date(`${today}T${time}:00${offset}`).toISOString();
+}
+
 const TZ = 'Europe/Berlin';
 function berlinToday() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: TZ });
@@ -52,7 +62,7 @@ export default function Track() {
 
   // Training fields
   const [amount, setAmount] = useState('');
-  const [when, setWhen] = useState(toDateTimeLocalValue());
+  const [when, setWhen] = useState(currentBerlinTime());
 
   // Rest day field
   const [restDate, setRestDate] = useState(berlinToday());
@@ -60,7 +70,7 @@ export default function Track() {
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') setWhen(toDateTimeLocalValue());
+      if (document.visibilityState === 'visible') setWhen(currentBerlinTime());
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -146,14 +156,13 @@ export default function Track() {
     e.preventDefault();
     const n = parseInt(amount, 10);
     if (!n || n <= 0) { toast.error('Bitte eine gültige Anzahl eingeben.'); return; }
-    if (when && when < minEntryDatetime()) { toast.error('Einträge können nur für den heutigen Tag erfasst werden.'); return; }
-    if (when && when > toDateTimeLocalValue()) { toast.error('Einträge können nicht in der Zukunft erfasst werden.'); return; }
+    if (when && when > currentBerlinTime()) { toast.error('Einträge können nicht in der Zukunft erfasst werden.'); return; }
     const { error: err } = await submit({
       amount: n, note: null,
-      performedAt: when ? new Date(when).toISOString() : undefined,
+      performedAt: when ? berlinTimeToISO(when) : undefined,
       prevDailyTotal: stats.today_amount,
     });
-    if (!err) { setAmount(''); setWhen(toDateTimeLocalValue()); void refetch(); void refetchStats(); }
+    if (!err) { setAmount(''); setWhen(currentBerlinTime()); void refetch(); void refetchStats(); }
   }
 
   async function onSubmitRestDay(e: FormEvent) {
@@ -217,9 +226,20 @@ export default function Track() {
                   placeholder="z. B. 20" className="text-center text-2xl font-bold"
                 />
               </Field>
-              <Field label="Datum & Uhrzeit" htmlFor="when">
-                <DateTimeInput id="when" value={when} onChange={setWhen} min={minEntryDatetime()} max={toDateTimeLocalValue()} />
-                <p className="mt-1 text-xs text-slate-500">Nur heutige Einträge möglich, kein Datum in der Zukunft.</p>
+              <Field label="Uhrzeit" htmlFor="when">
+                <div className="input-base flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-400">
+                    {new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </span>
+                  <input
+                    id="when"
+                    type="time"
+                    value={when}
+                    max={currentBerlinTime()}
+                    onChange={(e) => setWhen(e.target.value)}
+                    className="bg-transparent text-right text-sm font-semibold text-slate-100 outline-none"
+                  />
+                </div>
               </Field>
               <Button type="submit" fullWidth size="lg" loading={submitting}>Eintragen</Button>
             </form>
