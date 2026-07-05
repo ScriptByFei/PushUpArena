@@ -69,14 +69,14 @@ export default function Leaderboard() {
 
       {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
       {enrolledExercises.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
           {enrolledExercises.map((ex) => {
             const isActive = ex.id === (shownExercise?.id);
             return (
               <button
                 key={ex.id}
                 onClick={() => setLeaderExercise(ex)}
-                className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
                   isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
                 }`}
               >
