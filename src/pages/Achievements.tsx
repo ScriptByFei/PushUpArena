@@ -45,8 +45,8 @@ export default function Achievements() {
       {rows.length === 0 ? (
         <EmptyState
           icon="🏆"
-          title="Noch keine Podest-Einträge"
-          description="Sobald ein Freund einen Tag auf dem Podest (Platz 1–3) abschließt, erscheint er hier."
+          title="Noch keine Medaillen"
+          description="Medaillen werden täglich um Mitternacht vergeben — wenn mindestens 3 User trainiert haben. Die Zählung startete ab dem 6. Juli 2026."
           action={
             <Link to="/friends">
               <Button size="sm">Freunde hinzufügen</Button>
