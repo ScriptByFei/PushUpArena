@@ -186,7 +186,7 @@ export default function Track() {
         {mode === 'training' ? (
           <>
             <CardTitle>{exercise.name} eintragen</CardTitle>
-            <form onSubmit={onSubmitTraining} className="mt-3 space-y-3">
+            <form onSubmit={onSubmitTraining} className="mt-3 space-y-3" noValidate>
               <Field label={`Anzahl (${unit})`} htmlFor="amount">
                 <Input
                   id="amount" type="number" inputMode="numeric"
@@ -197,6 +197,7 @@ export default function Track() {
               </Field>
               <Field label="Datum & Uhrzeit" htmlFor="when">
                 <DateTimeInput id="when" value={when} onChange={setWhen} min={minEntryDatetime()} max={toDateTimeLocalValue()} />
+                <p className="mt-1 text-xs text-slate-500">Maximal 2 Tage rückwirkend, kein Datum in der Zukunft.</p>
               </Field>
               <Button type="submit" fullWidth size="lg" loading={submitting}>Eintragen</Button>
             </form>
