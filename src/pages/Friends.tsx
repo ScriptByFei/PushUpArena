@@ -88,7 +88,8 @@ export default function Friends() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
-  const [pushersOpen, setPushersOpen] = useState(true);
+  const [pushersOpen, setPushersOpen] = useState(false);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
 
   async function onInvite() {
     const url = window.location.origin;
@@ -127,140 +128,7 @@ export default function Friends() {
         <ErrorState message={error} onRetry={refetch} />
       ) : (
         <>
-          {/* Alle Nutzer */}
-          {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
-            <Card>
-              <CardTitle>Nutzer entdecken</CardTitle>
-              <ul className="mt-2 divide-y divide-ink-700">
-                {allUsers.filter((p) => !friendIds.has(p.id)).map((p) => {
-                  const isFriend = friendIds.has(p.id);
-                  const isOutgoing = outgoingIds.has(p.id);
-                  const isIncoming = incomingIds.has(p.id);
-                  return (
-                    <PersonRow key={p.id} profile={p}>
-                      {isFriend ? (
-                        <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
-                      ) : isOutgoing ? (
-                        <span className="text-xs text-slate-400">Anfrage gesendet</span>
-                      ) : isIncoming ? (
-                        <span className="text-xs text-slate-400">Anfrage erhalten</span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          loading={busyId === p.id}
-                          onClick={() => handleSend(p.id)}
-                        >
-                          Adden
-                        </Button>
-                      )}
-                    </PersonRow>
-                  );
-                })}
-              </ul>
-            </Card>
-          )}
-
-          {/* Eingehende Anfragen */}
-          {incoming.length > 0 && (
-            <Card>
-              <CardTitle>Anfragen ({incoming.length})</CardTitle>
-              <ul className="mt-2 divide-y divide-ink-700">
-                {incoming.map((req) => (
-                  <PersonRow key={req.id} profile={req.sender}>
-                    <Button
-                      size="sm"
-                      loading={busyId === req.id}
-                      onClick={async () => {
-                        setBusyId(req.id);
-                        const { error: err } = await respond(req.id, true);
-                        setBusyId(null);
-                        if (err) toast.error(err);
-                        else toast.success('Freund hinzugefügt! 🎉');
-                      }}
-                      aria-label="Annehmen"
-                    >
-                      <CheckIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={async () => {
-                        const { error: err } = await respond(req.id, false);
-                        if (err) toast.error(err);
-                      }}
-                      aria-label="Ablehnen"
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </Button>
-                  </PersonRow>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          {/* Gesendete Anfragen */}
-          {outgoing.length > 0 && (
-            <Card>
-              <CardTitle>Gesendet ({outgoing.length})</CardTitle>
-              <ul className="mt-2 divide-y divide-ink-700">
-                {outgoing.map((req) => (
-                  <PersonRow key={req.id} profile={req.receiver}>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        const { error: err } = await cancelRequest(req.id);
-                        if (err) toast.error(err);
-                      }}
-                    >
-                      Zurückziehen
-                    </Button>
-                  </PersonRow>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          {/* Freundesliste – einklappbar */}
-          <Card>
-            <button
-              className="flex w-full items-center justify-between"
-              onClick={() => setFriendsOpen((o) => !o)}
-              aria-expanded={friendsOpen}
-            >
-              <CardTitle>Meine Freunde ({friends.length})</CardTitle>
-              <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${friendsOpen ? 'rotate-180' : ''}`}>
-                ▾
-              </span>
-            </button>
-            {friendsOpen && (
-              friends.length === 0 ? (
-                <EmptyState
-                  icon="🤝"
-                  title="Noch keine Freunde"
-                  description="Entdecke Nutzer weiter unten und sende ihnen eine Anfrage."
-                />
-              ) : (
-                <ul className="mt-2 divide-y divide-ink-700">
-                  {friends.map((f) => (
-                    <PersonRow key={f.friend.id} profile={f.friend}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setRemoveTarget(f.friend)}
-                        aria-label="Entfernen"
-                      >
-                        <UserIcon className="h-4 w-4" />
-                        <span className="text-rose-300">Entfernen</span>
-                      </Button>
-                    </PersonRow>
-                  ))}
-                </ul>
-              )
-            )}
-          </Card>
-
-          {/* Aktive Member heute */}
+          {/* Aktive Member heute — ganz oben */}
           <Card>
             <button
               className="flex w-full items-center justify-between"
@@ -341,13 +209,11 @@ export default function Friends() {
                               <span className="text-xs text-brand-300">(du)</span>
                             ) : 'is_friend' in p ? (
                               p.is_friend ? (
-                                /* Freund-Symbol */
                                 <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-brand-400" aria-label="Freund">
                                   <path d="M9 12.5l-3-3 1.06-1.06L9 10.38l4.94-4.94L15 6.5 9 12.5z"/>
                                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 110-12 6 6 0 010 12z" clipRule="evenodd"/>
                                 </svg>
                               ) : (
-                                /* Kein Freund — Person mit + */
                                 <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-label="Kein Freund">
                                   <path d="M11 5a3 3 0 11-6 0 3 3 0 016 0zM2.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 018 18a9.953 9.953 0 01-5.385-1.572zM16.25 5.75a.75.75 0 00-1.5 0v2h-2a.75.75 0 000 1.5h2v2a.75.75 0 001.5 0v-2h2a.75.75 0 000-1.5h-2v-2z"/>
                                 </svg>
@@ -370,6 +236,150 @@ export default function Friends() {
                   </ul>
                 )}
               </>
+            )}
+          </Card>
+
+          {/* Eingehende Anfragen */}
+          {incoming.length > 0 && (
+            <Card>
+              <CardTitle>Anfragen ({incoming.length})</CardTitle>
+              <ul className="mt-2 divide-y divide-ink-700">
+                {incoming.map((req) => (
+                  <PersonRow key={req.id} profile={req.sender}>
+                    <Button
+                      size="sm"
+                      loading={busyId === req.id}
+                      onClick={async () => {
+                        setBusyId(req.id);
+                        const { error: err } = await respond(req.id, true);
+                        setBusyId(null);
+                        if (err) toast.error(err);
+                        else toast.success('Freund hinzugefügt! 🎉');
+                      }}
+                      aria-label="Annehmen"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={async () => {
+                        const { error: err } = await respond(req.id, false);
+                        if (err) toast.error(err);
+                      }}
+                      aria-label="Ablehnen"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  </PersonRow>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* Gesendete Anfragen */}
+          {outgoing.length > 0 && (
+            <Card>
+              <CardTitle>Gesendet ({outgoing.length})</CardTitle>
+              <ul className="mt-2 divide-y divide-ink-700">
+                {outgoing.map((req) => (
+                  <PersonRow key={req.id} profile={req.receiver}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        const { error: err } = await cancelRequest(req.id);
+                        if (err) toast.error(err);
+                      }}
+                    >
+                      Zurückziehen
+                    </Button>
+                  </PersonRow>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* Nutzer entdecken — einklappbar */}
+          {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
+            <Card>
+              <button
+                className="flex w-full items-center justify-between"
+                onClick={() => setDiscoverOpen((o) => !o)}
+                aria-expanded={discoverOpen}
+              >
+                <CardTitle>Nutzer entdecken</CardTitle>
+                <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${discoverOpen ? 'rotate-180' : ''}`}>
+                  ▾
+                </span>
+              </button>
+              {discoverOpen && (
+                <ul className="mt-2 divide-y divide-ink-700">
+                  {allUsers.filter((p) => !friendIds.has(p.id)).map((p) => {
+                    const isFriend = friendIds.has(p.id);
+                    const isOutgoing = outgoingIds.has(p.id);
+                    const isIncoming = incomingIds.has(p.id);
+                    return (
+                      <PersonRow key={p.id} profile={p}>
+                        {isFriend ? (
+                          <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
+                        ) : isOutgoing ? (
+                          <span className="text-xs text-slate-400">Anfrage gesendet</span>
+                        ) : isIncoming ? (
+                          <span className="text-xs text-slate-400">Anfrage erhalten</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            loading={busyId === p.id}
+                            onClick={() => handleSend(p.id)}
+                          >
+                            Adden
+                          </Button>
+                        )}
+                      </PersonRow>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+          )}
+
+          {/* Freundesliste – einklappbar */}
+          <Card>
+            <button
+              className="flex w-full items-center justify-between"
+              onClick={() => setFriendsOpen((o) => !o)}
+              aria-expanded={friendsOpen}
+            >
+              <CardTitle>Meine Freunde ({friends.length})</CardTitle>
+              <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${friendsOpen ? 'rotate-180' : ''}`}>
+                ▾
+              </span>
+            </button>
+            {friendsOpen && (
+              friends.length === 0 ? (
+                <EmptyState
+                  icon="🤝"
+                  title="Noch keine Freunde"
+                  description="Entdecke Nutzer weiter unten und sende ihnen eine Anfrage."
+                />
+              ) : (
+                <ul className="mt-2 divide-y divide-ink-700">
+                  {friends.map((f) => (
+                    <PersonRow key={f.friend.id} profile={f.friend}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setRemoveTarget(f.friend)}
+                        aria-label="Entfernen"
+                      >
+                        <UserIcon className="h-4 w-4" />
+                        <span className="text-rose-300">Entfernen</span>
+                      </Button>
+                    </PersonRow>
+                  ))}
+                </ul>
+              )
             )}
           </Card>
 
