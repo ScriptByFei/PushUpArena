@@ -45,7 +45,12 @@ export default function Achievements() {
   if (exLoading || loading) return <LoadingState label="Lade Erfolge …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
-  const isPushups = exercise?.slug === 'pushups';
+  const THRESHOLDS: Record<string, { gold: number; silver: number; bronze: number }> = {
+    pushups: { gold: 100, silver: 75, bronze: 50 },
+    pullups: { gold: 20,  silver: 10, bronze: 5  },
+  };
+  const thresholds = exercise?.slug ? THRESHOLDS[exercise.slug] : undefined;
+  const hasThresholds = !!thresholds;
 
   return (
     <div className="space-y-4">
@@ -70,11 +75,11 @@ export default function Achievements() {
         </div>
       )}
 
-      {/* Info zu Schwellenwerten (nur PushUps) */}
-      {isPushups && (
+      {/* Info zu Schwellenwerten */}
+      {hasThresholds && thresholds && (
         <div className="rounded-xl border border-ink-700 bg-ink-800/50 px-4 py-3 text-xs text-slate-400 leading-relaxed">
           <p className="font-semibold text-slate-300 mb-1">Medaillen-Schwellen 🏅</p>
-          <p>🥇 Gold: 100 · 🥈 Silber: 75 · 🥉 Bronze: 50 PushUps</p>
+          <p>🥇 Gold: {thresholds.gold} · 🥈 Silber: {thresholds.silver} · 🥉 Bronze: {thresholds.bronze}</p>
           <p className="mt-1">Podest ohne Schwelle → halbe Münze 🪙 · 2× gleiche Münze → Medaille</p>
         </div>
       )}
@@ -94,7 +99,7 @@ export default function Achievements() {
               <span className="w-8 text-center">🥇</span>
               <span className="w-8 text-center">🥈</span>
               <span className="w-8 text-center">🥉</span>
-              {isPushups && <span className="w-8 text-center text-[10px]">½</span>}
+              {hasThresholds && <span className="w-8 text-center text-[10px]">½</span>}
             </div>
           </div>
 
@@ -117,7 +122,7 @@ export default function Achievements() {
                       {row.display_name || row.username}
                       {row.is_me && <span className="ml-1 text-xs text-brand-300">(du)</span>}
                     </p>
-                    {isPushups && hasHalf && (
+                    {hasThresholds && hasHalf && (
                       <HalfCoins
                         half_gold={row.half_gold}
                         half_silver={row.half_silver}
@@ -129,7 +134,7 @@ export default function Achievements() {
                     <span className="w-8 text-center text-sm font-bold text-amber-300">{row.gold_count}</span>
                     <span className="w-8 text-center text-sm font-bold text-slate-300">{row.silver_count}</span>
                     <span className="w-8 text-center text-sm font-bold text-orange-400">{row.bronze_count}</span>
-                    {isPushups && (
+                    {hasThresholds && (
                       <div className="w-8 flex flex-col items-center gap-0.5">
                         {row.half_gold   > 0 && <HalfCoin color="gold"   />}
                         {row.half_silver > 0 && <HalfCoin color="silver" />}
