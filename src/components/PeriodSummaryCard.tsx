@@ -96,8 +96,11 @@ export function PeriodSummaryCard({ exercise }: Props) {
     else setPWeek((w) => w - 1);
   }
   function nextWeek() {
-    const monday = getMondayOfISOWeek(pWeek, pWeekYear);
-    if (toDateStr(monday) >= todayStr) return;
+    // Prüfen ob die NÄCHSTE Woche schon begonnen hat (nicht die aktuelle)
+    const nextW = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
+    const nextY = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
+    const nextMonday = getMondayOfISOWeek(nextW, nextY);
+    if (toDateStr(nextMonday) > todayStr) return;
     if (pWeek === getWeeksInYear(pWeekYear)) { setPWeekYear((y) => y + 1); setPWeek(1); }
     else setPWeek((w) => w + 1);
   }
