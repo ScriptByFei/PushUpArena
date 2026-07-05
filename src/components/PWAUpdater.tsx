@@ -1,63 +1,53 @@
 import { useEffect, useRef } from 'react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
 
-const UPDATE_CHECK_INTERVAL = 5 * 60 * 1000; // SW-Prüfung alle 5 Minuten
-const VERSION_CHECK_INTERVAL = 30 * 1000;    // Version-Prüfung alle 30 Sekunden
+const VERSION_CHECK_INTERVAL = 30 * 1000; // alle 30 Sekunden
 
 export function PWAUpdater() {
   const deployedVersion = useRef<number | null>(null);
 
-  const { updateServiceWorker } = useRegisterSW({
-    onNeedRefresh() {
-      updateServiceWorker(true);
-    },
-    onRegisteredSW(_swUrl, registration) {
-      if (!registration) return;
-      registration.update().catch(() => {});
-      setInterval(() => registration.update().catch(() => {}), UPDATE_CHECK_INTERVAL);
-    },
-  });
-
-  // Wenn neuer SW die Kontrolle übernimmt → sofort neu laden
+  // Wenn neuer SW die Kontrolle übernimmt → sofort hart neu laden
   useEffect(() => {
-    function handleControllerChange() {
+    function onControllerChange() {
       window.location.reload();
     }
-    navigator.serviceWorker?.addEventListener('controllerchange', handleControllerChange);
-    return () => navigator.serviceWorker?.removeEventListener('controllerchange', handleControllerChange);
+    navigator.serviceWorker?.addEventListener('controllerchange', onControllerChange);
+    return () => navigator.serviceWorker?.removeEventListener('controllerchange', onControllerChange);
   }, []);
 
-  // Beim Zurückwechseln zur App SW-Update prüfen
+  // SW-Update-Prüfung alle 5 Minuten + bei Rückkehr zur App
   useEffect(() => {
-    function handleVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        navigator.serviceWorker?.getRegistration().then((reg) => reg?.update()).catch(() => {});
-      }
+    function triggerUpdate() {
+      navigator.serviceWorker?.getRegistration().then((reg) => reg?.update()).catch(() => {});
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    function onVisibility() {
+      if (document.visibilityState === 'visible') triggerUpdate();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    const interval = setInterval(triggerUpdate, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearInterval(interval);
+    };
   }, []);
 
-  // Versions-Check: /version.json alle 30s abrufen.
-  // Geht am SW-Cache vorbei (JSON nicht precached) und erzwingt
-  // einen harten Reload wenn ein neues Deploy erkannt wird.
+  // Version-Check: /version.json alle 30s abrufen.
+  // Geht direkt ans Netzwerk (JSON nicht im SW-Precache) →
+  // erzwingt Reload wenn neues Deploy erkannt wird.
   useEffect(() => {
     async function checkVersion() {
       try {
         const res = await fetch('/version.json', { cache: 'no-store' });
         if (!res.ok) return;
-        const { v } = await res.json() as { v: number };
+        const { v } = (await res.json()) as { v: number };
         if (deployedVersion.current === null) {
           deployedVersion.current = v;
         } else if (deployedVersion.current !== v) {
-          // Neue Version erkannt → hart neu laden
           window.location.reload();
         }
       } catch {
-        // Offline oder Netzwerkfehler — ignorieren
+        // offline — ignorieren
       }
     }
-
     void checkVersion();
     const interval = setInterval(checkVersion, VERSION_CHECK_INTERVAL);
     return () => clearInterval(interval);
