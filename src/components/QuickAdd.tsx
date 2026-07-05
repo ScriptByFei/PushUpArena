@@ -15,7 +15,7 @@ export function QuickAdd({
   onLogged?: (info: { amount: number; entryId: string }) => void;
 }) {
   const { submit, submitting } = useWorkoutLogger(exerciseId, unit);
-  const { amounts: presets } = useQuickAmounts();
+  const { amounts: presets } = useQuickAmounts(exerciseId);
   const { exercise, enrolledExercises, switchExercise } = useExercise();
   const [custom, setCustom] = useState('');
   const [active, setActive] = useState<number | null>(null);

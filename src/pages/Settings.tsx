@@ -78,7 +78,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const pushSupported = typeof Notification !== 'undefined';
   const { pushPermission, busy: pushBusy, togglePush } = usePush();
   const { settings: notifSettings, saving: notifSaving, save: saveNotif } = useNotificationSettings();
-  const { amounts: quickAmounts, saving: quickSaving, save: saveQuickAmounts } = useQuickAmounts();
+  const { amounts: quickAmounts, saving: quickSaving, save: saveQuickAmounts } = useQuickAmounts(exercise?.id);
   const [quickFields, setQuickFields] = useState<string[]>(['', '', '', '']);
   const [quickInitialized, setQuickInitialized] = useState(false);
 
