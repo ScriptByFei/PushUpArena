@@ -41,9 +41,6 @@ export default function Activity() {
 
   return (
     <div className="space-y-4">
-      {/* Zeitraum-Zusammenfassung */}
-      <PeriodSummaryCard exercise={exercise} />
-
       {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
       {enrolledExercises.length > 1 && (
         <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
@@ -64,6 +61,9 @@ export default function Activity() {
           })}
         </div>
       )}
+
+      {/* Zeitraum-Zusammenfassung */}
+      <PeriodSummaryCard exercise={exercise} />
 
       {/* Letzte 7 Tage */}
       {stats.last7DaysData.length > 0 && (
