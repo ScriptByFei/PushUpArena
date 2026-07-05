@@ -227,12 +227,15 @@ export default function Leaderboard() {
                       )}
                     </p>
                     <p className={`mt-2 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
-                      {sortKey === 'current_streak' && row.rest_days_remaining > 0 && (
-                        <span className="text-base leading-none" title="Freie Ruhetage diese Woche">
-                          {restHearts(row.rest_days_remaining)}
-                        </span>
+                      {sortKey === 'current_streak' && row.rest_days_remaining > 0 ? (
+                        <>
+                          <span className="text-base leading-none">❤️</span>
+                          {row[sortKey]}
+                          <span className="text-base leading-none">❤️</span>
+                        </>
+                      ) : (
+                        row[sortKey]
                       )}
-                      {row[sortKey]}
                     </p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-500">
                       {sortLabel}
