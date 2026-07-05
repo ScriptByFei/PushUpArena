@@ -25,10 +25,10 @@ function maxRestDate() {
 }
 // Frühestes erlaubtes Eintragsdatum: vor 2 Tagen um 00:00 Uhr Berlin-Zeit
 function minEntryDatetime() {
-  const [y, m, d] = berlinToday().split('-').map(Number);
-  const twoDaysAgo = new Date(y, m - 1, d - 2);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${twoDaysAgo.getFullYear()}-${pad(twoDaysAgo.getMonth() + 1)}-${pad(twoDaysAgo.getDate())}T00:00`;
+  return `${berlinToday()}T00:00`;
+}
+function isEditableToday(performed_at: string): boolean {
+  return new Date(performed_at).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }) === berlinToday();
 }
 function berlinYesterday() {
   const d = new Date();
@@ -146,7 +146,7 @@ export default function Track() {
     e.preventDefault();
     const n = parseInt(amount, 10);
     if (!n || n <= 0) { toast.error('Bitte eine gültige Anzahl eingeben.'); return; }
-    if (when && when < minEntryDatetime()) { toast.error('Einträge können maximal 2 Tage rückwirkend erfasst werden.'); return; }
+    if (when && when < minEntryDatetime()) { toast.error('Einträge können nur für den heutigen Tag erfasst werden.'); return; }
     if (when && when > toDateTimeLocalValue()) { toast.error('Einträge können nicht in der Zukunft erfasst werden.'); return; }
     const { error: err } = await submit({
       amount: n, note: null,
@@ -219,7 +219,7 @@ export default function Track() {
               </Field>
               <Field label="Datum & Uhrzeit" htmlFor="when">
                 <DateTimeInput id="when" value={when} onChange={setWhen} min={minEntryDatetime()} max={toDateTimeLocalValue()} />
-                <p className="mt-1 text-xs text-slate-500">Maximal 2 Tage rückwirkend, kein Datum in der Zukunft.</p>
+                <p className="mt-1 text-xs text-slate-500">Nur heutige Einträge möglich, kein Datum in der Zukunft.</p>
               </Field>
               <Button type="submit" fullWidth size="lg" loading={submitting}>Eintragen</Button>
             </form>
@@ -372,7 +372,7 @@ export default function Track() {
                                 {item.entry.amount}
                               </div>
                               <p className="flex-1 text-xs text-slate-400">{formatTime(item.entry.performed_at)}</p>
-                              {new Date(item.entry.performed_at) >= new Date(minEntryDatetime()) && (
+                              {isEditableToday(item.entry.performed_at) && (
                                 <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
                                   className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-ink-700 hover:text-slate-200">
                                   <EditIcon className="h-4 w-4" />
