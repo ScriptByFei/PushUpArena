@@ -126,7 +126,7 @@ export function FABSheet({ onClose }: FABSheetProps) {
 
             {tab === 'training' ? (
               <>
-                <QuickAdd exerciseId={selected.id} onLogged={onClose} onExerciseSwitch={setSelected} />
+                <QuickAdd exerciseId={selected.id} onLogged={onClose} />
                 {/* Verlauf-Link */}
                 <button
                   onClick={openVerlauf}
