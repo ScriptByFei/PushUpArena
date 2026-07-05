@@ -14,15 +14,22 @@ self.addEventListener('install', () => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    self.clients.claim().then(() =>
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-        // Alle offenen Tabs sofort neu laden, damit sie die neuen gecachten Assets bekommen.
-        // Verhindert den Zustand: alter HTML + fehlende/neue CSS-Hash = unstyled App.
+    // 1. Alle alten Caches (v1–v3) vollständig löschen
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((k) => k.includes('pushup-arena') && !k.includes('pushup-arena-v4'))
+          .map((k) => caches.delete(k))
+      ))
+      // 2. Alle Clients übernehmen
+      .then(() => self.clients.claim())
+      // 3. Alle offenen Fenster sofort neu laden → frische Assets aus v4-Cache
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) => {
         clients.forEach((client) => {
           void (client as WindowClient).navigate(client.url);
         });
       })
-    )
   );
 });
 

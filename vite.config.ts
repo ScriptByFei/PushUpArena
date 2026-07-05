@@ -13,11 +13,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Push-Handler wird direkt in sw.js eingebaut (kein importScripts-Caching-Problem)
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      // 'autoUpdate': neue Versionen werden im Hintergrund installiert und beim Erkennen
+      // automatisch aktiviert + neu geladen (kein Banner, kein Tippen).
+      registerType: 'prompt',
       includeAssets: [
         'favicon.svg',
         'offline.html',
@@ -51,11 +49,17 @@ export default defineConfig({
           },
         ],
       },
-      injectManifest: {
-        // Nur Assets cachen – index.html niemals precachen
+      workbox: {
+        // Nur Assets cachen – index.html NIEMALS precachen oder abfangen.
+        // Navigation geht immer direkt ans Netzwerk → garantiert frische App-Version.
+        cacheId: 'pushup-arena-v4',
         globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
+        // Keine navigateFallback, kein runtimeCaching für Navigation.
+        // Offline-Nutzung: Supabase-Anfragen scheitern ohnehin; UI-Assets sind gecacht.
+        runtimeCaching: [],
       },
       devOptions: {
+        // Service Worker im Dev-Modus deaktiviert (sauberes HMR).
         enabled: false,
       },
     }),
