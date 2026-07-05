@@ -60,11 +60,8 @@ export function BottomNav() {
         {/* Erfolge-Trophy */}
         <NavLink to="/achievements" aria-label="Erfolge">
           {() => (
-            <span
-              className="mb-[1px] flex flex-col items-center justify-center opacity-100 transition active:scale-95"
-            >
-              <span className="text-[16px] leading-snug">🥇🥈</span>
-              <span className="text-[16px] leading-snug">🥉</span>
+            <span className="mb-[1px] flex items-center justify-center opacity-100 transition active:scale-95">
+              <img src="/medals.png" alt="Erfolge" className="h-9 w-9 object-contain" />
             </span>
           )}
         </NavLink>
