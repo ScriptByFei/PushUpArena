@@ -212,6 +212,18 @@ export interface Database {
         Args: { p_user_id: string; p_exercise: string };
         Returns: { amount: number }[];
       };
+      get_all_active_today: {
+        Args: { p_exercise: string };
+        Returns: {
+          user_id: string;
+          username: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          today_amount: number;
+          is_me: boolean;
+          is_friend: boolean;
+        }[];
+      };
       evaluate_achievements: {
         Args: { p_exercise: string };
         Returns: { slug: string; name: string; icon: string }[];

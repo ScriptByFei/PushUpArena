@@ -1,14 +1,25 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useFriends, type FriendProfile } from '@/hooks/useFriends';
 import { useToast } from '@/context/ToastContext';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { supabase } from '@/lib/supabase';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { CheckIcon, XIcon, UserIcon, ShareIcon } from '@/components/ui/icons';
+
+type ActiveRow = {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  today_amount: number;
+  is_me: boolean;
+  is_friend: boolean;
+};
 
 function PersonRow({
   profile,
@@ -49,11 +60,30 @@ export default function Friends() {
   // Lokale Übungsauswahl nur für die Member-Kachel
   const [memberExercise, setMemberExercise] = useState<typeof activeExercise>(null);
   const shownExercise = memberExercise ?? activeExercise;
+  // Filter-Modus: alle aktiven User oder nur Freunde
+  const [memberFilter, setMemberFilter] = useState<'all' | 'friends'>('all');
+
+  // Freunde-Leaderboard (nur Freunde + ich)
   const { rows: leaderRows } = useLeaderboard(shownExercise?.id);
-  // Aktive Member = alle aus dem Leaderboard mit today_amount > 0 (sortiert nach heutiger Menge)
-  const activeMembers = [...leaderRows]
+  const friendMembers = [...leaderRows]
     .filter((r) => r.today_amount > 0)
     .sort((a, b) => b.today_amount - a.today_amount);
+
+  // Alle aktiven User (neue Funktion)
+  const [allActiveRows, setAllActiveRows] = useState<ActiveRow[]>([]);
+  const [allActiveLoading, setAllActiveLoading] = useState(false);
+
+  useEffect(() => {
+    if (!shownExercise?.id) return;
+    setAllActiveLoading(true);
+    void (async () => {
+      const { data } = await supabase.rpc('get_all_active_today', { p_exercise: shownExercise.id });
+      setAllActiveRows((data ?? []) as ActiveRow[]);
+      setAllActiveLoading(false);
+    })();
+  }, [shownExercise?.id]);
+
+  const activeMembers = memberFilter === 'friends' ? friendMembers : allActiveRows;
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
@@ -253,9 +283,24 @@ export default function Friends() {
             </button>
             {pushersOpen && (
               <>
+                {/* Alle / Freunde Toggle */}
+                <div className="mt-3 flex rounded-xl bg-ink-950/60 p-1">
+                  {(['all', 'friends'] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setMemberFilter(f)}
+                      className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                        memberFilter === f ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {f === 'all' ? '🌍 Alle' : '👥 Freunde'}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
                 {enrolledExercises.length > 1 && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-2 flex gap-2">
                     {enrolledExercises.map((ex) => {
                       const isActive = ex.id === shownExercise?.id;
                       return (
@@ -273,7 +318,10 @@ export default function Friends() {
                     })}
                   </div>
                 )}
-                {activeMembers.length === 0 ? (
+
+                {allActiveLoading && memberFilter === 'all' ? (
+                  <p className="mt-3 text-center text-xs text-slate-500">Lade …</p>
+                ) : activeMembers.length === 0 ? (
                   <p className="mt-3 text-center text-sm text-slate-500">
                     Noch niemand aktiv — sei der Erste! 💪
                   </p>
@@ -291,6 +339,9 @@ export default function Friends() {
                             {p.display_name || p.username}
                             {p.is_me && (
                               <span className="ml-1 text-xs text-brand-300">(du)</span>
+                            )}
+                            {'is_friend' in p && !p.is_me && !p.is_friend && (
+                              <span className="ml-1 text-xs text-slate-500">· kein Freund</span>
                             )}
                           </p>
                         </div>
