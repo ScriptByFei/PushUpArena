@@ -77,10 +77,27 @@ export default function Achievements() {
 
       {/* Info zu Schwellenwerten */}
       {hasThresholds && thresholds && (
-        <div className="rounded-xl border border-ink-700 bg-ink-800/50 px-4 py-3 text-xs text-slate-400 leading-relaxed">
-          <p className="font-semibold text-slate-300 mb-1">Medaillen-Schwellen 🏅</p>
-          <p>🥇 Gold: {thresholds.gold} · 🥈 Silber: {thresholds.silver} · 🥉 Bronze: {thresholds.bronze}</p>
-          <p className="mt-1">Podest ohne Schwelle → halbe Münze 🪙 · 2× gleiche Münze → Medaille</p>
+        <div className="rounded-2xl border border-ink-700 bg-ink-900/80 overflow-hidden">
+          <div className="px-4 py-3 border-b border-ink-700">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">So verdienst du Medaillen</p>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-ink-700">
+            {[
+              { medal: '🥇', label: 'Gold',   value: thresholds.gold,   color: 'text-amber-300' },
+              { medal: '🥈', label: 'Silber', value: thresholds.silver, color: 'text-slate-300' },
+              { medal: '🥉', label: 'Bronze', value: thresholds.bronze, color: 'text-orange-400' },
+            ].map(({ medal, label, value, color }) => (
+              <div key={label} className="flex flex-col items-center py-4 gap-1">
+                <span className="text-2xl leading-none">{medal}</span>
+                <span className={`text-xl font-extrabold ${color}`}>{value}</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2.5 border-t border-ink-700 bg-ink-800/40">
+            <span className="text-base leading-none">🪙</span>
+            <p className="text-xs text-slate-400">Podest ohne Schwelle → halbe Münze · 2× gleiche → Medaille</p>
+          </div>
         </div>
       )}
 
