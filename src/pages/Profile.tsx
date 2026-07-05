@@ -400,7 +400,9 @@ export default function Profile() {
                   <p className="text-5xl font-extrabold text-brand-300">
                     {periodTotal.toLocaleString('de-DE')}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">{exercise?.name} in diesem Zeitraum</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {exercise?.name}{exercise?.name && !exercise.name.endsWith('s') ? 's' : ''} in diesem Zeitraum
+                  </p>
                 </>
               )}
             </div>
