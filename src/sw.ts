@@ -12,8 +12,18 @@ self.addEventListener('install', () => {
   void self.skipWaiting();
 });
 
-self.addEventListener('activate', () => {
-  void self.clients.claim();
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    self.clients.claim().then(() =>
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        // Alle offenen Tabs sofort neu laden, damit sie die neuen gecachten Assets bekommen.
+        // Verhindert den Zustand: alter HTML + fehlende/neue CSS-Hash = unstyled App.
+        clients.forEach((client) => {
+          void (client as WindowClient).navigate(client.url);
+        });
+      })
+    )
+  );
 });
 
 // VitePWA sendet diese Message im autoUpdate-Modus
