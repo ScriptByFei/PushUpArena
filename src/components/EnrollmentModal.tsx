@@ -1,6 +1,7 @@
 /**
  * EnrollmentModal – zeigt sich einmalig für neue Übungen.
- * User kann "Mitmachen" oder "Nein danke" wählen.
+ * Zeigt immer unenrolledExercises[0] — nach jeder Antwort schrumpft
+ * das Array automatisch, sodass die nächste Übung erscheint.
  */
 import { useState } from 'react';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
@@ -9,11 +10,10 @@ import { Button } from '@/components/ui/Button';
 
 export function EnrollmentModal() {
   const { unenrolledExercises, enroll } = useExercise();
-  const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  // Show first unenrolled exercise
-  const ex: Exercise | undefined = unenrolledExercises[idx];
+  // Immer die erste unbekannte Übung zeigen — Array schrumpft nach jeder Antwort
+  const ex: Exercise | undefined = unenrolledExercises[0];
   if (!ex) return null;
 
   const isMandatory = ex.slug === 'pushups';
@@ -22,8 +22,8 @@ export function EnrollmentModal() {
     if (busy) return;
     setBusy(true);
     await enroll(ex!.id, status);
-    setIdx((i) => i + 1);
     setBusy(false);
+    // kein idx nötig — nach enroll() aktualisiert ExerciseContext den Array
   }
 
   const icon = EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png';
@@ -45,11 +45,15 @@ export function EnrollmentModal() {
             Bei {ex.name} mitmachen?
           </h2>
           <p className="mt-2 text-sm text-slate-400 max-w-xs">
-            Tracke deine {ex.name}, sieh dich in der Rangliste und halte deine Streak aufrecht.{!isMandatory && ' Du kannst jederzeit in den Einstellungen austragen.'}
+            Tracke deine {ex.name}, sieh dich in der Rangliste und halte deine Streak aufrecht.
           </p>
-          {isMandatory && (
+          {isMandatory ? (
             <p className="mt-1 text-xs text-brand-400 max-w-xs">
               Pflichtübung — immer dabei.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500 max-w-xs">
+              Du kannst dich jederzeit unter Einstellungen → Übungen verwalten ein- oder austragen.
             </p>
           )}
         </div>
@@ -58,8 +62,8 @@ export function EnrollmentModal() {
           <Button
             size="lg"
             className="w-full"
+            loading={busy}
             onClick={() => void respond('enrolled')}
-            disabled={busy}
           >
             Mitmachen 💪
           </Button>
