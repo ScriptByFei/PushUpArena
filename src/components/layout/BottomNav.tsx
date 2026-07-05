@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ComponentType, SVGProps } from 'react';
-import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, MedalIcon } from '@/components/ui/icons';
+import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon } from '@/components/ui/icons';
 
 interface NavItem {
   to: string;
@@ -11,7 +11,6 @@ interface NavItem {
 const items: NavItem[] = [
   { to: '/', label: 'Start', Icon: HomeIcon },
   { to: '/friends', label: 'Freunde', Icon: UsersIcon },
-  { to: '/achievements', label: 'Erfolge', Icon: MedalIcon },
   { to: '/leaderboard', label: 'Rangliste', Icon: TrophyIcon },
   { to: '/profile', label: 'Profil', Icon: UserIcon },
 ];
@@ -42,8 +41,9 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* FAB — absolut zentriert, weiter nach oben versetzt */}
-      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full">
+      {/* FAB + Erfolge-Trophy — zusammen zentriert, über der Nav-Leiste */}
+      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full flex items-end gap-2 pb-1">
+        {/* FAB */}
         <NavLink to="/track" aria-label="Eintragen">
           {({ isActive }) => (
             <span
@@ -55,10 +55,23 @@ export function BottomNav() {
             </span>
           )}
         </NavLink>
+
+        {/* Erfolge-Trophy */}
+        <NavLink to="/achievements" aria-label="Erfolge">
+          {({ isActive }) => (
+            <span
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-lg ring-2 ring-ink-900 shadow transition active:scale-95 ${
+                isActive ? 'bg-brand-600' : 'bg-ink-800'
+              }`}
+            >
+              🏆
+            </span>
+          )}
+        </NavLink>
       </div>
 
-      {/* 5 Nav-Items gleichmäßig verteilt */}
-      <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2">
+      {/* 4 Nav-Items gleichmäßig verteilt */}
+      <div className="mx-auto grid max-w-md grid-cols-4 items-center px-2">
         {items.map((item) => (
           <SideItem key={item.to} {...item} />
         ))}
