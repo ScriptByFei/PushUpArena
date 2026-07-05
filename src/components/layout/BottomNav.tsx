@@ -61,12 +61,10 @@ export function BottomNav() {
         <NavLink to="/achievements" aria-label="Erfolge">
           {({ isActive }) => (
             <span
-              className={`mb-[5px] flex flex-col items-center justify-center transition active:scale-95 ${
-                isActive ? 'opacity-100' : 'opacity-80'
-              }`}
+              className="mb-[5px] flex flex-col items-center justify-center opacity-100 transition active:scale-95"
             >
-              <span className="text-[17px] leading-snug">🥇🥈</span>
-              <span className="text-[17px] leading-snug">🥉</span>
+              <span className="text-[16px] leading-snug">🥇🥈</span>
+              <span className="text-[16px] leading-snug">🥉</span>
             </span>
           )}
         </NavLink>
