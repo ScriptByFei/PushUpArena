@@ -53,7 +53,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     const { data: exData, error: exErr } = await supabase
       .from('exercises')
       .select('*')
-      .order('created_at');
+      .order('display_order', { ascending: true });
 
     if (exErr) {
       setError(exErr.message);
