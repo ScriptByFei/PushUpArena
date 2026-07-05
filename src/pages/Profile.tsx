@@ -88,21 +88,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Konto */}
-      <div className="flex items-center justify-between rounded-2xl border border-ink-700 bg-ink-800/70 px-4 py-2.5">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-slate-300">Konto</p>
-          <p className="truncate text-xs text-slate-500">{user?.email}</p>
-        </div>
-        <button
-          onClick={() => setConfirmLogout(true)}
-          className="ml-3 shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
-          title="Abmelden"
-        >
-          <LogoutIcon className="h-5 w-5" />
-        </button>
-      </div>
-
       {/* Profil-Header */}
       <Card>
         <div className="flex items-center gap-4">
@@ -128,7 +113,19 @@ export default function Profile() {
             </Button>
           )}
         </div>
-        <p className="mt-3 text-xs text-slate-500">Dabei seit {formatDate(profile.created_at)}</p>
+        <div className="mt-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
+          </div>
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="ml-3 shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
+            title="Abmelden"
+          >
+            <LogoutIcon className="h-5 w-5" />
+          </button>
+        </div>
       </Card>
 
       {/* Profil bearbeiten */}
