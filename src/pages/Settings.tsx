@@ -595,11 +595,8 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       >
         <div className="space-y-3 text-left">
           <p>
-            Wenn du <strong>{leaveTarget?.name}</strong> verlässt, werden dein Fortschritt,
-            deine Streak, Ziele und Statistiken für diese Übung nicht mehr angezeigt.
-          </p>
-          <p className="text-slate-400">
-            Dieser Schritt kann nicht rückgängig gemacht werden.
+            Deine bisherigen Einträge für <strong>{leaveTarget?.name}</strong> bleiben gespeichert.
+            Du wirst nur aus der Rangliste und den Statistiken ausgeblendet, bis du wieder mitmachst.
           </p>
         </div>
       </Modal>
