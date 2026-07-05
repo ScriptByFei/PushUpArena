@@ -61,7 +61,7 @@ export default function Friends() {
   const [memberExercise, setMemberExercise] = useState<typeof activeExercise>(null);
   const shownExercise = memberExercise ?? activeExercise;
   // Filter-Modus: alle aktiven User oder nur Freunde
-  const [memberFilter, setMemberFilter] = useState<'all' | 'friends'>('friends');
+  const [memberFilter, setMemberFilter] = useState<'all' | 'friends'>('all');
 
   // Freunde-Leaderboard (nur Freunde + ich)
   const { rows: leaderRows } = useLeaderboard(shownExercise?.id);
@@ -153,7 +153,7 @@ export default function Friends() {
               <>
                 {/* Freunde / Alle Toggle */}
                 <div className="mt-3 flex w-full rounded-xl bg-ink-950/60 p-1">
-                  {(['friends', 'all'] as const).map((f) => (
+                  {(['all', 'friends'] as const).map((f) => (
                     <button
                       key={f}
                       onClick={() => setMemberFilter(f)}
@@ -161,7 +161,7 @@ export default function Friends() {
                         memberFilter === f ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {f === 'friends' ? '👥 Freunde' : '🌍 Alle'}
+                      {f === 'all' ? '🌍 Alle' : '👥 Freunde'}
                     </button>
                   ))}
                 </div>
