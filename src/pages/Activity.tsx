@@ -8,6 +8,7 @@ import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { useGoals } from '@/hooks/useGoals';
 import { useRestDays } from '@/hooks/useRestDays';
+import { PeriodSummaryCard } from '@/components/PeriodSummaryCard';
 
 export default function Activity() {
   const { exercise: activeExercise, enrolledExercises } = useExercise();
@@ -40,6 +41,9 @@ export default function Activity() {
 
   return (
     <div className="space-y-4">
+      {/* Zeitraum-Zusammenfassung */}
+      <PeriodSummaryCard exercise={exercise} />
+
       {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
       {enrolledExercises.length > 1 && (
         <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
