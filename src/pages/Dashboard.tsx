@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, type ReactNode, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { useExercise } from '@/context/ExerciseContext';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useStats } from '@/hooks/useStats';
 import { useGoals } from '@/hooks/useGoals';
 import { useToast } from '@/context/ToastContext';
@@ -43,7 +43,9 @@ function StatTile({
 let _restWarnShownDate: string | null = null;
 
 export default function Dashboard() {
-  const { exercise, loading: exLoading, error: exError, reload } = useExercise();
+  const { exercise, enrolledExercises, switchExercise, loading: exLoading, error: exError, reload } = useExercise();
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const canSwitch = enrolledExercises.length > 1;
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const restDay = useRestDayInfo(exercise?.id);
@@ -114,7 +116,17 @@ export default function Dashboard() {
             Anpassen
           </Link>
         </div>
-        <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
+        <button
+          onClick={() => canSwitch && setShowSwitcher(true)}
+          className={`mb-3 mt-0.5 flex items-center gap-1 text-xs text-slate-400 ${canSwitch ? 'hover:text-slate-200 transition' : ''}`}
+        >
+          {exercise.name}
+          {canSwitch && (
+            <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3">
+              <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          )}
+        </button>
         <QuickAdd exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
       </Card>
 
@@ -170,5 +182,49 @@ export default function Dashboard() {
       </Card>
 
     </div>
+
+      {/* Übungs-Switcher Bottom Sheet */}
+      {showSwitcher && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowSwitcher(false)}
+        >
+          <div
+            className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-4 pb-10 pt-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 h-1 w-10 rounded-full bg-ink-600 mx-auto" />
+            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-widest text-slate-500">
+              Übung wechseln
+            </p>
+            <div className="flex flex-col gap-2">
+              {enrolledExercises.map((ex) => {
+                const isActive = ex.id === exercise.id;
+                return (
+                  <button
+                    key={ex.id}
+                    onClick={() => { switchExercise(ex); setShowSwitcher(false); }}
+                    className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition ${
+                      isActive
+                        ? 'bg-brand-600/20 border border-brand-600/40'
+                        : 'bg-ink-800 hover:bg-ink-700'
+                    }`}
+                  >
+                    <img
+                      src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'}
+                      alt={ex.name}
+                      className="h-12 w-12 rounded-xl object-cover"
+                    />
+                    <span className={`text-base font-semibold ${isActive ? 'text-brand-300' : 'text-slate-200'}`}>
+                      {ex.name}
+                    </span>
+                    {isActive && <span className="ml-auto text-xs text-brand-400">Aktiv</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
