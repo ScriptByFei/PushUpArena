@@ -61,11 +61,11 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
   const { user } = useAuth();
   const detailRef = useRef<HTMLDivElement>(null);
 
-  // Nach Auswahl: zur Detailansicht scrollen
+  // Nach Auswahl: ganz nach unten scrollen damit Sätze sichtbar sind
   useEffect(() => {
     if (!selected) return;
     setTimeout(() => {
-      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }, 50);
   }, [selected]);
 
