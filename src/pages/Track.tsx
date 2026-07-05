@@ -125,6 +125,7 @@ export default function Track() {
     const n = parseInt(amount, 10);
     if (!n || n <= 0) { toast.error('Bitte eine gültige Anzahl eingeben.'); return; }
     if (when && when < minEntryDatetime()) { toast.error('Einträge können maximal 2 Tage rückwirkend erfasst werden.'); return; }
+    if (when && when > toDateTimeLocalValue()) { toast.error('Einträge können nicht in der Zukunft erfasst werden.'); return; }
     const { error: err } = await submit({
       amount: n, note: null,
       performedAt: when ? new Date(when).toISOString() : undefined,
