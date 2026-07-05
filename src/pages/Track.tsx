@@ -228,7 +228,7 @@ export default function Track() {
           <>
             <CardTitle>Ruhetag planen</CardTitle>
             <p className="mt-0.5 text-xs text-slate-400">
-              Plane Ruhetage bis zu 14 Tage im Voraus. Tage ohne Training zählen automatisch als Ruhetag.
+              Plane Ruhetage bis zu 14 Tage im Voraus. Vergangene Tage ohne Training zählen automatisch als Ruhetag.
             </p>
             <form onSubmit={onSubmitRestDay} className="mt-3 space-y-3" noValidate>
               <Field label="Datum" htmlFor="restDate">
