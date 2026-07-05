@@ -11,7 +11,6 @@ interface NavItem {
 const items: NavItem[] = [
   { to: '/', label: 'Start', Icon: HomeIcon },
   { to: '/friends', label: 'Freunde', Icon: UsersIcon },
-  { to: '/teams', label: 'Teams', Icon: ShieldIcon },
   { to: '/achievements', label: 'Erfolge', Icon: MedalIcon },
   { to: '/leaderboard', label: 'Rangliste', Icon: TrophyIcon },
   { to: '/profile', label: 'Profil', Icon: UserIcon },
@@ -58,8 +57,8 @@ export function BottomNav() {
         </NavLink>
       </div>
 
-      {/* 6 Nav-Items gleichmäßig verteilt */}
-      <div className="mx-auto grid max-w-md grid-cols-6 items-center px-2">
+      {/* 5 Nav-Items gleichmäßig verteilt */}
+      <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2">
         {items.map((item) => (
           <SideItem key={item.to} {...item} />
         ))}
