@@ -229,9 +229,15 @@ export default function Track() {
                       const val = e.target.value;
                       if (!val) { setRestDate(berlinToday()); return; }
                       const maxDate = maxRestDate();
-                      if (val < berlinToday()) setRestDate(berlinToday());
-                      else if (val > maxDate) setRestDate(maxDate);
-                      else setRestDate(val);
+                      if (val < berlinToday()) {
+                        setRestDate(berlinToday());
+                        toast.notify('Vergangene Tage ohne Training zählen automatisch als Ruhetag.');
+                      } else if (val > maxDate) {
+                        setRestDate(maxDate);
+                        toast.notify('Maximal 14 Tage im Voraus planbar.');
+                      } else {
+                        setRestDate(val);
+                      }
                     }}
                   />
                 </div>
