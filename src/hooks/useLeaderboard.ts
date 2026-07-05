@@ -18,7 +18,8 @@ export function useLeaderboard(exerciseId?: string) {
       p_exercise: exerciseId,
     });
     if (err) setError(err.message);
-    else setRows(data ?? []);
+    // Nur User anzeigen die mindestens einen Eintrag haben (total_amount > 0)
+    else setRows((data ?? []).filter((r) => r.total_amount > 0));
     setLoading(false);
   }, [exerciseId]);
 
