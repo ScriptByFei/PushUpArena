@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { MonthCalendar } from '@/components/MonthCalendar';
-import { WeeklyBarChart } from '@/components/WeeklyBarChart';
 import { formatDate } from '@/lib/date';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -41,28 +39,6 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
   const [saving, setSaving] = useState(false);
-
-  const now = new Date();
-  const todayYear = now.getUTCFullYear();
-  const todayMonth = now.getUTCMonth();
-  const [calYear, setCalYear] = useState(todayYear);
-  const [calMonth, setCalMonth] = useState(todayMonth);
-
-  // Daten reichen max. 182 Tage zurück (~6 Monate)
-  const minDate = new Date(Date.UTC(todayYear, todayMonth, now.getUTCDate()) - 181 * 86_400_000);
-  const canGoPrev =
-    calYear > minDate.getUTCFullYear() ||
-    (calYear === minDate.getUTCFullYear() && calMonth > minDate.getUTCMonth());
-  const canGoNext = calYear < todayYear || (calYear === todayYear && calMonth < todayMonth);
-
-  function goPrev() {
-    if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
-    else setCalMonth((m) => m - 1);
-  }
-  function goNext() {
-    if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1); }
-    else setCalMonth((m) => m + 1);
-  }
 
   useEffect(() => {
     if (profile) {
@@ -216,65 +192,6 @@ export default function Profile() {
             </div>
           </Card>
 
-          {/* Letzte 7 Tage – Balkendiagramm */}
-          {stats.last7DaysData.length > 0 && (
-            <Card>
-              <CardTitle>Letzte 7 Tage</CardTitle>
-              <div className="mt-3">
-                <WeeklyBarChart data={stats.last7DaysData} />
-              </div>
-            </Card>
-          )}
-
-          {/* Monatskalender */}
-          <Card>
-            <CardTitle>Aktivitätskalender</CardTitle>
-            <MonthCalendar
-              data={stats.dailyData}
-              selectedYear={calYear}
-              selectedMonth={calMonth}
-              canGoPrev={canGoPrev}
-              canGoNext={canGoNext}
-              onPrev={goPrev}
-              onNext={goNext}
-            />
-          </Card>
-
-          {/* Letzte Einträge – gefiltert nach gewähltem Monat */}
-          {(() => {
-            const monthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
-            const recent = stats.dailyData
-              .filter((d) => d.amount > 0 && d.date.startsWith(monthPrefix))
-              .slice()
-              .reverse()
-              .slice(0, 5);
-            if (recent.length === 0) return null;
-            return (
-              <Card>
-                <CardTitle>Letzte Einträge</CardTitle>
-                <ul className="mt-2 divide-y divide-ink-700">
-                  {recent.map((d) => (
-                    <li key={d.date} className="flex items-center justify-between py-2.5">
-                      <div>
-                        <p className="text-sm text-slate-200">
-                          {new Date(d.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            timeZone: 'UTC',
-                          })}
-                        </p>
-                        {d.sessions > 1 && (
-                          <p className="text-xs text-slate-400">{d.sessions} Sessions</p>
-                        )}
-                      </div>
-                      <span className="text-base font-bold text-brand-300">{d.amount}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            );
-          })()}
         </>
       )}
     </div>
