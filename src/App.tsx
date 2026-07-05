@@ -1,4 +1,36 @@
+import { Component, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+
+// Fängt alle unerwarteten Render-Fehler auf – verhindert Blackscreen
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-screen items-center justify-center px-4">
+          <div className="max-w-md text-center">
+            <div className="mb-2 text-4xl">💥</div>
+            <h1 className="text-lg font-bold text-rose-300">Etwas ist schiefgelaufen</h1>
+            <p className="mt-2 text-sm text-slate-400 break-all">{this.state.error.message}</p>
+            <button
+              className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+              onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+            >
+              App neu laden
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PWAUpdater } from '@/components/PWAUpdater';
@@ -45,6 +77,7 @@ export default function App() {
   if (!isSupabaseConfigured) return <ConfigNotice />;
 
   return (
+    <ErrorBoundary>
     <InstallHintProvider>
       <PWAUpdater />
       <Routes>
@@ -84,5 +117,6 @@ export default function App() {
       <Route path="*" element={<NotFound />} />
       </Routes>
     </InstallHintProvider>
+    </ErrorBoundary>
   );
 }
