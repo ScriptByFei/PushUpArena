@@ -79,12 +79,17 @@ export default function Profile() {
     <div className="space-y-4">
       {/* Konto */}
       <Card>
-        <CardTitle>Konto</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Konto</CardTitle>
+          <button
+            onClick={async () => { await signOut(); navigate('/login', { replace: true }); }}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
+            title="Abmelden"
+          >
+            <LogoutIcon className="h-5 w-5" />
+          </button>
+        </div>
         <p className="mt-2 text-xs text-slate-500">Angemeldet als {user?.email}</p>
-        <Button variant="secondary" fullWidth className="mt-3" onClick={async () => { await signOut(); navigate('/login', { replace: true }); }}>
-          <LogoutIcon className="h-5 w-5" />
-          Abmelden
-        </Button>
       </Card>
 
       {/* Profil-Header */}
