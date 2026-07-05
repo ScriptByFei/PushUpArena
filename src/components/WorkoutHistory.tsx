@@ -205,9 +205,9 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
                         {formatDayLabel(dateStr)}
                       </span>
                       {hasRest && <span className="text-base">😴</span>}
-                      {dayTotal > 0 && (
-                        <span className="text-sm font-bold text-brand-300">{dayTotal} {unit}</span>
-                      )}
+                      <span className="w-20 text-right text-sm font-bold text-brand-300">
+                        {dayTotal > 0 ? `${dayTotal} ${unit}` : ''}
+                      </span>
                       <svg
                         viewBox="0 0 20 20" fill="currentColor"
                         className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}

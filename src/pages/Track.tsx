@@ -351,7 +351,9 @@ export default function Track() {
                     >
                       <span className="flex-1 text-sm font-semibold text-slate-200">{formatDayLabel(dateStr)}</span>
                       {hasRest && <span className="text-base">😴</span>}
-                      {dayTotal > 0 && <span className="text-sm font-bold text-brand-300">{dayTotal} {unit}</span>}
+                      <span className="w-20 text-right text-sm font-bold text-brand-300">
+                        {dayTotal > 0 ? `${dayTotal} ${unit}` : ''}
+                      </span>
                       <svg viewBox="0 0 20 20" fill="currentColor"
                         className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
                         <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
