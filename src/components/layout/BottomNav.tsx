@@ -59,7 +59,7 @@ export function BottomNav() {
 
         {/* Erfolge-Trophy */}
         <NavLink to="/achievements" aria-label="Erfolge">
-          {({ isActive }) => (
+          {() => (
             <span
               className="mb-[1px] flex flex-col items-center justify-center opacity-100 transition active:scale-95"
             >
