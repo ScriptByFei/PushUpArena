@@ -300,15 +300,15 @@ export default function Friends() {
 
                 {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
                 {enrolledExercises.length > 1 && (
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex w-full rounded-xl bg-ink-950/60 p-1 gap-1">
                     {enrolledExercises.map((ex) => {
                       const isActive = ex.id === shownExercise?.id;
                       return (
                         <button
                           key={ex.id}
                           onClick={() => setMemberExercise(ex)}
-                          className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                            isActive ? 'bg-brand-600 text-white' : 'bg-ink-700 text-slate-400 hover:bg-ink-600'
+                          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition ${
+                            isActive ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                           }`}
                         >
                           <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-4 w-4 rounded object-cover" />
