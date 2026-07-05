@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon, BellIcon } from '@/components/ui/icons';
+import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 
 const titles: Record<string, string> = {
@@ -32,7 +32,10 @@ export function AppLayout() {
             pushActive ? 'text-brand-400' : 'text-slate-500'
           }`}
         >
-          <BellIcon className="h-5 w-5" />
+          {pushActive
+            ? <BellIcon className="h-5 w-5" />
+            : <BellOffIcon className="h-5 w-5" />
+          }
         </button>
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
