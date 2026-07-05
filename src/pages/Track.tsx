@@ -349,7 +349,18 @@ export default function Track() {
                       onClick={() => toggleDay(dateStr)}
                       className="flex w-full items-center gap-2 py-3 text-left"
                     >
-                      <span className="w-32 shrink-0 truncate text-sm font-semibold text-slate-200">{formatDayLabel(dateStr)}</span>
+                      {(dateStr === berlinToday() || dateStr === berlinYesterday()) ? (
+                        <span className="w-36 shrink-0 text-sm font-semibold text-slate-200">{formatDayLabel(dateStr)}</span>
+                      ) : (
+                        <span className="flex w-36 shrink-0 items-center">
+                          <span className="w-9 shrink-0 text-sm font-semibold text-slate-400">
+                            {new Date(dateStr + 'T00:00:00').toLocaleDateString('de-DE', { weekday: 'short' }) + ','}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-200">
+                            {new Date(dateStr + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
+                        </span>
+                      )}
                       <span className="flex-1" />
                       <span className="w-5 shrink-0 text-center text-base">{hasRest ? '😴' : ''}</span>
                       <span className="w-20 shrink-0 text-right text-sm font-bold text-brand-300">
