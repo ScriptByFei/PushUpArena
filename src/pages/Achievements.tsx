@@ -94,9 +94,19 @@ export default function Achievements() {
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-2 px-4 py-2.5 border-t border-ink-700 bg-ink-800/40">
-            <span className="text-base leading-none">🪙</span>
-            <p className="text-xs text-slate-400">Podest ohne Schwelle → halbe Münze · 2× gleiche → Medaille</p>
+          <div className="divide-y divide-ink-700 border-t border-ink-700 bg-ink-800/40">
+            <div className="flex items-start gap-3 px-4 py-2.5">
+              <span className="text-base leading-none mt-0.5">🥇</span>
+              <p className="text-xs text-slate-400">Volle Medaille: mind. 3 User aktiv + Podest + Schwelle erreicht</p>
+            </div>
+            <div className="flex items-start gap-3 px-4 py-2.5">
+              <span className="text-base leading-none mt-0.5">🪙</span>
+              <p className="text-xs text-slate-400">Halbe Münze: Schwelle erreicht — egal ob auf Podest oder nicht, egal wie viele aktiv waren</p>
+            </div>
+            <div className="flex items-start gap-3 px-4 py-2.5">
+              <span className="text-base leading-none mt-0.5">✨</span>
+              <p className="text-xs text-slate-400">2 halbe Münzen gleicher Farbe → automatisch eine volle Medaille</p>
+            </div>
           </div>
         </div>
       )}
