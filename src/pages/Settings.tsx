@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useGoals } from '@/hooks/useGoals';
-import { useExercise } from '@/context/ExerciseContext';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardTitle } from '@/components/ui/Card';
@@ -21,7 +21,7 @@ const DELETE_PHRASE = 'LÖSCHEN';
 
 export default function Settings() {
   const { user, signOut, updatePassword } = useAuth();
-  const { exercise, enrolledExercises } = useExercise();
+  const { exercise, enrolledExercises, declinedExercises, enroll } = useExercise();
   const { loading: profileLoading } = useProfile();
   const { goal, loading: goalLoading, saveGoals } = useGoals(exercise?.id);
   const toast = useToast();
@@ -41,6 +41,9 @@ export default function Settings() {
 const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [exPushEnabled, setExPushEnabled] = useState<Record<string, boolean>>({});
+  const [exPushSaving, setExPushSaving] = useState(false);
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
   // Load per-exercise push enabled state
   useEffect(() => {
@@ -467,6 +470,44 @@ const [deleteOpen, setDeleteOpen] = useState(false);
           </Link>
         </div>
       </Card>
+
+      {/* Übungen – abgelehnte Übungen beitreten */}
+      {declinedExercises.length > 0 && (
+        <Card>
+          <CardTitle>Übungen</CardTitle>
+          <p className="mt-1 text-xs text-slate-400">
+            Du hast diese Übungen abgelehnt. Du kannst jederzeit einsteigen.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {declinedExercises.map((ex) => (
+              <div
+                key={ex.id}
+                className="flex items-center gap-3 rounded-2xl bg-ink-800 px-4 py-3"
+              >
+                <img
+                  src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'}
+                  alt={ex.name}
+                  className="h-10 w-10 rounded-xl object-cover"
+                />
+                <span className="flex-1 text-sm font-medium text-slate-300">{ex.name}</span>
+                <Button
+                  size="sm"
+                  loading={enrollingId === ex.id}
+                  disabled={enrollingId !== null}
+                  onClick={async () => {
+                    setEnrollingId(ex.id);
+                    await enroll(ex.id, 'enrolled');
+                    setEnrollingId(null);
+                    toast.success(`${ex.name} hinzugefügt 💪`);
+                  }}
+                >
+                  Mitmachen
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Gefahrenzone */}
       <Card className="border-rose-500/40 bg-rose-500/5">

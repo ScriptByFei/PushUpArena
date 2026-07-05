@@ -22,6 +22,7 @@ interface ExerciseContextValue {
   exercise: Exercise | null;
   enrolledExercises: Exercise[];
   unenrolledExercises: Exercise[];
+  declinedExercises: Exercise[];
   loading: boolean;
   error: string | null;
   reload: () => void;
@@ -35,6 +36,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [allExercises, setAllExercises] = useState<Exercise[]>([]);
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
+  const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
   const [respondedIds, setRespondedIds] = useState<Set<string>>(new Set());
   const [activeSlug, setActiveSlug] = useState<string>(
     () => localStorage.getItem(STORAGE_KEY) ?? 'pushups',
@@ -66,14 +68,17 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       .eq('user_id', user.id);
 
     const enrolled = new Set<string>();
+    const declined = new Set<string>();
     const responded = new Set<string>();
     for (const row of (enrollData ?? []) as { exercise_id: string; status: string }[]) {
       responded.add(row.exercise_id);
       if (row.status === 'enrolled') enrolled.add(row.exercise_id);
+      if (row.status === 'declined') declined.add(row.exercise_id);
     }
 
     setAllExercises(exData ?? []);
     setEnrolledIds(enrolled);
+    setDeclinedIds(declined);
     setRespondedIds(responded);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,6 +89,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const enrolledExercises = allExercises.filter((e) => enrolledIds.has(e.id));
+  const declinedExercises = allExercises.filter((e) => declinedIds.has(e.id));
   const unenrolledExercises = allExercises.filter((e) => !respondedIds.has(e.id));
 
   const exercise =
@@ -111,6 +117,10 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     setRespondedIds((prev) => new Set([...prev, exerciseId]));
     if (status === 'enrolled') {
       setEnrolledIds((prev) => new Set([...prev, exerciseId]));
+      setDeclinedIds((prev) => { const s = new Set(prev); s.delete(exerciseId); return s; });
+    } else {
+      setDeclinedIds((prev) => new Set([...prev, exerciseId]));
+      setEnrolledIds((prev) => { const s = new Set(prev); s.delete(exerciseId); return s; });
     }
   }
 
@@ -120,6 +130,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
         exercise,
         enrolledExercises,
         unenrolledExercises,
+        declinedExercises,
         loading,
         error,
         reload: () => setNonce((n) => n + 1),
