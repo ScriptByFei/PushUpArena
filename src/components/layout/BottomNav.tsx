@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ComponentType, SVGProps } from 'react';
-import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, ShieldIcon, MedalIcon } from '@/components/ui/icons';
+import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, MedalIcon } from '@/components/ui/icons';
 
 interface NavItem {
   to: string;
