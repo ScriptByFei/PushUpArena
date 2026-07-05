@@ -12,7 +12,7 @@ import { Field, Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState } from '@/components/ui/States';
-import { BellIcon, LogoutIcon, TrashIcon } from '@/components/ui/icons';
+import { BellIcon, TrashIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useQuickAmounts } from '@/hooks/useQuickAmounts';
@@ -133,11 +133,6 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     }
   }
 
-  async function onLogout() {
-    await signOut();
-    navigate('/login', { replace: true });
-  }
-
   function closeDelete() {
     setDeleteOpen(false);
     setDeleteConfirm('');
@@ -161,17 +156,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <div className="space-y-4">
-      {/* 1 · Konto */}
-      <Card>
-        <CardTitle>Konto</CardTitle>
-        <p className="mt-2 text-xs text-slate-500">Angemeldet als {user?.email}</p>
-        <Button variant="secondary" fullWidth className="mt-3" onClick={onLogout}>
-          <LogoutIcon className="h-5 w-5" />
-          Abmelden
-        </Button>
-      </Card>
-
-      {/* 2 · Übungen verwalten */}
+      {/* 1 · Übungen verwalten */}
       {(enrolledExercises.length + declinedExercises.length) > 1 && (
         <Card>
           <CardTitle>Übungen verwalten</CardTitle>

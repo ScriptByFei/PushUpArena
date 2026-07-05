@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
@@ -9,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
+import { LogoutIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -29,12 +32,19 @@ function StatCell({ label, value, accent = 'text-brand-300' }: StatCellProps) {
 }
 
 export default function Profile() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { exercise: activeExercise, enrolledExercises } = useExercise();
   const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
   const exercise = localExercise ?? activeExercise;
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
   const toast = useToast();
+
+  async function onLogout() {
+    await signOut();
+    navigate('/login', { replace: true });
+  }
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ username: '', display_name: '', bio: '' });
@@ -74,6 +84,16 @@ export default function Profile() {
 
   return (
     <div className="space-y-4">
+      {/* Konto */}
+      <Card>
+        <CardTitle>Konto</CardTitle>
+        <p className="mt-2 text-xs text-slate-500">Angemeldet als {user?.email}</p>
+        <Button variant="secondary" fullWidth className="mt-3" onClick={onLogout}>
+          <LogoutIcon className="h-5 w-5" />
+          Abmelden
+        </Button>
+      </Card>
+
       {/* Profil-Header */}
       <Card>
         <div className="flex items-center gap-4">
