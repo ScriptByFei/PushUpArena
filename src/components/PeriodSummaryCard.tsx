@@ -152,100 +152,72 @@ export function PeriodSummaryCard({ exercise }: Props) {
     : '';
 
   return (
-    <Card>
-      <CardTitle>Zeitraum · {exercise?.name}</CardTitle>
-
+    <div className="relative flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-800/70 px-4 py-2.5">
       {/* Tabs */}
-      <div className="mt-3 flex w-full rounded-xl bg-ink-950/60 p-1">
+      <div className="flex rounded-lg bg-ink-950/60 p-0.5 shrink-0">
         {(['month', 'week', 'custom'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setPeriodTab(t)}
-            className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
               periodTab === t ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            {t === 'month' ? 'Monat' : t === 'week' ? 'KW' : 'Zeitraum'}
+            {t === 'month' ? 'Mo' : t === 'week' ? 'KW' : 'Zeitr.'}
           </button>
         ))}
       </div>
 
-      {/* Monat-Navigation */}
-      {periodTab === 'month' && (
-        <div className="mt-3 flex items-center justify-between">
-          <button onClick={prevMonth} className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition">
-            <ChevronLeft />
-          </button>
-          <span className="text-sm font-semibold text-slate-200">{monthLabel}</span>
-          <button
-            onClick={nextMonth}
-            disabled={pYear === maxYear && pMonth >= maxMonth}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25"
-          >
-            <ChevronRight />
-          </button>
-        </div>
-      )}
-
-      {/* KW-Navigation */}
-      {periodTab === 'week' && (
-        <div className="mt-3 flex items-center justify-between">
-          <button onClick={prevWeek} className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition">
-            <ChevronLeft />
-          </button>
-          <span className="text-center text-sm font-semibold text-slate-200 leading-tight">{weekLabel}</span>
-          <button
-            onClick={nextWeek}
-            disabled={toDateStr(weekMonday) >= todayStr}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25"
-          >
-            <ChevronRight />
-          </button>
-        </div>
-      )}
-
-      {/* Zeitraum-Picker */}
-      {periodTab === 'custom' && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs text-slate-400">Von</label>
-            <input
-              type="date"
-              value={customFrom}
-              max={customTo || todayStr}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="w-full rounded-xl border border-ink-600 bg-ink-800 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-slate-400">Bis</label>
-            <input
-              type="date"
-              value={customTo}
-              min={customFrom}
-              max={todayStr}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="w-full rounded-xl border border-ink-600 bg-ink-800 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            />
-          </div>
-        </div>
-      )}
+      {/* Navigation */}
+      <div className="flex flex-1 items-center justify-between min-w-0">
+        <button onClick={periodTab === 'month' ? prevMonth : prevWeek} className="rounded-full p-1 text-slate-400 hover:text-slate-200 transition shrink-0">
+          <ChevronLeft />
+        </button>
+        <span className="truncate text-center text-xs font-semibold text-slate-200 px-1">
+          {periodTab === 'month' ? monthLabel : periodTab === 'week' ? weekLabel : (customFrom && customTo ? `${customFrom} – ${customTo}` : 'Zeitraum wählen')}
+        </span>
+        <button
+          onClick={periodTab === 'month' ? nextMonth : nextWeek}
+          disabled={periodTab === 'month' ? (pYear === maxYear && pMonth >= maxMonth) : (toDateStr(weekMonday) >= todayStr)}
+          className="rounded-full p-1 text-slate-400 hover:text-slate-200 transition disabled:opacity-25 shrink-0"
+        >
+          <ChevronRight />
+        </button>
+      </div>
 
       {/* Ergebnis */}
-      <div className="mt-4 rounded-xl bg-ink-900 py-5 text-center">
+      <div className="shrink-0 text-right">
         {periodLoading ? (
-          <p className="text-sm text-slate-500">Lade …</p>
+          <p className="text-xs text-slate-500">…</p>
         ) : periodTotal === null ? (
-          <p className="text-sm text-slate-500">Zeitraum wählen</p>
+          <p className="text-xs text-slate-500">–</p>
         ) : (
           <>
-            <p className="text-5xl font-extrabold text-brand-300">
+            <p className="text-xl font-extrabold text-brand-300 leading-none">
               {periodTotal.toLocaleString('de-DE')}
             </p>
-            <p className="mt-1 text-xs text-slate-500">{exercisePlural} in diesem Zeitraum</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{exercisePlural}</p>
           </>
         )}
       </div>
-    </Card>
+
+      {/* Zeitraum-Picker als Overlay wenn custom */}
+      {periodTab === 'custom' && (
+        <div className="absolute left-4 right-4 top-full mt-1 z-10 grid grid-cols-2 gap-2 rounded-xl border border-ink-600 bg-ink-800 p-3 shadow-xl">
+          <div>
+            <label className="mb-1 block text-xs text-slate-400">Von</label>
+            <input type="date" value={customFrom} max={customTo || todayStr}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="w-full rounded-lg border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-slate-400">Bis</label>
+            <input type="date" value={customTo} min={customFrom} max={todayStr}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="w-full rounded-lg border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
