@@ -7,8 +7,8 @@ import { supabase } from '@/lib/supabase';
 import type { LeaderboardRow } from '@/lib/database.types';
 
 const TABS = [
-  { key: 'today_amount' as const, label: 'Heute', icon: '⚡' },
-  { key: 'total_amount' as const, label: 'Gesamt', icon: '🏆' },
+  { key: 'today_amount' as const, label: 'Heute', icon: '⚡', iconSrc: undefined as string | undefined },
+  { key: 'total_amount' as const, label: 'Gesamt', icon: '', iconSrc: '/gesamt-icon.png' },
 ];
 
 // Reihenfolge: P2 links, P1 Mitte (elevated), P3 rechts
@@ -196,7 +196,9 @@ export default function Leaderboard() {
                 : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
             }`}
           >
-            <span>{t.icon}</span>
+            {t.iconSrc
+              ? <img src={t.iconSrc} alt={t.label} className="h-5 w-5 object-contain" />
+              : <span>{t.icon}</span>}
             {t.label}
           </button>
         ))}
