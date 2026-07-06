@@ -1,12 +1,16 @@
+import type { ReactNode } from 'react';
 import { useGlobalStats } from '@/hooks/useGlobalStats';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { Card, CardTitle } from '@/components/ui/Card';
 
-function StatRow({ icon, label, value, sub }: { icon: string; label: string; value: number; sub?: string }) {
+function StatRow({ icon, label, value, sub }: { icon: string | ReactNode; label: string; value: number; sub?: string }) {
   return (
     <div className="flex items-center justify-between rounded-2xl bg-ink-800/70 px-4 py-3">
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{icon}</span>
+        {typeof icon === 'string'
+          ? <span className="text-2xl">{icon}</span>
+          : <span className="flex h-8 w-8 items-center justify-center">{icon}</span>
+        }
         <div>
           <span className="text-sm font-medium text-slate-300">{label}</span>
           {sub && <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>}
@@ -53,9 +57,21 @@ export default function GlobalStats() {
       <Card>
         <CardTitle>Gesamte Wiederholungen</CardTitle>
         <div className="mt-3 space-y-2">
-          <StatRow icon="💪" label="PushUps" value={stats.total_pushups} />
-          <StatRow icon="🏋️" label="PullUps" value={stats.total_pullups} />
-          <StatRow icon="⬇️" label="Dips"    value={stats.total_dips} />
+          <StatRow
+            icon={<img src="/pushup-icon.png" alt="" className="h-8 w-8 object-contain" />}
+            label="PushUps"
+            value={stats.total_pushups}
+          />
+          <StatRow
+            icon={<img src="/pullup-icon.png" alt="" className="h-8 w-8 object-contain" />}
+            label="PullUps"
+            value={stats.total_pullups}
+          />
+          <StatRow
+            icon={<img src="/dips-icon.png" alt="" className="h-8 w-8 object-contain" />}
+            label="Dips"
+            value={stats.total_dips}
+          />
         </div>
         {/* Summe */}
         <div className="mt-3 flex items-center justify-between border-t border-ink-700 pt-3">
