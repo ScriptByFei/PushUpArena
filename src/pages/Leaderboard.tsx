@@ -238,8 +238,8 @@ export default function Leaderboard() {
                       )}
                     </p>
                     {row.current_streak > 0 && (
-                      <p className="mt-1 flex items-center justify-center text-xs font-semibold text-orange-400">
-                        🔥<span className="text-[10px] font-medium align-sub"> x {row.current_streak}</span>
+                      <p className="mt-1 flex items-end justify-center text-xs font-semibold text-orange-400">
+                        🔥<span className="text-[10px] font-medium translate-y-0.5"> x {row.current_streak}</span>
                       </p>
                     )}
                     <p className={`mt-1 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
