@@ -206,7 +206,7 @@ export default function Leaderboard() {
 
 {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
-          <img src="/gesamt-icon.png" alt="Keine Einträge" className="h-16 w-16 object-contain" />
+          <img src="/gesamt-icon.png" alt="Keine Einträge" className="h-28 w-28 object-contain" />
           <h3 className="text-base font-semibold text-slate-200">Noch niemand in der Rangliste</h3>
           <p className="max-w-xs text-sm text-slate-400">Sobald Freunde mitmachen, seht ihr euch hier im Vergleich.</p>
         </div>
