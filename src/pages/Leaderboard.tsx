@@ -57,6 +57,9 @@ function MedalIcon({ medal, size = 28 }: { medal: string; size?: number }) {
   if (medal === '🥈') {
     return <img src="/medal-silver.png" alt="🥈" style={{ width: size, height: size }} className="object-contain" />;
   }
+  if (medal === '🥉') {
+    return <img src="/medal-bronze.png" alt="🥉" style={{ width: size, height: size }} className="object-contain" />;
+  }
   return <span className="text-2xl leading-none">{medal}</span>;
 }
 
