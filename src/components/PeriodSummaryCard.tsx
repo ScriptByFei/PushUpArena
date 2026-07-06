@@ -120,8 +120,8 @@ export function PeriodSummaryCard({ exercise }: Props) {
       const monday = getMondayOfISOWeek(pWeek, pWeekYear);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      start = berlinToUTC(toDateStr(monday));
-      end = berlinToUTC(toDateStr(sunday), true);
+      start = berlinToUTC(toBerlinDateStr(monday));
+      end = berlinToUTC(toBerlinDateStr(sunday), true);
     } else {
       if (!customFrom || !customTo || customFrom > customTo) return;
       start = berlinToUTC(customFrom);
