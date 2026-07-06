@@ -46,17 +46,19 @@ const PODIUM_SLOTS = [
 ] as const;
 
 
-function MedalIcon({ medal, size = 28 }: { medal: string; size?: number }) {
-  if (medal === '🥇') {
+const CUSTOM_MEDAL_SLUGS = ['pushups'];
+
+function MedalIcon({ medal, size = 28, useCustom = true }: { medal: string; size?: number; useCustom?: boolean }) {
+  if (useCustom && medal === '🥇') {
     return <img src="/medal-gold.png" alt="🥇" style={{ width: size, height: size }} className="object-contain" />;
   }
-  if (medal === '🥈') {
+  if (useCustom && medal === '🥈') {
     return <img src="/medal-silver.png" alt="🥈" style={{ width: size, height: size }} className="object-contain" />;
   }
-  if (medal === '🥉') {
+  if (useCustom && medal === '🥉') {
     return <img src="/medal-bronze.png" alt="🥉" style={{ width: size, height: size }} className="object-contain" />;
   }
-  return <span className="text-2xl leading-none">{medal}</span>;
+  return <span style={{ fontSize: size }} className="leading-none">{medal}</span>;
 }
 
 // ── Heutige Sätze Bottom Sheet ────────────────────────────────────────────────
@@ -223,7 +225,7 @@ export default function Leaderboard() {
                     onClick={() => handleTap(row)}
                     className={`${mt} flex flex-col items-center rounded-2xl border ${border} ${bg} p-3 text-center ${isToday ? 'cursor-pointer active:scale-95 transition' : ''}`}
                   >
-                    <MedalIcon medal={medal} size={48} />
+                    <MedalIcon medal={medal} size={48} useCustom={CUSTOM_MEDAL_SLUGS.includes(shownExercise?.slug ?? '')} />
                     <div className="mt-2">
                       <Avatar
                         url={row.avatar_url}
