@@ -2,12 +2,15 @@ import { useGlobalStats } from '@/hooks/useGlobalStats';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { Card, CardTitle } from '@/components/ui/Card';
 
-function StatRow({ icon, label, value }: { icon: string; label: string; value: number }) {
+function StatRow({ icon, label, value, sub }: { icon: string; label: string; value: number; sub?: string }) {
   return (
     <div className="flex items-center justify-between rounded-2xl bg-ink-800/70 px-4 py-3">
       <div className="flex items-center gap-3">
         <span className="text-2xl">{icon}</span>
-        <span className="text-sm font-medium text-slate-300">{label}</span>
+        <div>
+          <span className="text-sm font-medium text-slate-300">{label}</span>
+          {sub && <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>}
+        </div>
       </div>
       <span className="tabular-nums text-lg font-extrabold text-brand-300">
         {value.toLocaleString('de-DE')}
@@ -32,11 +35,17 @@ export default function GlobalStats() {
         <p className="mt-1 text-xs text-slate-500">Alle Members zusammen</p>
       </div>
 
-      {/* Members */}
+      {/* Community */}
       <Card>
         <CardTitle>Community</CardTitle>
         <div className="mt-3 space-y-2">
-          <StatRow icon="👥" label="Aktive Members" value={stats.total_members} />
+          <StatRow icon="👥" label="Members gesamt" value={stats.total_members} />
+          <StatRow
+            icon="🔥"
+            label="Aktive Members"
+            value={stats.active_members}
+            sub="haben in den letzten 7 Tagen trainiert"
+          />
         </div>
       </Card>
 

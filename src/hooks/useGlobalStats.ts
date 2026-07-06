@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 interface GlobalStats {
   total_members: number;
+  active_members: number;
   total_pushups: number;
   total_pullups: number;
   total_dips: number;
