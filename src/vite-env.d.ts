@@ -10,3 +10,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Wird von vite.config.ts `define` zur Build-Zeit als Literal eingebettet.
+// Entspricht dem `v`-Wert aus public/version.json des gleichen Builds.
+declare const __BUILD_VERSION__: string;

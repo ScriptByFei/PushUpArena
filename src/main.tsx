@@ -9,12 +9,12 @@ import { initOneSignal } from '@/lib/onesignal';
 
 void initOneSignal();
 
-// Früh registrieren — bevor React mounted — damit kein SW-Update verpasst wird
+// Früh registrieren — bevor React mounted — damit kein SW-Update verpasst wird.
+// Wenn ein neuer Service Worker aktiviert wird (controllerchange), hart neu laden
+// damit sofort die neuen Assets vom frisch aktivierten SW ausgeliefert werden.
 navigator.serviceWorker?.addEventListener('controllerchange', () => {
   window.location.reload();
 });
-// Sofort auf Updates prüfen wenn App lädt
-navigator.serviceWorker?.getRegistration().then((reg) => reg?.update()).catch(() => {});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

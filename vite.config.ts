@@ -2,9 +2,24 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
+import { readFileSync } from 'node:fs';
+
+// Lies die Version die gen-version.mjs geschrieben hat und embed sie im Bundle.
+// So kann PWAUpdater zur Laufzeit "meine Build-Version" mit "Server-Version" vergleichen.
+function getBuildVersion(): string {
+  try {
+    return String((JSON.parse(readFileSync('./public/version.json', 'utf-8')) as { v: number }).v);
+  } catch {
+    return String(Date.now());
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    // Zur Build-Zeit eingebettet — wird zu einem Literal-String im Bundle.
+    __BUILD_VERSION__: JSON.stringify(getBuildVersion()),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
