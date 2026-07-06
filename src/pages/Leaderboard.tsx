@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import type { LeaderboardRow } from '@/lib/database.types';
 
 const TABS = [
-  { key: 'today_amount' as const, label: 'Heute', icon: '⚡', iconSrc: undefined as string | undefined },
+  { key: 'today_amount' as const, label: 'Heute', icon: '', iconSrc: undefined as string | undefined },
   { key: 'total_amount' as const, label: 'Gesamt', icon: '🏆', iconSrc: undefined as string | undefined },
 ];
 
