@@ -13,7 +13,7 @@ void initOneSignal();
 // Wenn ein neuer Service Worker aktiviert wird (controllerchange), hart neu laden
 // damit sofort die neuen Assets vom frisch aktivierten SW ausgeliefert werden.
 navigator.serviceWorker?.addEventListener('controllerchange', () => {
-  window.location.reload();
+  window.location.href = window.location.href;
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
