@@ -29,7 +29,7 @@ function StatTile({
   onInfoClick,
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
   accent?: string;
   icon?: ReactNode;
   glowStyle?: CSSProperties;
@@ -194,7 +194,7 @@ export default function Dashboard() {
         <StatTile label="Heute" value={statsLoading ? '–' : stats.today_amount} accent="text-brand-300" />
         <StatTile
           label="Streak"
-          value={statsLoading ? '–' : `${stats.current_streak}🔥`}
+          value={statsLoading ? '–' : <span>🔥<span className="ml-1 text-xl font-bold"> x {stats.current_streak}</span></span>}
           accent="text-amber-300"
           glowStyle={streakGlow}
           onInfoClick={() => setStreakInfoOpen(true)}
