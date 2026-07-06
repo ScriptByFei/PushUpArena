@@ -8,7 +8,6 @@ import type { LeaderboardRow } from '@/lib/database.types';
 
 const TABS = [
   { key: 'today_amount' as const, label: 'Heute', icon: '⚡' },
-  { key: 'current_streak' as const, label: 'Streak', icon: '🔥' },
   { key: 'total_amount' as const, label: 'Gesamt', icon: '🏆' },
 ];
 
@@ -46,9 +45,6 @@ const PODIUM_SLOTS = [
   },
 ] as const;
 
-function restHearts(n: number): string {
-  return '❤️'.repeat(Math.max(0, n));
-}
 
 function MedalIcon({ medal, size = 28 }: { medal: string; size?: number }) {
   if (medal === '🥇') {
@@ -189,7 +185,7 @@ export default function Leaderboard() {
       )}
 
       {/* Tab-Leiste */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -239,16 +235,13 @@ export default function Leaderboard() {
                         <span className="ml-1 font-normal text-brand-300">(du)</span>
                       )}
                     </p>
-                    <p className={`mt-2 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
-                      {sortKey === 'current_streak' && row.rest_days_remaining > 0 ? (
-                        <>
-                          <span className="text-base leading-none">❤️</span>
-                          {row[sortKey]}
-                          <span className="text-base leading-none">❤️</span>
-                        </>
-                      ) : (
-                        row[sortKey]
-                      )}
+                    {row.current_streak > 0 && (
+                      <p className="mt-1 flex items-center justify-center gap-0.5 text-xs font-semibold text-orange-400">
+                        🔥 {row.current_streak}
+                      </p>
+                    )}
+                    <p className={`mt-1 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
+                      {row[sortKey]}
                     </p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-500">
                       {sortLabel}
@@ -286,14 +279,12 @@ export default function Leaderboard() {
                           <span className="ml-1 text-xs text-brand-300">(du)</span>
                         )}
                       </p>
+                      {row.current_streak > 0 && (
+                        <p className="text-xs font-semibold text-orange-400">🔥 {row.current_streak}</p>
+                      )}
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="flex items-center justify-end gap-1 text-base font-extrabold text-brand-200">
-                        {sortKey === 'current_streak' && row.rest_days_remaining > 0 && (
-                          <span className="text-sm leading-none" title="Freie Ruhetage diese Woche">
-                            {restHearts(row.rest_days_remaining)}
-                          </span>
-                        )}
                         {row[sortKey]}
                       </p>
                       <p className="text-[10px] uppercase tracking-wide text-slate-500">
