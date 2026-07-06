@@ -78,12 +78,11 @@ function StreakInfoSheet({ restDaysThisWeek, onClose }: { restDaysThisWeek: numb
           <p className="text-orange-400 font-semibold">⚠️ Zwei Ruhetage hintereinander brechen die Streak sofort.</p>
         </div>
         <div className="mt-5 rounded-2xl bg-ink-800 px-4 py-3 flex items-center justify-between">
-          <span className="text-sm text-slate-400">Ruhetage diese Woche</span>
-          <span className="text-base font-extrabold text-amber-300">
-            {restDaysThisWeek} / 2
+          <span className="text-sm text-slate-400">Ruhetage übrig</span>
+          <span className="text-base font-extrabold">
             {remaining > 0
-              ? <span className="ml-2 text-xs font-normal text-slate-400">({remaining} übrig ❤️)</span>
-              : <span className="ml-2 text-xs font-normal text-red-400">(aufgebraucht)</span>}
+              ? <span className="text-amber-300">{'❤️'.repeat(remaining)} <span className="text-xs font-normal text-slate-400">noch {remaining} frei</span></span>
+              : <span className="text-red-400 text-sm font-semibold">aufgebraucht</span>}
           </span>
         </div>
         <button

@@ -14,7 +14,7 @@ function berlinToday(): string {
 }
 
 export interface RestDayStatus {
-  restDaysThisWeek: number;       // 0–3+
+  restDaysThisWeek: number;       // Ruhetage Mo–gestern (heute wird nicht voreilig gezählt)
   isRestDayToday: boolean;
   consecutiveRestToday: number;   // 0,1,2+
   loading: boolean;
@@ -52,14 +52,14 @@ export function useRestDayInfo(exerciseId?: string): RestDayStatus {
       byDay.set(d, (byDay.get(d) ?? 0) + row.amount);
     }
 
-    // Ruhetage in akt. Woche (Montag bis heute)
+    // Ruhetage Mo–gestern (heute wird NICHT gezählt — User könnte noch trainieren)
     let restDaysThisWeek = 0;
     const [wy, wm, wd] = weekStart.split('-').map(Number);
     const [ty, tm, td] = today.split('-').map(Number);
-    const daysInWeek = Math.round(
+    const completedDays = Math.round(
       (new Date(ty, tm - 1, td).getTime() - new Date(wy, wm - 1, wd).getTime()) / 86_400_000
-    ) + 1;
-    for (let i = 0; i < daysInWeek; i++) {
+    ); // ohne +1 schließt heute aus
+    for (let i = 0; i < completedDays; i++) {
       const d = shiftDate(weekStart, i);
       if (getDayType(byDay.get(d) ?? 0) === 'rest') restDaysThisWeek++;
     }
