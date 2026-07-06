@@ -12,18 +12,28 @@ import { LoadingState, ErrorState } from '@/components/ui/States';
 import { QuickAdd } from '@/components/QuickAdd';
 import { useRestDayInfo } from '@/hooks/useRestDayInfo';
 
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 function StatTile({
   label,
   value,
   accent,
   icon,
   glowStyle,
+  onInfoClick,
 }: {
   label: string;
   value: string | number;
   accent?: string;
   icon?: ReactNode;
   glowStyle?: CSSProperties;
+  onInfoClick?: () => void;
 }) {
   return (
     <div
@@ -33,8 +43,56 @@ function StatTile({
       <div className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
         {icon}
         {label}
+        {onInfoClick && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onInfoClick(); }}
+            className="ml-0.5 text-slate-500 hover:text-slate-300 transition"
+            aria-label="Streak-Info"
+          >
+            <InfoIcon />
+          </button>
+        )}
       </div>
       <div className={`mt-1.5 text-3xl font-extrabold leading-none ${accent ?? 'text-slate-100'}`}>{value}</div>
+    </div>
+  );
+}
+
+// ── Streak-Info Bottom Sheet ──────────────────────────────────────────────────
+function StreakInfoSheet({ restDaysThisWeek, onClose }: { restDaysThisWeek: number; onClose: () => void }) {
+  const remaining = Math.max(0, 2 - restDaysThisWeek);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+        <p className="text-lg font-extrabold text-slate-100">🔥 So funktioniert deine Streak</p>
+        <div className="mt-4 space-y-3 text-sm text-slate-300">
+          <p>Trainiere an so vielen Tagen wie möglich — deine Streak zählt jeden Tag, an dem du etwas einträgst.</p>
+          <p>Du hast <span className="font-semibold text-amber-300">2 Ruhetage pro Woche</span> frei. Solange du nicht mehr als 2 Ruhetage pro Woche nimmst, bleibt deine Streak erhalten.</p>
+          <p className="text-orange-400 font-semibold">⚠️ Zwei Ruhetage hintereinander brechen die Streak sofort.</p>
+        </div>
+        <div className="mt-5 rounded-2xl bg-ink-800 px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-slate-400">Ruhetage diese Woche</span>
+          <span className="text-base font-extrabold text-amber-300">
+            {restDaysThisWeek} / 2
+            {remaining > 0
+              ? <span className="ml-2 text-xs font-normal text-slate-400">({remaining} übrig ❤️)</span>
+              : <span className="ml-2 text-xs font-normal text-red-400">(aufgebraucht)</span>}
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-4 w-full rounded-2xl bg-ink-700 py-3 text-sm font-semibold text-slate-200 hover:bg-ink-600 transition"
+        >
+          Verstanden
+        </button>
+      </div>
     </div>
   );
 }
@@ -45,6 +103,17 @@ export default function Dashboard() {
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();
+
+  const [streakInfoOpen, setStreakInfoOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => localStorage.getItem('streakBannerDismissed') === '1'
+  );
+
+  function dismissBanner() {
+    localStorage.setItem('streakBannerDismissed', '1');
+    setBannerDismissed(true);
+  }
+
   useEffect(() => {
     if (restDay.loading) return;
     if (restDay.consecutiveRestToday !== 1) return;
@@ -100,6 +169,27 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-3">
+
+      {/* Einmaliges Streak-Onboarding-Banner */}
+      {!bannerDismissed && (
+        <div className="flex animate-pop-in items-start gap-3 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3">
+          <span className="text-xl leading-none">🔥</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-orange-200">So funktioniert deine Streak</p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Bis zu 2 Ruhetage pro Woche erlaubt — aber nie zwei hintereinander.
+            </p>
+          </div>
+          <button
+            onClick={dismissBanner}
+            className="shrink-0 text-slate-500 hover:text-slate-300 transition text-lg leading-none"
+            aria-label="Schließen"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Statistik-Kacheln */}
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Heute" value={statsLoading ? '–' : stats.today_amount} accent="text-brand-300" />
@@ -108,6 +198,7 @@ export default function Dashboard() {
           value={statsLoading ? '–' : `${stats.current_streak}🔥`}
           accent="text-amber-300"
           glowStyle={streakGlow}
+          onInfoClick={() => setStreakInfoOpen(true)}
         />
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
@@ -123,7 +214,6 @@ export default function Dashboard() {
         <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
         <QuickAdd exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
       </Card>
-
 
       {/* Rückgängig-Banner */}
       {lastEntry && (
@@ -175,7 +265,14 @@ export default function Dashboard() {
         )}
       </Card>
 
-    </div>
+      {/* Streak-Info Bottom Sheet */}
+      {streakInfoOpen && (
+        <StreakInfoSheet
+          restDaysThisWeek={restDay.restDaysThisWeek}
+          onClose={() => setStreakInfoOpen(false)}
+        />
+      )}
 
+    </div>
   );
 }
