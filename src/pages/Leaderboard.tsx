@@ -278,10 +278,10 @@ export default function Leaderboard() {
                         {row.is_me && (
                           <span className="ml-1 text-xs text-brand-300">(du)</span>
                         )}
+                        {row.current_streak > 0 && (
+                          <span className="ml-1.5 text-xs font-semibold text-orange-400">🔥{row.current_streak}</span>
+                        )}
                       </p>
-                      {row.current_streak > 0 && (
-                        <p className="text-xs font-semibold text-orange-400">🔥 {row.current_streak}</p>
-                      )}
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="flex items-center justify-end gap-1 text-base font-extrabold text-brand-200">
