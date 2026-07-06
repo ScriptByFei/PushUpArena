@@ -50,6 +50,13 @@ function restHearts(n: number): string {
   return '❤️'.repeat(Math.max(0, n));
 }
 
+function MedalIcon({ medal, size = 28 }: { medal: string; size?: number }) {
+  if (medal === '🥇') {
+    return <img src="/medal-gold.png" alt="🥇" style={{ width: size, height: size }} className="object-contain" />;
+  }
+  return <span className="text-2xl leading-none">{medal}</span>;
+}
+
 // ── Heutige Sätze Bottom Sheet ────────────────────────────────────────────────
 interface TodaySetsSheetProps {
   row: LeaderboardRow;
@@ -212,7 +219,7 @@ export default function Leaderboard() {
                     onClick={() => handleTap(row)}
                     className={`${mt} flex flex-col items-center rounded-2xl border ${border} ${bg} p-3 text-center ${isToday ? 'cursor-pointer active:scale-95 transition' : ''}`}
                   >
-                    <span className="text-2xl leading-none">{medal}</span>
+                    <MedalIcon medal={medal} size={32} />
                     <div className="mt-2">
                       <Avatar
                         url={row.avatar_url}
