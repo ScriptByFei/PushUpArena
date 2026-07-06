@@ -33,7 +33,12 @@ export function useLeaderboard(exerciseId?: string) {
       if (sortKey === 'current_streak') return r.current_streak > 0;
       return true; // 'total_amount' — alle (total_amount > 0 bereits garantiert)
     })
-    .sort((a, b) => b[sortKey] - a[sortKey]);
+    .sort((a, b) => {
+      const diff = b[sortKey] - a[sortKey];
+      if (diff !== 0) return diff;
+      // Tiebreaker: wer den Wert zuerst erreicht hat (älteres Datum = besserer Rang)
+      return new Date(a.tiebreaker_at).getTime() - new Date(b.tiebreaker_at).getTime();
+    });
 
   return { rows: sorted, loading, error, refetch: load, sortKey, setSortKey };
 }

@@ -206,6 +206,7 @@ export interface Database {
           current_streak: number;
           rest_days_remaining: number;
           is_me: boolean;
+          tiebreaker_at: string;
         }[];
       };
       get_friend_today_sets: {
