@@ -39,9 +39,6 @@ function StatTile({
   );
 }
 
-// Modul-Variable: Toast nur einmal pro Tag anzeigen
-let _restWarnShownDate: string | null = null;
-
 export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
@@ -50,11 +47,20 @@ export default function Dashboard() {
   const toast = useToast();
   useEffect(() => {
     if (restDay.loading) return;
-    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
-    if (restDay.consecutiveRestToday === 1 && _restWarnShownDate !== today) {
-      _restWarnShownDate = today;
-      toast.warning('⚠️ Achtung: Zwei Ruhetage hintereinander brechen deine Streak.');
-    }
+    if (restDay.consecutiveRestToday !== 1) return;
+
+    const now = new Date();
+    const today = now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+    const hour = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Berlin', hour: 'numeric', hour12: false }), 10);
+
+    // Nur ab 15 Uhr anzeigen — vorher hat der User noch Zeit zu trainieren
+    if (hour < 15) return;
+
+    // localStorage statt Modulvariable: überlebt App-Neustarts
+    const shownKey = 'restWarnShownDate';
+    if (localStorage.getItem(shownKey) === today) return;
+    localStorage.setItem(shownKey, today);
+    toast.warning('⚠️ Achtung: Zwei Ruhetage hintereinander brechen deine Streak.');
   }, [restDay.loading, restDay.consecutiveRestToday]);
 
   const [lastEntry, setLastEntry] = useState<{ id: string; amount: number } | null>(null);
