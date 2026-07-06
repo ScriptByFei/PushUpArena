@@ -241,7 +241,7 @@ export default function Leaderboard() {
                     </p>
                     {row.current_streak > 0 && (
                       <p className="mt-1 flex items-end justify-center text-xs font-semibold text-orange-400">
-                        🔥<span className="text-[10px] font-medium translate-y-1"> x {row.current_streak}</span>
+                        🔥<span className="text-[10px] font-medium translate-y-1">x {row.current_streak}</span>
                       </p>
                     )}
                     <p className={`mt-1 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
@@ -283,7 +283,7 @@ export default function Leaderboard() {
                           <span className="ml-1 text-xs text-brand-300">(du)</span>
                         )}
                         {row.current_streak > 0 && (
-                          <span className="ml-1.5 text-xs font-semibold text-orange-400">🔥<span className="text-[10px] font-medium align-sub"> x {row.current_streak}</span></span>
+                          <span className="ml-1.5 text-xs font-semibold text-orange-400">🔥<span className="text-[10px] font-medium align-sub">x {row.current_streak}</span></span>
                         )}
                       </p>
                     </div>
