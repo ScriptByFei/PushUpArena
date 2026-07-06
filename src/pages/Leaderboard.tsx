@@ -219,7 +219,7 @@ export default function Leaderboard() {
                     onClick={() => handleTap(row)}
                     className={`${mt} flex flex-col items-center rounded-2xl border ${border} ${bg} p-3 text-center ${isToday ? 'cursor-pointer active:scale-95 transition' : ''}`}
                   >
-                    <MedalIcon medal={medal} size={32} />
+                    <MedalIcon medal={medal} size={48} />
                     <div className="mt-2">
                       <Avatar
                         url={row.avatar_url}
