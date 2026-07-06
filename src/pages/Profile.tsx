@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { LogoutIcon } from '@/components/ui/icons';
+import { LogoutIcon, EditIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
 
 
@@ -102,9 +102,20 @@ export default function Profile() {
             }}
           />
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-xl font-extrabold">
-              {profile.display_name || profile.username}
-            </h2>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h2 className="truncate text-xl font-extrabold">
+                {profile.display_name || profile.username}
+              </h2>
+              {!editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="shrink-0 rounded-full p-1 text-slate-500 hover:text-brand-400 transition"
+                  title="Name bearbeiten"
+                >
+                  <EditIcon className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             <p className="text-sm text-slate-400">@{profile.username}</p>
           </div>
           <button
@@ -115,16 +126,9 @@ export default function Profile() {
             <LogoutIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-            <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
-          </div>
-          {!editing && (
-            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-              Bearbeiten
-            </Button>
-          )}
+        <div className="mt-2">
+          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+          <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
         </div>
       </Card>
 
