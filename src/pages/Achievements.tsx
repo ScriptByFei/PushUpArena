@@ -129,7 +129,7 @@ export default function Achievements() {
 
       {rows.length === 0 ? (
         <EmptyState
-          icon="🏆"
+          icon={<img src="/achievement-trophy.png" alt="" style={{ width: 72, height: 72 }} className="object-contain" />}
           title="Noch keine Medaillen"
           description="Medaillen werden täglich um Mitternacht vergeben — wenn mindestens 3 User trainiert haben. Die Zählung startete ab dem 6. Juli 2026."
         />

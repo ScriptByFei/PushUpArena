@@ -40,7 +40,7 @@ export function EmptyState({
   description,
   action,
 }: {
-  icon?: string;
+  icon?: string | ReactNode;
   title: string;
   description?: string;
   action?: ReactNode;
