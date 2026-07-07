@@ -15,6 +15,11 @@ export default function Achievements() {
 
   return (
     <div className="space-y-4">
+      {/* Info */}
+      <p className="text-xs text-slate-500 text-center">
+        Täglich werden die Top 3 mit Gold, Silber und Bronze ausgezeichnet.
+      </p>
+
       {rows.length === 0 ? (
         <EmptyState
           icon="🏆"
