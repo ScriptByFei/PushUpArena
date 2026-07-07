@@ -216,9 +216,10 @@ export default function Leaderboard() {
         <>
           {/* Podest Platz 1–3 */}
           {hasPodium && (
-            <div className="overflow-hidden rounded-2xl">
+            <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-950">
               {/* Podest-Grafik mit Avatar-Overlays */}
-              <div className="relative w-full">
+              <div className="px-2 pt-2">
+              <div className="relative w-full overflow-hidden rounded-xl">
                 <img
                   src="/podium-bg.png"
                   alt="Podest"
@@ -253,9 +254,10 @@ export default function Leaderboard() {
                   <Avatar url={rows[2].avatar_url} name={rows[2].display_name || rows[2].username} size={48} />
                 </div>
               </div>
+              </div>
 
               {/* Name + Streak + Score unterhalb des Bildes */}
-              <div className="grid grid-cols-3 gap-1 border border-t-0 border-ink-700 bg-ink-900/90 px-2 py-3">
+              <div className="grid grid-cols-3 gap-1 px-2 py-3">
                 {[rows[1], rows[0], rows[2]].map((row, colIdx) => {
                   const rank = colIdx === 1 ? 1 : colIdx === 0 ? 2 : 3;
                   const name = row.display_name || row.username;
