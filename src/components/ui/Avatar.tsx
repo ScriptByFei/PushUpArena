@@ -7,16 +7,9 @@ interface AvatarProps {
   className?: string;
 }
 
-/** Gibt true zurück wenn der Avatar manuell in der App hochgeladen wurde (Supabase Storage). */
-function isManualUpload(url: string | null | undefined): boolean {
-  if (!url) return false;
-  return url.includes('/object/public/avatars/');
-}
-
 export function Avatar({ url, name, size = 44, className = '' }: AvatarProps) {
   const dimension = { width: size, height: size };
-  // Nur manuell hochgeladene Bilder anzeigen – Google-Avatare → Standard-Bild
-  const src = isManualUpload(url) ? (url as string) : DEFAULT_AVATAR;
+  const src = url || DEFAULT_AVATAR;
   return (
     <img
       src={src}
