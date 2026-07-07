@@ -232,7 +232,7 @@ export default function Leaderboard() {
                   style={{ left: '50%', top: '31%' }}
                   onClick={() => handleTap(rows[0])}
                 >
-                  <Avatar url={rows[0].avatar_url} name={rows[0].display_name || rows[0].username} size={64} />
+                  <Avatar url={rows[0].avatar_url} name={rows[0].display_name || rows[0].username} size={64} className="border-[3px] border-black/80" />
                 </div>
 
                 {/* P2 Avatar – silberner Ring links */}
@@ -241,7 +241,7 @@ export default function Leaderboard() {
                   style={{ left: '22%', top: '48%' }}
                   onClick={() => handleTap(rows[1])}
                 >
-                  <Avatar url={rows[1].avatar_url} name={rows[1].display_name || rows[1].username} size={44} />
+                  <Avatar url={rows[1].avatar_url} name={rows[1].display_name || rows[1].username} size={44} className="border-[3px] border-black/80" />
                 </div>
 
                 {/* P3 Avatar – bronzener Ring rechts */}
@@ -250,7 +250,7 @@ export default function Leaderboard() {
                   style={{ left: '78%', top: '53%' }}
                   onClick={() => handleTap(rows[2])}
                 >
-                  <Avatar url={rows[2].avatar_url} name={rows[2].display_name || rows[2].username} size={44} />
+                  <Avatar url={rows[2].avatar_url} name={rows[2].display_name || rows[2].username} size={44} className="border-[3px] border-black/80" />
                 </div>
               </div>
 
