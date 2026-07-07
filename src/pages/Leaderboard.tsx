@@ -149,6 +149,17 @@ export default function Leaderboard() {
   const shownExercise = leaderExercise ?? activeExercise;
   const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(shownExercise?.id);
   const [selectedRow, setSelectedRow] = useState<LeaderboardRow | null>(null);
+  const [bannedNotices, setBannedNotices] = useState<{username: string; reason: string}[]>([]);
+
+  useEffect(() => {
+    void supabase
+      .from('profiles')
+      .select('username, ban_reason')
+      .eq('medal_banned', true)
+      .then(({ data }) => {
+        if (data) setBannedNotices(data.map((d) => ({ username: d.username, reason: d.ban_reason ?? '' })));
+      });
+  }, []);
 
   const isToday = sortKey === 'today_amount';
 
@@ -164,6 +175,18 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-4">
+
+      {/* Scam-Warnung */}
+      {bannedNotices.length > 0 && (
+        <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-300">
+          <span className="font-bold">⚠️ Hinweis:</span>{' '}
+          {bannedNotices.map((n) => (
+            <span key={n.username}>
+              <span className="font-semibold">{n.username}</span> wurde vorübergehend von der Medaillenvergabe ausgeschlossen ({n.reason}).{' '}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
       {enrolledExercises.length > 1 && (
