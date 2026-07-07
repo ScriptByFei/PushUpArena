@@ -39,15 +39,21 @@ export default function Achievements() {
 
           <ul className="divide-y divide-ink-700">
             {rows.map((row, idx) => {
-              const MEDALS = ['🥇', '🥈', '🥉'] as const;
-              const medal = MEDALS[idx] ?? null;
+              const TROPHIES = [
+                '/medal-podium-gold.png',
+                '/medal-podium-silver.png',
+                '/medal-podium-bronze.png',
+              ] as const;
+              const trophy = TROPHIES[idx] ?? null;
               return (
                 <li
                   key={row.user_id}
                   className={`flex items-center gap-3 px-4 py-3 ${row.is_me ? 'bg-brand-600/10' : ''}`}
                 >
-                  <span className="w-5 shrink-0 text-center text-base">
-                    {medal ?? <span className="text-sm font-bold text-slate-500">{idx + 1}</span>}
+                  <span className="w-6 shrink-0 flex items-center justify-center">
+                    {trophy
+                      ? <img src={trophy} alt={`Platz ${idx + 1}`} className="w-6 h-6 object-contain" />
+                      : <span className="text-sm font-bold text-slate-500">{idx + 1}</span>}
                   </span>
                   <Avatar url={row.avatar_url} name={row.display_name || row.username} size={36} />
                   <div className="flex-1 min-w-0">
