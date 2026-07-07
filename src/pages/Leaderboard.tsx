@@ -241,19 +241,19 @@ export default function Leaderboard() {
                 {/* P2 Avatar – silberner Ring links */}
                 <div
                   className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
-                  style={{ left: '21%', top: '47%' }}
+                  style={{ left: '22%', top: '48%' }}
                   onClick={() => handleTap(rows[1])}
                 >
-                  <Avatar url={rows[1].avatar_url} name={rows[1].display_name || rows[1].username} size={46} />
+                  <Avatar url={rows[1].avatar_url} name={rows[1].display_name || rows[1].username} size={44} />
                 </div>
 
                 {/* P3 Avatar – bronzener Ring rechts */}
                 <div
                   className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
-                  style={{ left: '79%', top: '47%' }}
+                  style={{ left: '78%', top: '53%' }}
                   onClick={() => handleTap(rows[2])}
                 >
-                  <Avatar url={rows[2].avatar_url} name={rows[2].display_name || rows[2].username} size={46} />
+                  <Avatar url={rows[2].avatar_url} name={rows[2].display_name || rows[2].username} size={44} />
                 </div>
               </div>
 
