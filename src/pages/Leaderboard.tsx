@@ -300,19 +300,23 @@ export default function Leaderboard() {
                     <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-500">
                       {(hasPodium ? 3 : 0) + idx + 1}
                     </span>
-                    <Avatar
-                      url={row.avatar_url}
-                      name={row.display_name || row.username}
-                      size={36}
-                    />
+                    <div className="relative shrink-0">
+                      <Avatar
+                        url={row.avatar_url}
+                        name={row.display_name || row.username}
+                        size={36}
+                      />
+                      {row.current_streak > 0 && (
+                        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full border border-ink-600 bg-ink-900 px-1 py-px text-[9px] font-bold text-orange-400 whitespace-nowrap">
+                          🔥{row.current_streak}
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-slate-200">
                         {row.display_name || row.username}
                         {row.is_me && (
                           <span className="ml-1 text-xs text-brand-300">(du)</span>
-                        )}
-                        {row.current_streak > 0 && (
-                          <span className="ml-1.5 text-xs font-semibold text-orange-400">🔥<span className="text-[10px] font-medium align-sub">x {row.current_streak}</span></span>
                         )}
                       </p>
                     </div>
