@@ -219,7 +219,7 @@ export default function Leaderboard() {
             <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-950">
               {/* Podest-Grafik mit Avatar-Overlays */}
               <div className="px-2 pt-2">
-              <div className="relative w-full overflow-hidden rounded-xl">
+              <div className="relative w-full">
                 <img
                   src="/podium-bg.png"
                   alt="Podest"
