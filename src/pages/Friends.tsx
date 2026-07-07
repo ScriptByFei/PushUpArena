@@ -90,7 +90,6 @@ export default function Friends() {
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [pushersOpen, setPushersOpen] = useState(false);
   const [discoverOpen, setDiscoverOpen] = useState(false);
-  const [sentOpen, setSentOpen] = useState(false);
 
   async function onInvite() {
     const url = window.location.origin;
@@ -291,45 +290,6 @@ export default function Friends() {
             </Card>
           )}
 
-          {/* Gesendete Anfragen — einklappbar, Standard zu */}
-          {outgoing.length > 0 && (
-            <Card>
-              <button
-                className="flex w-full items-center justify-between"
-                onClick={() => setSentOpen((o) => !o)}
-                aria-expanded={sentOpen}
-              >
-                <div className="flex items-center gap-2">
-                  <CardTitle>Gesendet</CardTitle>
-                  <span className="rounded-full bg-ink-700 px-2.5 py-0.5 text-xs font-bold text-slate-400">
-                    {outgoing.length}
-                  </span>
-                </div>
-                <span className={`text-lg text-slate-400 transition-transform duration-200 leading-none ${sentOpen ? 'rotate-180' : ''}`}>
-                  ▾
-                </span>
-              </button>
-              {sentOpen && (
-                <ul className="mt-2 divide-y divide-ink-700">
-                  {outgoing.map((req) => (
-                    <PersonRow key={req.id} profile={req.receiver}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={async () => {
-                          const { error: err } = await cancelRequest(req.id);
-                          if (err) toast.error(err);
-                        }}
-                      >
-                        Zurückziehen
-                      </Button>
-                    </PersonRow>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          )}
-
           {/* Nutzer entdecken — einklappbar */}
           {allUsers.filter((p) => !friendIds.has(p.id)).length > 0 && (
             <Card>
@@ -359,7 +319,21 @@ export default function Friends() {
                         {isFriend ? (
                           <span className="text-xs font-medium text-emerald-400">Freund ✓</span>
                         ) : isOutgoing ? (
-                          <span className="text-xs text-slate-400">Anfrage gesendet</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            loading={busyId === p.id}
+                            onClick={async () => {
+                              const req = outgoing.find((o) => o.receiver.id === p.id);
+                              if (!req) return;
+                              setBusyId(p.id);
+                              const { error: err } = await cancelRequest(req.id);
+                              setBusyId(null);
+                              if (err) toast.error(err);
+                            }}
+                          >
+                            Zurückziehen
+                          </Button>
                         ) : isIncoming ? (
                           <span className="text-xs text-slate-400">Anfrage erhalten</span>
                         ) : (
