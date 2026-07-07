@@ -218,14 +218,11 @@ export default function Leaderboard() {
           {hasPodium && (
             <div className="overflow-hidden rounded-2xl">
               {/* Podest-Grafik mit Avatar-Overlays */}
-              <div
-                className="relative w-full overflow-hidden"
-                style={{ aspectRatio: '4/3' }}
-              >
+              <div className="relative w-full">
                 <img
                   src="/podium-bg.png"
                   alt="Podest"
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className="block w-full"
                   draggable={false}
                 />
 
