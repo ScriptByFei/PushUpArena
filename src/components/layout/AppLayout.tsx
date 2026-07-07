@@ -10,7 +10,7 @@ const titles: Record<string, string> = {
   '/friends': 'Freunde',
   '/activity': 'Aktivität',
   '/achievements': 'Erfolge · PushUp',
-  '/leaderboard': 'Rangliste',
+  '/leaderboard': 'Rangliste Freunde',
   '/profile': 'Profil',
   '/settings': 'Einstellungen',
 };
