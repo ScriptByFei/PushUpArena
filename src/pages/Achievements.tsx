@@ -46,9 +46,9 @@ export default function Achievements() {
                   key={row.user_id}
                   className={`flex items-center gap-3 px-4 py-3 ${row.is_me ? 'bg-brand-600/10' : ''}`}
                 >
-                  <span className="w-6 shrink-0 flex items-center justify-center">
+                  <span className="w-10 shrink-0 flex items-center justify-center">
                     {trophy
-                      ? <img src={trophy} alt={`Platz ${idx + 1}`} className="w-6 h-6 object-contain" />
+                      ? <img src={trophy} alt={`Platz ${idx + 1}`} className="w-10 h-10 object-contain" />
                       : <span className="text-sm font-bold text-slate-500">{idx + 1}</span>}
                   </span>
                   <Avatar url={row.avatar_url} name={row.display_name || row.username} size={36} />
