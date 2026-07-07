@@ -46,6 +46,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const [exPushEnabled, setExPushEnabled] = useState<Record<string, boolean>>({});
   const [exPushSaving, setExPushSaving] = useState(false);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
+  const [exercisesOpen, setExercisesOpen] = useState(false);
 
   // Load per-exercise push enabled state
   useEffect(() => {
@@ -159,7 +160,22 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       {/* 1 · Übungen verwalten */}
       {(enrolledExercises.length + declinedExercises.length) > 1 && (
         <Card>
-          <CardTitle>Übungen verwalten</CardTitle>
+          <button
+            onClick={() => setExercisesOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 text-left"
+            aria-expanded={exercisesOpen}
+          >
+            <CardTitle>Übungen verwalten</CardTitle>
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${exercisesOpen ? 'rotate-180' : ''}`}
+            >
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
+          </button>
+          {exercisesOpen && (
+            <>
           <p className="mt-1 text-xs text-slate-400">
             Ein- oder austragen – mindestens eine Übung muss aktiv bleiben.
           </p>
@@ -215,6 +231,8 @@ const [deleteOpen, setDeleteOpen] = useState(false);
               );
             })}
           </div>
+            </>
+          )}
         </Card>
       )}
 
