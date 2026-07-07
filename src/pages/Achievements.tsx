@@ -39,11 +39,7 @@ export default function Achievements() {
 
           <ul className="divide-y divide-ink-700">
             {rows.map((row, idx) => {
-              const TROPHIES = [
-                '/medal-podium-gold.png',
-                '/medal-podium-silver.png',
-                '/medal-podium-bronze.png',
-              ] as const;
+              const TROPHIES = ['/trophy-gold.png', '/trophy-silver.png', '/trophy-bronze.png'];
               const trophy = TROPHIES[idx] ?? null;
               return (
                 <li
