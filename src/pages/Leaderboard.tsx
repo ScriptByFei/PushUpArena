@@ -216,43 +216,73 @@ export default function Leaderboard() {
         <>
           {/* Podest Platz 1–3 */}
           {hasPodium && (
-            <div className="grid grid-cols-3 items-end gap-2">
-              {PODIUM_SLOTS.map(({ rowIdx, medal, border, bg, valueColor, nameColor, avatarSize, mt }) => {
-                const row = rows[rowIdx];
-                return (
-                  <div
-                    key={row.user_id}
-                    onClick={() => handleTap(row)}
-                    className={`${mt} flex flex-col items-center rounded-2xl border ${border} ${bg} p-3 text-center ${isToday ? 'cursor-pointer active:scale-95 transition' : ''}`}
-                  >
-                    <MedalIcon medal={medal} size={32} useCustom={CUSTOM_MEDAL_SLUGS.includes(shownExercise?.slug ?? '')} />
-                    <div className="mt-2">
-                      <Avatar
-                        url={row.avatar_url}
-                        name={row.display_name || row.username}
-                        size={avatarSize}
-                      />
-                    </div>
-                    <p className={`mt-2 w-full truncate text-xs font-bold ${nameColor}`}>
-                      {row.display_name || row.username}
-                      {row.is_me && (
-                        <span className="ml-1 font-normal text-brand-300">(du)</span>
-                      )}
-                    </p>
-                    {row.current_streak > 0 && (
-                      <p className="mt-1 flex items-end justify-center text-xs font-semibold text-orange-400">
-                        🔥<span className="text-[10px] font-medium translate-y-1">x {row.current_streak}</span>
+            <div className="overflow-hidden rounded-2xl">
+              {/* Podest-Grafik mit Avatar-Overlays */}
+              <div
+                className="relative w-full overflow-hidden"
+                style={{ aspectRatio: '4/3' }}
+              >
+                <img
+                  src="/podium-bg.png"
+                  alt="Podest"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  draggable={false}
+                />
+
+                {/* P1 Avatar – goldener Ring Mitte */}
+                <div
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
+                  style={{ left: '50%', top: '31%' }}
+                  onClick={() => handleTap(rows[0])}
+                >
+                  <Avatar url={rows[0].avatar_url} name={rows[0].display_name || rows[0].username} size={64} />
+                </div>
+
+                {/* P2 Avatar – silberner Ring links */}
+                <div
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
+                  style={{ left: '21%', top: '44%' }}
+                  onClick={() => handleTap(rows[1])}
+                >
+                  <Avatar url={rows[1].avatar_url} name={rows[1].display_name || rows[1].username} size={50} />
+                </div>
+
+                {/* P3 Avatar – bronzener Ring rechts */}
+                <div
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
+                  style={{ left: '79%', top: '44%' }}
+                  onClick={() => handleTap(rows[2])}
+                >
+                  <Avatar url={rows[2].avatar_url} name={rows[2].display_name || rows[2].username} size={50} />
+                </div>
+              </div>
+
+              {/* Name + Streak + Score unterhalb des Bildes */}
+              <div className="grid grid-cols-3 gap-1 border border-t-0 border-ink-700 bg-ink-900/90 px-2 py-3">
+                {[rows[1], rows[0], rows[2]].map((row, colIdx) => {
+                  const rank = colIdx === 1 ? 1 : colIdx === 0 ? 2 : 3;
+                  const name = row.display_name || row.username;
+                  const scoreColor =
+                    rank === 1 ? 'text-amber-300' : rank === 2 ? 'text-slate-300' : 'text-orange-400';
+                  return (
+                    <div key={row.user_id} className="flex flex-col items-center gap-0.5 text-center">
+                      <p className="w-full truncate text-xs font-bold text-slate-100">
+                        {name}
+                        {row.is_me && (
+                          <span className="text-[10px] font-normal text-brand-300"> (du)</span>
+                        )}
                       </p>
-                    )}
-                    <p className={`mt-1 flex items-center justify-center gap-1 text-xl font-extrabold ${valueColor}`}>
-                      {row[sortKey]}
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-500">
-                      {sortLabel}
-                    </p>
-                  </div>
-                );
-              })}
+                      {row.current_streak > 0 && (
+                        <span className="text-xs font-semibold text-orange-400">
+                          🔥<span className="text-[10px] font-medium align-sub">x {row.current_streak}</span>
+                        </span>
+                      )}
+                      <p className={`text-sm font-extrabold ${scoreColor}`}>{row[sortKey]}</p>
+                      <p className="text-[9px] uppercase tracking-wide text-slate-500">{sortLabel}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
