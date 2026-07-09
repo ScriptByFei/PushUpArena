@@ -1,49 +1,42 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-
-export interface RestDayEntry {
-  id: string;
-  rest_date: string; // YYYY-MM-DD
-  created_at: string;
-}
+import type { RestDay } from '@/lib/database.types';
 
 export function useRestDays(exerciseId?: string) {
   const { user } = useAuth();
-  const [restDays, setRestDays] = useState<RestDayEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [restDays, setRestDays] = useState<RestDay[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!exerciseId || !user) return;
+  const refetch = useCallback(async () => {
+    if (!exerciseId || !user) { setRestDays([]); return; }
     setLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('rest_days')
-      .select('id, rest_date, created_at')
+      .select('*')
       .eq('exercise_id', exerciseId)
+      .eq('user_id', user.id)
       .order('rest_date', { ascending: false });
-    setRestDays((data ?? []) as RestDayEntry[]);
+    setRestDays((data as RestDay[]) ?? []);
     setLoading(false);
   }, [exerciseId, user]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void refetch(); }, [refetch]);
 
-  async function addRestDay(date: string): Promise<{ error: string | null }> {
-    if (!exerciseId || !user) return { error: 'Nicht angemeldet' };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('rest_days').upsert(
-      { user_id: user.id, exercise_id: exerciseId, rest_date: date },
-      { onConflict: 'user_id,exercise_id,rest_date' }
-    );
-    if (!error) await load();
-    return { error: error?.message ?? null };
+  async function addRestDay(restDate: string): Promise<{ error: string | null }> {
+    if (!exerciseId || !user) return { error: 'Nicht angemeldet.' };
+    const { error } = await supabase
+      .from('rest_days')
+      .insert({ exercise_id: exerciseId, user_id: user.id, rest_date: restDate });
+    if (error) return { error: error.message };
+    await refetch();
+    return { error: null };
   }
 
   async function deleteRestDay(id: string): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('rest_days').delete().eq('id', id);
-    setRestDays((prev) => prev.filter((r) => r.id !== id));
+    await supabase.from('rest_days').delete().eq('id', id);
+    await refetch();
   }
 
-  return { restDays, loading, refetch: load, addRestDay, deleteRestDay };
+  return { restDays, loading, refetch, addRestDay, deleteRestDay };
 }

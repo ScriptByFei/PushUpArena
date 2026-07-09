@@ -28,8 +28,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 'autoUpdate': neue Versionen werden im Hintergrund installiert und sofort
-      // aktiviert + Seite automatisch neu geladen (kein Banner, kein Tippen nötig).
+      // injectManifest: eigene sw.ts wird verwendet (enthält Push-Handler).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: [
         'favicon.svg',
@@ -65,11 +67,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        cacheId: 'pushup-arena-v8',
         globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
-        skipWaiting: true,
-        clientsClaim: true,
-        runtimeCaching: [],
       },
       devOptions: {
         // Service Worker im Dev-Modus deaktiviert (sauberes HMR).
@@ -78,4 +76,3 @@ export default defineConfig({
     }),
   ],
 });
-
