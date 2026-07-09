@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
-import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
-import type { Exercise } from '@/lib/database.types';
+import { useExercise } from '@/context/ExerciseContext';
+import { ExercisePicker } from '@/components/ExercisePicker';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -36,9 +36,7 @@ export default function Profile() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
-  const { exercise: activeExercise, enrolledExercises } = useExercise();
-  const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
-  const exercise = localExercise ?? activeExercise;
+  const { exercise } = useExercise();
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -75,24 +73,7 @@ export default function Profile() {
 
   return (
     <div className="space-y-4">
-      {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
-      {enrolledExercises.length > 1 && (
-        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
-          {enrolledExercises.map((ex) => {
-            const isActive = ex.id === exercise?.id;
-            return (
-              <button key={ex.id} onClick={() => setLocalExercise(ex)}
-                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                  isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
-                }`}
-              >
-                <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-5 w-5 rounded-md object-cover" />
-                {ex.name}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <ExercisePicker />
 
       {/* Profil-Header */}
       <Card>
