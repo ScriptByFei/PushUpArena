@@ -411,6 +411,25 @@ export default function Friends() {
         </div>
       )}
 
+      {/* ── Freunde einladen ──────────────────────────────────────── */}
+      <div className="flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-800 px-4 py-3">
+        <p className="flex-1 text-sm font-bold text-slate-100">Freunde einladen</p>
+        <button
+          onClick={onInvite}
+          className="rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-500 transition-colors"
+        >
+          Einladen
+        </button>
+        <button
+          onClick={onInvite}
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-ink-700 text-slate-400 hover:bg-ink-600 transition-colors"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+            <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z"/>
+          </svg>
+        </button>
+      </div>
+
       {/* ── Nutzer entdecken ──────────────────────────────────────── */}
       {nonFriends.length > 0 && (
         <div>
@@ -479,25 +498,6 @@ export default function Friends() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* ── Freunde einladen ──────────────────────────────────────── */}
-      <div className="flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-800 px-4 py-3">
-        <p className="flex-1 text-sm font-bold text-slate-100">Freunde einladen</p>
-        <button
-          onClick={onInvite}
-          className="rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-500 transition-colors"
-        >
-          Einladen
-        </button>
-        <button
-          onClick={onInvite}
-          className="flex h-8 w-8 items-center justify-center rounded-xl bg-ink-700 text-slate-400 hover:bg-ink-600 transition-colors"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-            <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z"/>
-          </svg>
-        </button>
       </div>
 
       {/* ── Modal: Aktive Freunde ──────────────────────────────────── */}
