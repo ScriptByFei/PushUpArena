@@ -482,32 +482,22 @@ export default function Friends() {
       </div>
 
       {/* ── Freunde einladen ──────────────────────────────────────── */}
-      <div className="flex items-center gap-4 rounded-2xl border border-ink-700 bg-ink-800 p-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-600/20">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-brand-400">
-            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+      <div className="flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-800 px-4 py-3">
+        <p className="flex-1 text-sm font-bold text-slate-100">Freunde einladen</p>
+        <button
+          onClick={onInvite}
+          className="rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-500 transition-colors"
+        >
+          Einladen
+        </button>
+        <button
+          onClick={onInvite}
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-ink-700 text-slate-400 hover:bg-ink-600 transition-colors"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+            <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z"/>
           </svg>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-slate-100">Freunde einladen</p>
-          <p className="text-xs text-slate-500">Fordere deine Freunde heraus und vergleicht eure Fortschritte.</p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <button
-            onClick={onInvite}
-            className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-bold text-white hover:bg-brand-500 transition-colors"
-          >
-            Einladen
-          </button>
-          <button
-            onClick={onInvite}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-700 text-slate-400 hover:bg-ink-600 transition-colors"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-              <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z"/>
-            </svg>
-          </button>
-        </div>
+        </button>
       </div>
 
       {/* ── Modal: Aktive Freunde ──────────────────────────────────── */}
