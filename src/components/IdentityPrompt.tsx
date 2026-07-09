@@ -1,7 +1,6 @@
 /**
  * IdentityPrompt – erscheint einmalig für User ohne user_identities-Eintrag.
- * Prüft zuerst user_metadata (neuer User nach Email-Bestätigung) — zeigt
- * das Sheet nur wenn wirklich kein Name bekannt ist.
+ * Fragt Vorname + Nachname-Anfangsbuchstabe ab und speichert sie.
  */
 import { FormEvent, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -13,21 +12,12 @@ export function IdentityPrompt() {
   const { user } = useAuth();
   const [needed, setNeeded] = useState(false);
   const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [lastNameInitial, setLastNameInitial] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-
-    // Wenn der Name schon in user_metadata steht (neue Registrierung oder Google),
-    // kein Prompt zeigen — onAuthStateChange speichert ihn in user_identities.
-    const meta = user.user_metadata;
-    const metaFirst = (meta?.first_name || meta?.given_name || '') as string;
-    const metaLast  = (meta?.last_name  || meta?.family_name || '') as string;
-    if (metaFirst.trim() && metaLast.trim()) return;
-
-    // Sonst: DB prüfen (bestehende User ohne Metadaten)
     supabase
       .from('user_identities')
       .select('user_id')
@@ -43,23 +33,15 @@ export function IdentityPrompt() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!firstName.trim()) { setError('Bitte gib deinen Vornamen an.'); return; }
-    if (!lastName.trim()) { setError('Bitte gib deinen Nachnamen an.'); return; }
+    if (!lastNameInitial.trim()) { setError('Bitte gib den ersten Buchstaben deines Nachnamens an.'); return; }
     if (!user) return;
 
     setSaving(true);
     const { error: err } = await supabase.from('user_identities').upsert({
       user_id: user.id,
       first_name: firstName.trim(),
-      last_name: lastName.trim(),
+      last_name_initial: lastNameInitial.toUpperCase().charAt(0),
     }, { onConflict: 'user_id' });
-
-    if (!err) {
-      // Anzeigename auf "Vorname Nachname" setzen, falls noch keiner gesetzt ist
-      await supabase.from('profiles')
-        .update({ display_name: `${firstName.trim()} ${lastName.trim()}` })
-        .eq('id', user.id)
-        .is('display_name', null);
-    }
     setSaving(false);
 
     if (err) { setError(err.message); return; }
@@ -70,9 +52,9 @@ export function IdentityPrompt() {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
       <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-6">
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-ink-600" />
-        <p className="text-lg font-extrabold text-slate-100">Wie heißt du?</p>
+        <p className="text-lg font-extrabold text-slate-100">Kurze Info benötigt</p>
         <p className="mt-1 text-sm text-slate-400">
-          Dein Name wird als Anzeigename verwendet und ist für alle sichtbar. Du kannst ihn jederzeit im Profil ändern.
+          Für den Admin wird einmalig dein Name hinterlegt. Andere User sehen nur deinen Anzeigenamen.
         </p>
         <form onSubmit={onSubmit} className="mt-5 space-y-4">
           {error && (
@@ -91,13 +73,14 @@ export function IdentityPrompt() {
                 autoComplete="given-name"
               />
             </Field>
-            <Field label="Nachname" htmlFor="ip-lastName" className="flex-1">
+            <Field label="Nachname (1. Buchstabe)" htmlFor="ip-lastInitial" className="w-28">
               <Input
-                id="ip-lastName"
+                id="ip-lastInitial"
                 required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Mustermann"
+                maxLength={1}
+                value={lastNameInitial}
+                onChange={(e) => setLastNameInitial(e.target.value.replace(/[^a-zA-ZäöüÄÖÜ]/, ''))}
+                placeholder="M"
                 autoComplete="family-name"
               />
             </Field>

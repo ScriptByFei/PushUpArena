@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
       sub.subscription,
       JSON.stringify({
         title: '🤝 Neue Anfrage',
-        body: `🤝 ${senderName} möchte dein Freund sein!`,
+        body: `${senderName} möchte dein Freund sein!`,
       }),
     );
 
