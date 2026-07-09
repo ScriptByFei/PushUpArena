@@ -11,6 +11,10 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { QuickAdd } from '@/components/QuickAdd';
 import { useRestDayInfo } from '@/hooks/useRestDayInfo';
+import { ensureSubscription } from '@/lib/pushNotifications';
+
+const CURRENT_VAPID_KEY = 'BHGmKlk8i8upz5DDsK0OfZcDhyAhI1lQAeEk6B00V4Qg1MJ5NmYtDJwN75XxkodOrPxLHfdXUZQIxVLctwcSRHA';
+const VAPID_KEY_STORAGE = 'push_vapid_v';
 
 function InfoIcon() {
   return (
@@ -108,6 +112,34 @@ export default function Dashboard() {
     () => localStorage.getItem('streakBannerDismissed') === '1'
   );
 
+  // Push-Renewal-Banner: zeige wenn Notification-Permission granted aber VAPID Key veraltet
+  const [pushBannerDismissed, setPushBannerDismissed] = useState(
+    () => localStorage.getItem(VAPID_KEY_STORAGE) === CURRENT_VAPID_KEY
+  );
+  const [pushRenewing, setPushRenewing] = useState(false);
+  const showPushBanner =
+    !pushBannerDismissed &&
+    typeof Notification !== 'undefined' &&
+    Notification.permission === 'granted';
+
+  async function handlePushRenew() {
+    setPushRenewing(true);
+    try {
+      // Unsubscribe existing (old key) then re-subscribe with new key
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) await existing.unsubscribe();
+      await ensureSubscription();
+      localStorage.setItem(VAPID_KEY_STORAGE, CURRENT_VAPID_KEY);
+      setPushBannerDismissed(true);
+      toast.success('Benachrichtigungen erfolgreich erneuert!');
+    } catch {
+      toast.error('Erneuerung fehlgeschlagen — bitte manuell aus/an schalten.');
+    } finally {
+      setPushRenewing(false);
+    }
+  }
+
   function dismissBanner() {
     localStorage.setItem('streakBannerDismissed', '1');
     setBannerDismissed(true);
@@ -168,6 +200,36 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-3">
+
+      {/* Push-Renewal-Banner */}
+      {showPushBanner && (
+        <div className="flex animate-pop-in items-start gap-3 rounded-2xl border border-brand-500/30 bg-brand-500/10 px-4 py-3">
+          <span className="text-xl leading-none">🔔</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-brand-200">Benachrichtigungen erneuern</p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Push-Benachrichtigungen wurden aktualisiert — bitte einmal neu aktivieren.
+            </p>
+            <button
+              onClick={handlePushRenew}
+              disabled={pushRenewing}
+              className="mt-2 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500 disabled:opacity-50 transition"
+            >
+              {pushRenewing ? 'Wird erneuert …' : 'Jetzt erneuern'}
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.setItem(VAPID_KEY_STORAGE, CURRENT_VAPID_KEY);
+              setPushBannerDismissed(true);
+            }}
+            className="shrink-0 text-slate-500 hover:text-slate-300 transition text-lg leading-none"
+            aria-label="Schließen"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Einmaliges Streak-Onboarding-Banner */}
       {!bannerDismissed && (
