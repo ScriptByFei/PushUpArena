@@ -1,17 +1,14 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import type { Exercise } from '@/lib/database.types';
-import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { LogoutIcon, EditIcon } from '@/components/ui/icons';
+import { LogoutIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
 
 
@@ -39,33 +36,9 @@ export default function Profile() {
   const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
   const exercise = localExercise ?? activeExercise;
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
-  const toast = useToast();
-
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ display_name: '' });
-  const [saving, setSaving] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
-  useEffect(() => {
-    if (profile) {
-      setForm({
-        display_name: profile.display_name ?? '',
-      });
-    }
-  }, [profile]);
-
   if (profileLoading || !profile) return <LoadingState label="Lade Profil …" />;
-
-  async function onSave(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    const { error } = await updateProfile({
-      display_name: form.display_name.trim() || null,
-    });
-    setSaving(false);
-    if (error) toast.error(error);
-    else { toast.success('Profil gespeichert.'); setEditing(false); }
-  }
 
   return (
     <div className="space-y-4">
@@ -102,20 +75,9 @@ export default function Profile() {
             }}
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <h2 className="truncate text-xl font-extrabold">
-                {profile.display_name || profile.username}
-              </h2>
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="shrink-0 rounded-full p-1 text-slate-500 hover:text-brand-400 transition"
-                  title="Name bearbeiten"
-                >
-                  <EditIcon className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <h2 className="truncate text-xl font-extrabold">
+              {profile.display_name || profile.username}
+            </h2>
             <p className="text-sm text-slate-400">@{profile.username}</p>
           </div>
           <button
@@ -126,28 +88,11 @@ export default function Profile() {
             <LogoutIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-2">
+        <div className="mt-3">
           <p className="text-xs text-slate-500 truncate">{user?.email}</p>
           <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
         </div>
       </Card>
-
-      {/* Profil bearbeiten */}
-      {editing && (
-        <Card>
-          <CardTitle>Profil bearbeiten</CardTitle>
-          <form onSubmit={onSave} className="mt-3 space-y-3">
-            <Field label="Name" htmlFor="display_name">
-              <Input id="display_name" maxLength={50} value={form.display_name}
-                onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
-            </Field>
-            <div className="flex gap-2">
-              <Button type="button" variant="secondary" fullWidth onClick={() => setEditing(false)}>Abbrechen</Button>
-              <Button type="submit" fullWidth loading={saving}>Speichern</Button>
-            </div>
-          </form>
-        </Card>
-      )}
 
       {/* Statistik */}
       {statsLoading ? (
