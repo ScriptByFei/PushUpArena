@@ -1,6 +1,6 @@
 /**
  * IdentityPrompt – erscheint einmalig für User ohne user_identities-Eintrag.
- * Fragt Vorname + Nachname-Anfangsbuchstabe ab und speichert sie.
+ * Fragt Vorname + Nachname ab und speichert sie.
  */
 import { FormEvent, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -12,7 +12,7 @@ export function IdentityPrompt() {
   const { user } = useAuth();
   const [needed, setNeeded] = useState(false);
   const [firstName, setFirstName] = useState('');
-  const [lastNameInitial, setLastNameInitial] = useState('');
+  const [lastName, setLastName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,14 +33,14 @@ export function IdentityPrompt() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!firstName.trim()) { setError('Bitte gib deinen Vornamen an.'); return; }
-    if (!lastNameInitial.trim()) { setError('Bitte gib den ersten Buchstaben deines Nachnamens an.'); return; }
+    if (!lastName.trim()) { setError('Bitte gib deinen Nachnamen an.'); return; }
     if (!user) return;
 
     setSaving(true);
     const { error: err } = await supabase.from('user_identities').upsert({
       user_id: user.id,
       first_name: firstName.trim(),
-      last_name_initial: lastNameInitial.toUpperCase().charAt(0),
+      last_name: lastName.trim(),
     }, { onConflict: 'user_id' });
     setSaving(false);
 
@@ -73,14 +73,13 @@ export function IdentityPrompt() {
                 autoComplete="given-name"
               />
             </Field>
-            <Field label="Nachname (1. Buchstabe)" htmlFor="ip-lastInitial" className="w-28">
+            <Field label="Nachname" htmlFor="ip-lastName" className="flex-1">
               <Input
-                id="ip-lastInitial"
+                id="ip-lastName"
                 required
-                maxLength={1}
-                value={lastNameInitial}
-                onChange={(e) => setLastNameInitial(e.target.value.replace(/[^a-zA-ZäöüÄÖÜ]/, ''))}
-                placeholder="M"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Mustermann"
                 autoComplete="family-name"
               />
             </Field>

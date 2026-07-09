@@ -21,7 +21,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signUp: (email: string, password: string, firstName?: string, lastNameInitial?: string) => Promise<AuthResult>;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<AuthResult>;
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       },
 
-      async signUp(email, password, firstName, lastNameInitial) {
+      async signUp(email, password, firstName, lastName) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -85,11 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const needsEmailConfirmation = !error && !data.session;
 
         // Realnamen speichern wenn vorhanden (auch ohne Session, user_id steht in data.user)
-        if (!error && data.user && firstName && lastNameInitial) {
+        if (!error && data.user && firstName && lastName) {
           await supabase.from('user_identities').upsert({
             user_id: data.user.id,
             first_name: firstName.trim(),
-            last_name_initial: lastNameInitial.toUpperCase().charAt(0),
+            last_name: lastName.trim(),
           }, { onConflict: 'user_id' });
         }
 
