@@ -56,11 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // in user_identities übertragen falls noch kein Eintrag existiert.
         const meta = newSession.user.user_metadata;
         if (meta?.first_name && meta?.last_name) {
+          const firstName = (meta.first_name as string).trim();
+          const lastName = (meta.last_name as string).trim();
           void supabase.from('user_identities').upsert({
             user_id: newSession.user.id,
-            first_name: meta.first_name as string,
-            last_name: meta.last_name as string,
+            first_name: firstName,
+            last_name: lastName,
           }, { onConflict: 'user_id', ignoreDuplicates: true });
+          // Default-Anzeigename setzen, falls noch keiner vergeben wurde
+          void supabase.from('profiles')
+            .update({ display_name: `${firstName} ${lastName}` })
+            .eq('id', newSession.user.id)
+            .is('display_name', null);
         }
       } else {
         void OneSignal.logout();

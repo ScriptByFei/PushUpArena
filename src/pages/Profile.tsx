@@ -1,4 +1,5 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -44,6 +45,22 @@ export default function Profile() {
   const [form, setForm] = useState({ display_name: '' });
   const [saving, setSaving] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [realHandle, setRealHandle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('user_identities')
+      .select('first_name, last_name')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          const handle = `@${data.first_name.replace(/\s+/g, '')}${data.last_name.replace(/\s+/g, '')}`;
+          setRealHandle(handle);
+        }
+      });
+  }, [user]);
 
   if (profileLoading || !profile) return <LoadingState label="Lade Profil …" />;
 
@@ -94,7 +111,9 @@ export default function Profile() {
             <h2 className="truncate text-xl font-extrabold">
               {profile.display_name || profile.username}
             </h2>
-            <p className="text-sm text-slate-400">@{profile.username}</p>
+            <p className="text-sm text-slate-400">
+              {realHandle ?? `@${profile.username}`}
+            </p>
           </div>
           <button
             onClick={() => setConfirmLogout(true)}
