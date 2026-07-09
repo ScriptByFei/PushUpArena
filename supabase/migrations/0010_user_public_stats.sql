@@ -6,6 +6,7 @@
 --   gap=1 → aufeinanderfolgend, Kette läuft weiter
 --   gap=2 → 1 Ruhetag Brücke, Kette läuft weiter (Ruhetag zählt NICHT zur Länge)
 --   gap≥3 → 2+ aufeinanderfolgende Ruhetage → Kette bricht
+-- days_member: inklusiv (Registrierungstag = Tag 1)
 -- week_days: boolean[7] für Mo–So der aktuellen Woche (index 0 = Montag).
 
 CREATE OR REPLACE FUNCTION public.get_user_public_stats(
@@ -50,10 +51,15 @@ AS $$
   chain_lengths AS (
     SELECT COUNT(*)::int AS len FROM chain_grouped GROUP BY chain_id
   ),
-  -- Current streak (einfach, nicht in der Box angezeigt)
+  -- Current streak (nicht in der Box angezeigt)
   recent_ranked AS (
     SELECT d, ROW_NUMBER() OVER (ORDER BY d DESC)::int AS rn
     FROM workout_dates
+  ),
+  -- Mitgliedschaft: +1 damit Beitrittstag = Tag 1 (nicht Tag 0)
+  member_days AS (
+    SELECT (CURRENT_DATE - (created_at AT TIME ZONE 'UTC')::date) + 1 AS days_member
+    FROM public.profiles WHERE id = p_user_id
   ),
   -- Aktuelle Woche Mo–So (gs 0=Mo … 6=So)
   week_data AS (
@@ -79,9 +85,7 @@ AS $$
         THEN (SELECT COUNT(*)::int FROM recent_ranked WHERE d = CURRENT_DATE - (rn - 1))
         ELSE 0
       END, 0),
-    'days_member',    (CURRENT_DATE - (
-      SELECT (created_at AT TIME ZONE 'UTC')::date FROM public.profiles WHERE id = p_user_id
-    )),
+    'days_member',    (SELECT days_member FROM member_days),
     'week_days',      (SELECT jsonb_agg(active ORDER BY gs) FROM week_data)
   )
   FROM totals t;
