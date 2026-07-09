@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { CheckIcon, XIcon } from '@/components/ui/icons';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
+import { ExercisePicker } from '@/components/ExercisePicker';
 import type { LeaderboardRow } from '@/lib/database.types';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -355,6 +356,9 @@ export default function Friends() {
 
   return (
     <div className="space-y-6 pb-4">
+
+      {/* ── Übungs-Selektor ───────────────────────────────────────── */}
+      <ExercisePicker />
 
       {/* ── Stats + Aktive Freunde ─────────────────────────────────── */}
       <StatsCard
