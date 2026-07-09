@@ -21,12 +21,12 @@ export function InstallHintProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isStandalone()) return;
-    if (localStorage.getItem(STORAGE_KEY) === '1') return;
+    if (sessionStorage.getItem(STORAGE_KEY) === '1') return;
     setActive(true);
   }, []);
 
   function dismiss() {
-    localStorage.setItem(STORAGE_KEY, '1');
+    sessionStorage.setItem(STORAGE_KEY, '1');
     setActive(false);
   }
 
