@@ -37,6 +37,7 @@ import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
 import { EnrollmentModal } from '@/components/EnrollmentModal';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
+import { PushPrompt } from '@/components/PushPrompt';
 import { PushProvider } from '@/context/PushContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { InstallHintProvider } from '@/components/InstallHint';
@@ -104,6 +105,7 @@ export default function App() {
                 <AppLayout />
                 <EnrollmentModal />
                 <OnboardingFlow />
+                <PushPrompt />
               </PushProvider>
             </ExerciseProvider>
           </ProtectedRoute>

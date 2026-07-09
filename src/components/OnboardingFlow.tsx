@@ -94,6 +94,8 @@ export function OnboardingFlow() {
 
   function goToPushOrDone() {
     if (pushSupported && Notification.permission === 'default') {
+      // Als "gezeigt" markieren damit PushPrompt nicht nochmal erscheint
+      localStorage.setItem('push-prompted', '1');
       setStep('push');
     } else {
       setStep('done');
