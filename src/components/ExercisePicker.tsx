@@ -27,7 +27,7 @@ export function ExercisePicker() {
             <img
               src={EXERCISE_ICONS[ex.slug] ?? ''}
               alt={ex.name}
-              className="h-9 w-9 object-contain"
+              className="h-14 w-14 object-contain"
             />
           </button>
         );
