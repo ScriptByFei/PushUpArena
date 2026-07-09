@@ -52,6 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (newSession?.user) {
         void OneSignal.login(newSession.user.id);
+        // Wenn Namen in User-Metadaten vorhanden (z.B. nach Email-Bestätigung),
+        // in user_identities übertragen falls noch kein Eintrag existiert.
+        const meta = newSession.user.user_metadata;
+        if (meta?.first_name && meta?.last_name) {
+          void supabase.from('user_identities').upsert({
+            user_id: newSession.user.id,
+            first_name: meta.first_name as string,
+            last_name: meta.last_name as string,
+          }, { onConflict: 'user_id', ignoreDuplicates: true });
+        }
       } else {
         void OneSignal.logout();
       }
@@ -78,14 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: redirectTo('/') },
+          options: {
+            emailRedirectTo: redirectTo('/'),
+            // Namen in User-Metadaten speichern – funktioniert auch ohne Session.
+            // Beim ersten Login werden sie von onAuthStateChange in user_identities übertragen.
+            data: firstName && lastName
+              ? { first_name: firstName.trim(), last_name: lastName.trim() }
+              : undefined,
+          },
         });
         // identities leer => E-Mail bereits registriert; ansonsten Bestätigung nötig,
         // solange keine Session zurückkam.
         const needsEmailConfirmation = !error && !data.session;
 
-        // Realnamen speichern wenn vorhanden (auch ohne Session, user_id steht in data.user)
-        if (!error && data.user && firstName && lastName) {
+        // Falls kein Email-Confirm nötig (Confirm deaktiviert), direkt speichern
+        if (!error && data.session && data.user && firstName && lastName) {
           await supabase.from('user_identities').upsert({
             user_id: data.user.id,
             first_name: firstName.trim(),
