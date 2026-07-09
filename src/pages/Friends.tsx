@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useFriends, type FriendProfile } from '@/hooks/useFriends';
+import { useFriends, type FriendProfile, type Friend } from '@/hooks/useFriends';
 import { useToast } from '@/context/ToastContext';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
@@ -188,12 +188,14 @@ function FriendRow({
   stats,
   onTap,
   onRemove,
+  isMe = false,
 }: {
   rank: number;
   friend: FriendProfile;
   stats?: LeaderboardRow;
   onTap: () => void;
   onRemove: () => void;
+  isMe?: boolean;
 }) {
   const todayAmount = stats?.today_amount ?? 0;
   const streak = stats?.current_streak ?? 0;
@@ -201,7 +203,7 @@ function FriendRow({
   const isActiveToday = todayAmount > 0;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className={`flex items-center gap-3 px-4 py-3 ${isMe ? 'bg-brand-600/10' : ''}`}>
       <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-500">{rank}</span>
       <button onClick={onTap} className="relative shrink-0">
         <Avatar url={friend.avatar_url} name={friend.display_name || friend.username} size={40} />
@@ -210,6 +212,7 @@ function FriendRow({
       <button onClick={onTap} className="min-w-0 flex-1 text-left">
         <p className="truncate text-sm font-semibold text-slate-100">
           {friend.display_name || friend.username}
+          {isMe && <span className="ml-1 text-xs font-normal text-brand-300">(du)</span>}
         </p>
         <p className={`text-xs ${isActiveToday ? 'text-emerald-400' : 'text-slate-500'}`}>
           {statusText}
@@ -222,15 +225,17 @@ function FriendRow({
         <p className="text-base font-extrabold text-brand-300">{todayAmount}</p>
         <p className="text-xs text-slate-600">heute</p>
       </div>
-      <button
-        onClick={onRemove}
-        className="shrink-0 text-slate-600 hover:text-rose-400 transition-colors"
-        aria-label="Freund entfernen"
-      >
-        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
-        </svg>
-      </button>
+      {!isMe && (
+        <button
+          onClick={onRemove}
+          className="shrink-0 text-slate-600 hover:text-rose-400 transition-colors"
+          aria-label="Freund entfernen"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+            <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -299,14 +304,28 @@ export default function Friends() {
     [friends, statsMap]
   );
 
-  // Ranked friends (by today_amount)
-  const rankedFriends = useMemo(() =>
-    [...friends].sort((a, b) =>
+  // Eigenes Profil aus leaderRows
+  const meRow = useMemo(() => leaderRows.find(r => r.is_me), [leaderRows]);
+  const meProfile = useMemo<FriendProfile | null>(() =>
+    meRow ? { id: meRow.user_id, username: meRow.username, display_name: meRow.display_name, avatar_url: meRow.avatar_url } : null,
+    [meRow]
+  );
+
+  // Ranked friends (by today_amount) + eigener Eintrag
+  const rankedFriends = useMemo(() => {
+    const list = [...friends].sort((a, b) =>
       (statsMap.get(b.friend.id)?.today_amount ?? 0) -
       (statsMap.get(a.friend.id)?.today_amount ?? 0)
-    ),
-    [friends, statsMap]
-  );
+    );
+    if (meProfile) {
+      const meAsFriend: Friend = { created_at: '', friend: meProfile };
+      const meAmount = meRow?.today_amount ?? 0;
+      const insertAt = list.findIndex(f => (statsMap.get(f.friend.id)?.today_amount ?? 0) < meAmount);
+      if (insertAt === -1) list.push(meAsFriend);
+      else list.splice(insertAt, 0, meAsFriend);
+    }
+    return list;
+  }, [friends, statsMap, meProfile, meRow]);
 
   const shownFriends = showAllFriends ? rankedFriends : rankedFriends.slice(0, 5);
 
@@ -539,9 +558,10 @@ export default function Friends() {
                 key={f.friend.id}
                 rank={i + 1}
                 friend={f.friend}
-                stats={statsMap.get(f.friend.id)}
+                stats={statsMap.get(f.friend.id) ?? (f.friend.id === meProfile?.id ? (meRow as LeaderboardRow | undefined) : undefined)}
                 onTap={() => openInfoSheet(f.friend)}
                 onRemove={() => setRemoveTarget(f.friend)}
+                isMe={f.friend.id === meProfile?.id}
               />
             ))}
           </div>
