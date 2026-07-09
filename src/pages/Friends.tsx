@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { CheckIcon, XIcon } from '@/components/ui/icons';
+import { UserInfoSheet } from '@/components/UserInfoSheet';
 import type { LeaderboardRow } from '@/lib/database.types';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ function DiscoverCard({
   busy,
   onAdd,
   onCancel,
+  onTap,
 }: {
   profile: FriendProfile;
   streak: number;
@@ -140,20 +142,21 @@ function DiscoverCard({
   busy: boolean;
   onAdd: () => void;
   onCancel: () => void;
+  onTap: () => void;
 }) {
   return (
     <div className="flex w-36 shrink-0 flex-col items-center rounded-2xl border border-ink-700 bg-ink-800 p-3 gap-2">
-      <div className="relative">
+      <button className="relative" onClick={onTap}>
         <Avatar url={profile.avatar_url} name={profile.display_name || profile.username} size={56} />
-      </div>
-      <div className="w-full text-center">
+      </button>
+      <button className="w-full text-center" onClick={onTap}>
         <p className="truncate text-sm font-bold text-slate-100">
           {profile.display_name || profile.username}
         </p>
         {streak > 0 && (
           <p className="mt-0.5 text-xs text-slate-500">🔥 Streak {streak}</p>
         )}
-      </div>
+      </button>
       {isOutgoing ? (
         <button
           onClick={onCancel}
@@ -183,12 +186,12 @@ function FriendRow({
   rank,
   friend,
   stats,
-  onRemove,
+  onTap,
 }: {
   rank: number;
   friend: FriendProfile;
   stats?: LeaderboardRow;
-  onRemove: () => void;
+  onTap: () => void;
 }) {
   const todayAmount = stats?.today_amount ?? 0;
   const streak = stats?.current_streak ?? 0;
@@ -196,7 +199,10 @@ function FriendRow({
   const isActiveToday = todayAmount > 0;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <button
+      onClick={onTap}
+      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-ink-750 transition-colors"
+    >
       <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-500">{rank}</span>
       <div className="relative shrink-0">
         <Avatar url={friend.avatar_url} name={friend.display_name || friend.username} size={40} />
@@ -217,16 +223,10 @@ function FriendRow({
         <p className="text-base font-extrabold text-brand-300">{todayAmount}</p>
         <p className="text-xs text-slate-600">heute</p>
       </div>
-      <button
-        onClick={onRemove}
-        className="shrink-0 text-slate-600 hover:text-slate-400 transition-colors"
-        aria-label="Freund entfernen"
-      >
-        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd"/>
-        </svg>
-      </button>
-    </div>
+      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-slate-600">
+        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd"/>
+      </svg>
+    </button>
   );
 }
 
@@ -248,6 +248,17 @@ export default function Friends() {
   const [showAllDiscover, setShowAllDiscover] = useState(false);
   const [showAllFriends, setShowAllFriends] = useState(false);
   const [activeModalOpen, setActiveModalOpen] = useState(false);
+
+  // UserInfoSheet state
+  interface InfoSheetTarget {
+    userId: string;
+    displayName: string;
+    avatarUrl: string | null;
+    isFriend: boolean;
+    isOutgoing: boolean;
+    rankAmongFriends?: number;
+  }
+  const [infoSheet, setInfoSheet] = useState<InfoSheetTarget | null>(null);
 
   // Streak data for non-friends (discover section)
   const [discoverStreaks, setDiscoverStreaks] = useState<Map<string, number>>(new Map());
@@ -303,6 +314,18 @@ export default function Friends() {
         setDiscoverStreaks(m);
       });
   }, [shownDiscover]);
+
+  function openInfoSheet(
+    profile: FriendProfile,
+    opts: { isFriend: boolean; isOutgoing: boolean; rankAmongFriends?: number }
+  ) {
+    setInfoSheet({
+      userId: profile.id,
+      displayName: profile.display_name || profile.username,
+      avatarUrl: profile.avatar_url,
+      ...opts,
+    });
+  }
 
   async function handleSend(id: string) {
     setBusyId(id);
@@ -417,6 +440,12 @@ export default function Friends() {
                   busy={busyId === u.id || busyId === outReq?.id}
                   onAdd={() => handleSend(u.id)}
                   onCancel={() => outReq && handleCancel(outReq.id)}
+                  onTap={() =>
+                    openInfoSheet(u, {
+                      isFriend: false,
+                      isOutgoing: outgoingIds.has(u.id),
+                    })
+                  }
                 />
               );
             })}
@@ -451,7 +480,13 @@ export default function Friends() {
                 rank={i + 1}
                 friend={f.friend}
                 stats={statsMap.get(f.friend.id)}
-                onRemove={() => setRemoveTarget(f.friend)}
+                onTap={() =>
+                  openInfoSheet(f.friend, {
+                    isFriend: true,
+                    isOutgoing: false,
+                    rankAmongFriends: i + 1,
+                  })
+                }
               />
             ))}
           </div>
@@ -525,6 +560,30 @@ export default function Friends() {
         Du entfernst <strong>{removeTarget?.display_name || removeTarget?.username}</strong> aus deiner
         Freundesliste.
       </Modal>
+
+      {/* ── UserInfoSheet ──────────────────────────────────────────── */}
+      {infoSheet && activeExercise && (
+        <UserInfoSheet
+          userId={infoSheet.userId}
+          displayName={infoSheet.displayName}
+          avatarUrl={infoSheet.avatarUrl}
+          exerciseId={activeExercise.id}
+          rankAmongFriends={infoSheet.rankAmongFriends}
+          isFriend={infoSheet.isFriend}
+          isOutgoing={infoSheet.isOutgoing}
+          isBusy={busyId === infoSheet.userId}
+          onAdd={async () => {
+            await handleSend(infoSheet.userId);
+            setInfoSheet(null);
+          }}
+          onRemove={() => {
+            setInfoSheet(null);
+            const friend = friends.find(f => f.friend.id === infoSheet.userId)?.friend;
+            if (friend) setRemoveTarget(friend);
+          }}
+          onClose={() => setInfoSheet(null)}
+        />
+      )}
     </div>
   );
 }
