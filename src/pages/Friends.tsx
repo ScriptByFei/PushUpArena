@@ -293,9 +293,13 @@ export default function Friends() {
     return m;
   }, [leaderRows]);
 
-  // Derived stats (inkl. eigener User)
+  // Derived stats (inkl. eigener User für Zählung, ohne für Anzeige)
+  const activeFriendsTodayCount = useMemo(() =>
+    leaderRows.filter(r => r.today_amount > 0).length,
+    [leaderRows]
+  );
   const activeFriendsToday = useMemo(() =>
-    leaderRows.filter(r => r.today_amount > 0),
+    leaderRows.filter(r => r.today_amount > 0 && !r.is_me),
     [leaderRows]
   );
   const streakCount = useMemo(() => {
@@ -445,7 +449,7 @@ export default function Friends() {
       {/* ── Stats + Aktive Freunde ─────────────────────────────────── */}
       <StatsCard
         friendCount={friends.length}
-        activeFriends={activeFriendsToday.length}
+        activeFriends={activeFriendsTodayCount}
         streakCount={streakCount}
         activeAvatars={activeFriendsToday}
         onShowActive={() => setActiveModalOpen(true)}
