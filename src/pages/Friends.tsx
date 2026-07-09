@@ -293,15 +293,16 @@ export default function Friends() {
     return m;
   }, [leaderRows]);
 
-  // Derived stats
+  // Derived stats (inkl. eigener User)
   const activeFriendsToday = useMemo(() =>
-    leaderRows.filter(r => r.today_amount > 0 && r.user_id !== user?.id),
-    [leaderRows, user?.id]
+    leaderRows.filter(r => r.today_amount > 0),
+    [leaderRows]
   );
-  const streakCount = useMemo(() =>
-    friends.filter(f => (statsMap.get(f.friend.id)?.current_streak ?? 0) > 0).length,
-    [friends, statsMap]
-  );
+  const streakCount = useMemo(() => {
+    const friendStreaks = friends.filter(f => (statsMap.get(f.friend.id)?.current_streak ?? 0) > 0).length;
+    const meStreak = leaderRows.find(r => r.is_me)?.current_streak ?? 0;
+    return friendStreaks + (meStreak > 0 ? 1 : 0);
+  }, [friends, statsMap, leaderRows]);
 
   // Eigenes Profil aus leaderRows
   const meRow = useMemo(() => leaderRows.find(r => r.is_me), [leaderRows]);
