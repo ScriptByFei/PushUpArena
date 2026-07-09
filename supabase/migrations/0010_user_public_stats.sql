@@ -1,6 +1,7 @@
 -- 0010_user_public_stats.sql
 -- Adds a public RPC to fetch stats for any user (used by UserInfoSheet on the Friends page).
 -- SECURITY DEFINER so it can bypass RLS; only exposes aggregate workout data.
+-- week_days: boolean[7] für Mo–So der aktuellen Woche (index 0 = Montag).
 
 CREATE OR REPLACE FUNCTION public.get_user_public_stats(
   p_user_id uuid,
@@ -12,6 +13,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   WITH
+  monday AS (
+    SELECT date_trunc('week', CURRENT_DATE)::date AS mon
+  ),
   workout_dates AS (
     SELECT DISTINCT (performed_at AT TIME ZONE 'UTC')::date AS d
     FROM public.workout_entries
@@ -39,15 +43,15 @@ AS $$
     SELECT d, ROW_NUMBER() OVER (ORDER BY d DESC)::int AS rn
     FROM workout_dates
   ),
-  -- last 7 days activity (oldest→newest)
-  last7_data AS (
+  -- aktuelle Woche Mo–So (gs 0=Mo … 6=So)
+  week_data AS (
     SELECT
       gs,
       EXISTS (
         SELECT 1 FROM public.workout_entries
         WHERE user_id = p_user_id
           AND exercise_id = p_exercise
-          AND (performed_at AT TIME ZONE 'UTC')::date = CURRENT_DATE - (6 - gs)
+          AND (performed_at AT TIME ZONE 'UTC')::date = (SELECT mon FROM monday) + gs
       ) AS active
     FROM generate_series(0, 6) AS gs
   )
@@ -66,7 +70,7 @@ AS $$
     'days_member',    (CURRENT_DATE - (
       SELECT (created_at AT TIME ZONE 'UTC')::date FROM public.profiles WHERE id = p_user_id
     )),
-    'last_7_days',    (SELECT jsonb_agg(active ORDER BY gs) FROM last7_data)
+    'week_days',      (SELECT jsonb_agg(active ORDER BY gs) FROM week_data)
   )
   FROM totals t;
 $$;

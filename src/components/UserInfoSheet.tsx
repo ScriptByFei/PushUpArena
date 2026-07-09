@@ -15,7 +15,7 @@ interface UserPublicStats {
   best_streak: number;
   current_streak: number;
   days_member: number;
-  last_7_days: boolean[];
+  week_days: boolean[]; // Mo–So der aktuellen Woche
 }
 
 export interface UserInfoSheetProps {
@@ -26,13 +26,7 @@ export interface UserInfoSheetProps {
   onClose: () => void;
 }
 
-const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
-function getDayLabel(offsetFromToday: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - (6 - offsetFromToday));
-  return DAY_LABELS[d.getDay() === 0 ? 6 : d.getDay() - 1];
-}
+const WEEK_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 export function UserInfoSheet({
   userId,
@@ -116,22 +110,22 @@ export function UserInfoSheet({
               />
             </div>
 
-            {/* ── Last 7 days ─────────────────────────────────────── */}
+            {/* ── Aktuelle Woche Mo–So ─────────────────────────────── */}
             <div className="rounded-2xl border border-ink-700 bg-ink-800 px-3 py-3">
               <div className="flex justify-between gap-1">
-                {stats.last_7_days.map((active, i) => (
+                {stats.week_days.map((active, i) => (
                   <div key={i} className="flex flex-1 flex-col items-center gap-1">
                     <div
                       className={`h-6 w-full rounded-md ${
                         active ? 'bg-brand-500' : 'bg-ink-700'
                       }`}
                     />
-                    <span className="text-[9px] text-slate-600">{getDayLabel(i)}</span>
+                    <span className="text-[9px] text-slate-600">{WEEK_LABELS[i]}</span>
                   </div>
                 ))}
               </div>
               <p className="mt-1.5 text-center text-[11px] text-slate-500">
-                {stats.last_7_days.filter(Boolean).length} von 7 Tagen aktiv
+                {stats.week_days.filter(Boolean).length} von 7 Tagen diese Woche
               </p>
             </div>
           </>
