@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-const VAPID_PUBLIC_KEY = 'BDIqUrenCUVUEDKlF75B7tQs22s9jHt0UnQOSedt4L3qh4ODIpIbbwfMz-aEqknbw6HE28rTkcBhqFE37Gy57nY';
+const VAPID_PUBLIC_KEY = 'BHGmKlk8i8upz5DDsK0OfZcDhyAhI1lQAeEk6B00V4Qg1MJ5NmYtDJwN75XxkodOrPxLHfdXUZQIxVLctwcSRHA';
 
 let initialized = false;
 
