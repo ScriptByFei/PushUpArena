@@ -56,7 +56,7 @@ export default function Profile() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          const handle = `@${data.first_name.replace(/\s+/g, '')}${data.last_name.replace(/\s+/g, '')}`;
+          const handle = `@${data.first_name.trim()} ${data.last_name.trim()}`;
           setRealHandle(handle);
         }
       });
