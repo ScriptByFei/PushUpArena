@@ -52,20 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (newSession?.user) {
         void OneSignal.login(newSession.user.id);
-        // Wenn Namen in User-Metadaten vorhanden (z.B. nach Email-Bestätigung),
-        // in user_identities übertragen falls noch kein Eintrag existiert.
+        // Namen aus Metadaten übertragen (manuelle Reg: first_name/last_name;
+        // Google OAuth: given_name/family_name)
         const meta = newSession.user.user_metadata;
-        if (meta?.first_name && meta?.last_name) {
-          const firstName = (meta.first_name as string).trim();
-          const lastName = (meta.last_name as string).trim();
+        const firstName = (meta?.first_name || meta?.given_name || '') as string;
+        const lastName  = (meta?.last_name  || meta?.family_name || '') as string;
+        if (firstName.trim() && lastName.trim()) {
           void supabase.from('user_identities').upsert({
             user_id: newSession.user.id,
-            first_name: firstName,
-            last_name: lastName,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
           }, { onConflict: 'user_id', ignoreDuplicates: true });
           // Default-Anzeigename setzen, falls noch keiner vergeben wurde
           void supabase.from('profiles')
-            .update({ display_name: `${firstName} ${lastName}` })
+            .update({ display_name: `${firstName.trim()} ${lastName.trim()}` })
             .eq('id', newSession.user.id)
             .is('display_name', null);
         }
