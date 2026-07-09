@@ -225,17 +225,16 @@ function FriendRow({
         <p className="text-base font-extrabold text-brand-300">{todayAmount}</p>
         <p className="text-xs text-slate-600">heute</p>
       </div>
-      {!isMe && (
-        <button
-          onClick={onRemove}
-          className="shrink-0 text-slate-600 hover:text-rose-400 transition-colors"
-          aria-label="Freund entfernen"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-            <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
-          </svg>
-        </button>
-      )}
+      <button
+        onClick={isMe ? undefined : onRemove}
+        disabled={isMe}
+        className={`shrink-0 transition-colors ${isMe ? 'cursor-default text-ink-700' : 'text-slate-600 hover:text-rose-400'}`}
+        aria-label="Freund entfernen"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+        </svg>
+      </button>
     </div>
   );
 }
