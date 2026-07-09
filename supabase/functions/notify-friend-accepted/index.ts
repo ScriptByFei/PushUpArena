@@ -18,7 +18,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-const VAPID_PUBLIC_KEY = 'BDIqUrenCUVUEDKlF75B7tQs22s9jHt0UnQOSedt4L3qh4ODIpIbbwfMz-aEqknbw6HE28rTkcBhqFE37Gy57nY';
+const VAPID_PUBLIC_KEY = 'BHGmKlk8i8upz5DDsK0OfZcDhyAhI1lQAeEk6B00V4Qg1MJ5NmYtDJwN75XxkodOrPxLHfdXUZQIxVLctwcSRHA';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       sub.subscription,
       JSON.stringify({
         title: '🎉 Neue Freundschaft!',
-        body: `🎉 ${accepterName} hat deine Freundschaftsanfrage angenommen!`,
+        body: `${accepterName} hat deine Freundschaftsanfrage angenommen!`,
       }),
     );
 
