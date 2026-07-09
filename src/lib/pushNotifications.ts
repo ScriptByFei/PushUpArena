@@ -41,16 +41,36 @@ async function getSwRegistration(timeoutMs = 8000): Promise<ServiceWorkerRegistr
   ]);
 }
 
+/** Returns true if the existing subscription was created with the current VAPID key. */
+function subscriptionKeyMatches(sub: PushSubscription): boolean {
+  const existingKey = sub.options?.applicationServerKey;
+  if (!existingKey) return false;
+  const current = new Uint8Array(urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as ArrayBuffer);
+  const existing = new Uint8Array(existingKey as ArrayBuffer);
+  return current.length === existing.length && current.every((b, i) => b === existing[i]);
+}
+
 export async function ensureSubscription(): Promise<void> {
   try {
     const registration = await getSwRegistration();
     const existing = await registration.pushManager.getSubscription();
-    const sub =
-      existing ??
-      (await registration.pushManager.subscribe({
+
+    let sub: PushSubscription;
+    if (existing && subscriptionKeyMatches(existing)) {
+      // Already subscribed with the correct VAPID key — nothing to do
+      sub = existing;
+    } else {
+      // Missing or outdated subscription — (re-)subscribe with the current key
+      if (existing) await existing.unsubscribe();
+      sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      }));
+      });
+    }
+
+    // Mark the current key as active so the Dashboard banner stays hidden
+    localStorage.setItem('push_vapid_v', VAPID_PUBLIC_KEY);
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
