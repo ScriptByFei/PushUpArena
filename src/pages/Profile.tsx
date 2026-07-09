@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import type { Exercise } from '@/lib/database.types';
+import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { LogoutIcon } from '@/components/ui/icons';
@@ -36,9 +39,22 @@ export default function Profile() {
   const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
   const exercise = localExercise ?? activeExercise;
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ display_name: '' });
+  const [saving, setSaving] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   if (profileLoading || !profile) return <LoadingState label="Lade Profil …" />;
+
+  async function onSave(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    const { error } = await updateProfile({ display_name: form.display_name.trim() || null });
+    setSaving(false);
+    if (error) toast.error(error);
+    else { toast.success('Profil gespeichert.'); setEditing(false); }
+  }
 
   return (
     <div className="space-y-4">
@@ -88,11 +104,38 @@ export default function Profile() {
             <LogoutIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-3">
-          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-          <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
+        <div className="mt-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
+          </div>
+          {!editing && (
+            <Button size="sm" variant="secondary" onClick={() => {
+              setForm({ display_name: profile.display_name ?? '' });
+              setEditing(true);
+            }}>
+              Bearbeiten
+            </Button>
+          )}
         </div>
       </Card>
+
+      {/* Profil bearbeiten */}
+      {editing && (
+        <Card>
+          <CardTitle>Name ändern</CardTitle>
+          <form onSubmit={onSave} className="mt-3 space-y-3">
+            <Field label="Anzeigename" htmlFor="display_name">
+              <Input id="display_name" maxLength={50} value={form.display_name}
+                onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
+            </Field>
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" fullWidth onClick={() => setEditing(false)}>Abbrechen</Button>
+              <Button type="submit" fullWidth loading={saving}>Speichern</Button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       {/* Statistik */}
       {statsLoading ? (
