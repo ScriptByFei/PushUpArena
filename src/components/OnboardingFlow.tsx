@@ -1,18 +1,24 @@
 /**
  * OnboardingFlow – erscheint einmalig nach der Registrierung.
  *
- * Schritt 1 (optional): Name eingeben – nur für alte User ohne user_identities
- *                       und ohne Namen in user_metadata.
- * Schritt 2:            Anzeigenamen wählen – für alle neuen User bei denen
- *                       profiles.display_name_confirmed = false ist.
+ * Schritt 1 (optional): Name eingeben – nur für neue User ohne user_identities.
+ * Schritt 2:            Anzeigenamen wählen (display_name_confirmed = false).
+ * Schritt 3:            Push-Benachrichtigungen aktivieren (falls unterstützt).
  */
 import { FormEvent, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { requestPushPermission } from '@/lib/pushNotifications';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 
-type Step = 'loading' | 'identity' | 'display_name' | 'done';
+type Step = 'loading' | 'identity' | 'display_name' | 'push' | 'done';
+
+const pushSupported =
+  typeof window !== 'undefined' &&
+  'Notification' in window &&
+  'serviceWorker' in navigator &&
+  'PushManager' in window;
 
 export function OnboardingFlow() {
   const { user } = useAuth();
@@ -28,6 +34,9 @@ export function OnboardingFlow() {
   const [displayName, setDisplayName] = useState('');
   const [displayNameError, setDisplayNameError] = useState<string | null>(null);
   const [displayNameSaving, setDisplayNameSaving] = useState(false);
+
+  // Step 3: Push-Benachrichtigungen
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -59,13 +68,11 @@ export function OnboardingFlow() {
         .eq('id', user!.id)
         .maybeSingle();
 
-      // Typen-Cast da display_name_confirmed neu ist und ggf. nicht in database.types
       const confirmed = (profile as Record<string, unknown> | null)
         ?.display_name_confirmed as boolean | undefined;
 
       if (!hasIdentity && confirmed === false) {
-        // Nur neue User (display_name_confirmed = false) bekommen den Namen-Schritt.
-        // Bestehende User ohne user_identities (confirmed = true) sehen nichts.
+        // Neue User ohne Namen → Namen-Schritt
         setStep('identity');
         return;
       }
@@ -85,6 +92,14 @@ export function OnboardingFlow() {
     check();
   }, [user]);
 
+  function goToPushOrDone() {
+    if (pushSupported && Notification.permission === 'default') {
+      setStep('push');
+    } else {
+      setStep('done');
+    }
+  }
+
   // ── Schritt 1: Echt-Namen eingeben ─────────────────────────────────────
   async function onIdentitySubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,8 +117,6 @@ export function OnboardingFlow() {
     setIdentitySaving(false);
 
     if (err) { setIdentityError(err.message); return; }
-
-    // Direkt zu Schritt 2 – Anzeigename vorausfüllen
     setDisplayName(`${firstName.trim()} ${lastName.trim()}`);
     setStep('display_name');
   }
@@ -125,7 +138,20 @@ export function OnboardingFlow() {
     setDisplayNameSaving(false);
 
     if (err) { setDisplayNameError(err.message); return; }
-    setStep('done');
+    goToPushOrDone();
+  }
+
+  // ── Schritt 3: Push-Benachrichtigungen aktivieren ──────────────────────
+  async function onEnablePush() {
+    setPushBusy(true);
+    try {
+      await requestPushPermission();
+    } catch (_) {
+      // Fehler ignorieren — User sieht es im Browser-Dialog
+    } finally {
+      setPushBusy(false);
+      setStep('done');
+    }
   }
 
   if (step === 'loading' || step === 'done') return null;
@@ -212,6 +238,31 @@ export function OnboardingFlow() {
                 Speichern
               </Button>
             </form>
+          </>
+        )}
+
+        {/* ── Schritt 3: Push-Benachrichtigungen ───────────────────── */}
+        {step === 'push' && (
+          <>
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/20 text-3xl">
+              🔔
+            </div>
+            <p className="text-lg font-extrabold text-slate-100">Benachrichtigungen aktivieren</p>
+            <p className="mt-1 text-sm text-slate-400">
+              Erhalte eine Nachricht wenn jemand eine Freundschaftsanfrage sendet
+              oder annimmt, und wenn Meilensteine erreicht werden.
+            </p>
+            <div className="mt-6 space-y-3">
+              <Button fullWidth size="lg" loading={pushBusy} onClick={onEnablePush}>
+                Jetzt aktivieren
+              </Button>
+              <button
+                onClick={() => setStep('done')}
+                className="w-full text-center text-sm text-slate-500 hover:text-slate-400 transition-colors"
+              >
+                Später
+              </button>
+            </div>
           </>
         )}
       </div>
