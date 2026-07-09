@@ -42,6 +42,14 @@ export function IdentityPrompt() {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
     }, { onConflict: 'user_id' });
+
+    if (!err) {
+      // Anzeigename auf "Vorname Nachname" setzen, falls noch keiner gesetzt ist
+      await supabase.from('profiles')
+        .update({ display_name: `${firstName.trim()} ${lastName.trim()}` })
+        .eq('id', user.id)
+        .is('display_name', null);
+    }
     setSaving(false);
 
     if (err) { setError(err.message); return; }
@@ -52,9 +60,9 @@ export function IdentityPrompt() {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
       <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-6">
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-ink-600" />
-        <p className="text-lg font-extrabold text-slate-100">Kurze Info benötigt</p>
+        <p className="text-lg font-extrabold text-slate-100">Wie heißt du?</p>
         <p className="mt-1 text-sm text-slate-400">
-          Für den Admin wird einmalig dein Name hinterlegt. Andere User sehen nur deinen Anzeigenamen.
+          Dein Name wird als Anzeigename verwendet und ist für alle sichtbar. Du kannst ihn jederzeit im Profil ändern.
         </p>
         <form onSubmit={onSubmit} className="mt-5 space-y-4">
           {error && (
