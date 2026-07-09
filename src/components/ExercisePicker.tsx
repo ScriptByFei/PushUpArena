@@ -13,10 +13,10 @@ export function ExercisePicker() {
           <button
             key={ex.id}
             onClick={() => switchExercise(ex)}
-            className={`relative flex h-16 w-16 items-center justify-center rounded-full transition-all ${
+            className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full transition-all ${
               isActive
-                ? 'border-2 border-brand-400 bg-ink-800'
-                : 'border border-ink-700 bg-ink-800 opacity-50'
+                ? 'border-2 border-brand-400'
+                : 'border border-ink-700 opacity-50'
             }`}
             style={
               isActive
@@ -27,7 +27,7 @@ export function ExercisePicker() {
             <img
               src={EXERCISE_ICONS[ex.slug] ?? ''}
               alt={ex.name}
-              className="h-14 w-14 object-contain"
+              className="h-full w-full object-contain"
             />
           </button>
         );
