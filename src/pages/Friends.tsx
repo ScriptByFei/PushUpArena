@@ -145,16 +145,16 @@ function DiscoverCard({
   onTap: () => void;
 }) {
   return (
-    <div className="flex w-36 shrink-0 flex-col items-center rounded-2xl border border-ink-700 bg-ink-800 p-3 gap-2">
+    <div className="flex w-28 shrink-0 flex-col items-center rounded-2xl border border-ink-700 bg-ink-800 p-2 gap-1.5">
       <button className="relative" onClick={onTap}>
-        <Avatar url={profile.avatar_url} name={profile.display_name || profile.username} size={56} />
+        <Avatar url={profile.avatar_url} name={profile.display_name || profile.username} size={44} />
       </button>
       <button className="w-full text-center" onClick={onTap}>
-        <p className="truncate text-sm font-bold text-slate-100">
+        <p className="truncate text-xs font-semibold text-slate-200">
           {profile.display_name || profile.username}
         </p>
         {streak > 0 && (
-          <p className="mt-0.5 text-xs text-slate-500">🔥 Streak {streak}</p>
+          <p className="mt-0.5 text-[10px] text-slate-500">🔥 {streak}</p>
         )}
       </button>
       {isOutgoing ? (
@@ -415,7 +415,7 @@ export default function Friends() {
       {nonFriends.length > 0 && (
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-100">Nutzer entdecken</h2>
+            <h2 className="text-sm font-semibold text-slate-400">Nutzer entdecken</h2>
             {nonFriends.length > 8 && (
               <button
                 onClick={() => setShowAllDiscover(v => !v)}
