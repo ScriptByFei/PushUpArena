@@ -2,16 +2,11 @@
  * UserInfoSheet – Bottom sheet showing public stats for another user.
  * Opens when tapping a friend row or discover card on the Friends page.
  *
- * Shows: avatar, display name, member since, best streak, training days,
- * total reps, avg per training day, last-7-days activity boxes, friend rank,
- * and an add/remove friend action.
- *
- * NOTE: No @handle, no current streak, no "beste Woche" per design spec.
+ * NOTE: No @handle, no current streak, no "beste Woche", no remove button.
  */
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Avatar } from '@/components/ui/Avatar';
-import { Button } from '@/components/ui/Button';
 
 interface UserPublicStats {
   total_amount: number;
@@ -28,13 +23,6 @@ export interface UserInfoSheetProps {
   displayName: string;
   avatarUrl: string | null;
   exerciseId: string;
-  /** Rank among the current user's friends leaderboard today (1-based), undefined for non-friends */
-  rankAmongFriends?: number;
-  isFriend: boolean;
-  isOutgoing: boolean;
-  isBusy?: boolean;
-  onAdd: () => void;
-  onRemove: () => void;
   onClose: () => void;
 }
 
@@ -51,12 +39,6 @@ export function UserInfoSheet({
   displayName,
   avatarUrl,
   exerciseId,
-  rankAmongFriends,
-  isFriend,
-  isOutgoing,
-  isBusy,
-  onAdd,
-  onRemove,
   onClose,
 }: UserInfoSheetProps) {
   const [stats, setStats] = useState<UserPublicStats | null>(null);
@@ -71,16 +53,13 @@ export function UserInfoSheet({
     supabase
       .rpc('get_user_public_stats', { p_user_id: userId, p_exercise: exerciseId })
       .then(({ data }) => {
-        if (!cancelled && data) {
-          setStats(data as unknown as UserPublicStats);
-        }
+        if (!cancelled && data) setStats(data as unknown as UserPublicStats);
         if (!cancelled) setLoading(false);
       });
 
     return () => { cancelled = true; };
   }, [userId, exerciseId]);
 
-  // Close on backdrop click
   function onOverlayClick(e: React.MouseEvent) {
     if (e.target === overlayRef.current) onClose();
   }
@@ -100,15 +79,15 @@ export function UserInfoSheet({
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
       onClick={onOverlayClick}
     >
-      <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-5 pb-10 pt-4">
+      <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-4 pb-8 pt-3">
         {/* Drag handle */}
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-600" />
 
         {/* ── Header ──────────────────────────────────────────────── */}
-        <div className="mb-5 flex items-center gap-3">
-          <Avatar url={avatarUrl} name={displayName} size={56} />
+        <div className="mb-4 flex items-center gap-3">
+          <Avatar url={avatarUrl} name={displayName} size={44} />
           <div className="min-w-0">
-            <p className="truncate text-lg font-extrabold text-slate-100">{displayName}</p>
+            <p className="truncate text-base font-extrabold text-slate-100">{displayName}</p>
             {memberText && (
               <p className="text-xs text-slate-500">{memberText}</p>
             )}
@@ -116,13 +95,13 @@ export function UserInfoSheet({
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <div className="flex justify-center py-6">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
           </div>
         ) : stats ? (
           <>
             {/* ── Stats grid ──────────────────────────────────────── */}
-            <div className="mb-4 grid grid-cols-2 gap-3">
+            <div className="mb-3 grid grid-cols-2 gap-2">
               <StatTile icon="🏆" label="Bester Streak" value={`${stats.best_streak} Tage`} />
               <StatTile icon="📅" label="Trainingstage" value={`${stats.training_days}`} />
               <StatTile
@@ -138,57 +117,25 @@ export function UserInfoSheet({
             </div>
 
             {/* ── Last 7 days ─────────────────────────────────────── */}
-            <div className="mb-4 rounded-2xl border border-ink-700 bg-ink-800 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Letzte 7 Tage
-              </p>
+            <div className="rounded-2xl border border-ink-700 bg-ink-800 px-3 py-3">
               <div className="flex justify-between gap-1">
                 {stats.last_7_days.map((active, i) => (
-                  <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
                     <div
-                      className={`h-8 w-full rounded-lg ${
+                      className={`h-6 w-full rounded-md ${
                         active ? 'bg-brand-500' : 'bg-ink-700'
                       }`}
                     />
-                    <span className="text-[10px] text-slate-600">{getDayLabel(i)}</span>
+                    <span className="text-[9px] text-slate-600">{getDayLabel(i)}</span>
                   </div>
                 ))}
               </div>
-              <p className="mt-2 text-center text-xs text-slate-500">
+              <p className="mt-1.5 text-center text-[11px] text-slate-500">
                 {stats.last_7_days.filter(Boolean).length} von 7 Tagen aktiv
               </p>
             </div>
-
-            {/* ── Rank ────────────────────────────────────────────── */}
-            {rankAmongFriends != null && (
-              <div className="mb-4 flex items-center justify-between rounded-2xl border border-ink-700 bg-ink-800 px-4 py-3">
-                <p className="text-sm text-slate-400">Rang unter deinen Freunden heute</p>
-                <p className="text-lg font-extrabold text-brand-300">#{rankAmongFriends}</p>
-              </div>
-            )}
           </>
         ) : null}
-
-        {/* ── Action ──────────────────────────────────────────────── */}
-        {isFriend ? (
-          <Button
-            fullWidth
-            variant="secondary"
-            size="lg"
-            loading={isBusy}
-            onClick={onRemove}
-          >
-            Freund entfernen
-          </Button>
-        ) : isOutgoing ? (
-          <Button fullWidth variant="secondary" size="lg" loading={isBusy} onClick={onRemove}>
-            Anfrage zurückziehen
-          </Button>
-        ) : (
-          <Button fullWidth size="lg" loading={isBusy} onClick={onAdd}>
-            Freund hinzufügen
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -196,10 +143,10 @@ export function UserInfoSheet({
 
 function StatTile({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-800 p-3">
-      <div className="mb-1 text-xl">{icon}</div>
-      <p className="text-base font-extrabold text-slate-100">{value}</p>
-      <p className="text-xs text-slate-500">{label}</p>
+    <div className="rounded-xl border border-ink-700 bg-ink-800 px-3 py-2.5">
+      <div className="mb-0.5 text-lg leading-none">{icon}</div>
+      <p className="text-sm font-extrabold text-slate-100">{value}</p>
+      <p className="text-[11px] text-slate-500">{label}</p>
     </div>
   );
 }

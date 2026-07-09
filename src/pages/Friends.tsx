@@ -187,11 +187,13 @@ function FriendRow({
   friend,
   stats,
   onTap,
+  onRemove,
 }: {
   rank: number;
   friend: FriendProfile;
   stats?: LeaderboardRow;
   onTap: () => void;
+  onRemove: () => void;
 }) {
   const todayAmount = stats?.today_amount ?? 0;
   const streak = stats?.current_streak ?? 0;
@@ -199,23 +201,20 @@ function FriendRow({
   const isActiveToday = todayAmount > 0;
 
   return (
-    <button
-      onClick={onTap}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-ink-750 transition-colors"
-    >
+    <div className="flex items-center gap-3 px-4 py-3">
       <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-500">{rank}</span>
-      <div className="relative shrink-0">
+      <button onClick={onTap} className="relative shrink-0">
         <Avatar url={friend.avatar_url} name={friend.display_name || friend.username} size={40} />
         <ActivityDot active={isActiveToday} />
-      </div>
-      <div className="min-w-0 flex-1">
+      </button>
+      <button onClick={onTap} className="min-w-0 flex-1 text-left">
         <p className="truncate text-sm font-semibold text-slate-100">
           {friend.display_name || friend.username}
         </p>
         <p className={`text-xs ${isActiveToday ? 'text-emerald-400' : 'text-slate-500'}`}>
           {statusText}
         </p>
-      </div>
+      </button>
       {streak > 0 && (
         <span className="shrink-0 text-xs font-semibold text-orange-400">🔥 {streak}</span>
       )}
@@ -223,10 +222,16 @@ function FriendRow({
         <p className="text-base font-extrabold text-brand-300">{todayAmount}</p>
         <p className="text-xs text-slate-600">heute</p>
       </div>
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-slate-600">
-        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd"/>
-      </svg>
-    </button>
+      <button
+        onClick={onRemove}
+        className="shrink-0 text-slate-600 hover:text-rose-400 transition-colors"
+        aria-label="Freund entfernen"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+        </svg>
+      </button>
+    </div>
   );
 }
 
@@ -254,9 +259,6 @@ export default function Friends() {
     userId: string;
     displayName: string;
     avatarUrl: string | null;
-    isFriend: boolean;
-    isOutgoing: boolean;
-    rankAmongFriends?: number;
   }
   const [infoSheet, setInfoSheet] = useState<InfoSheetTarget | null>(null);
 
@@ -315,15 +317,11 @@ export default function Friends() {
       });
   }, [shownDiscover]);
 
-  function openInfoSheet(
-    profile: FriendProfile,
-    opts: { isFriend: boolean; isOutgoing: boolean; rankAmongFriends?: number }
-  ) {
+  function openInfoSheet(profile: FriendProfile) {
     setInfoSheet({
       userId: profile.id,
       displayName: profile.display_name || profile.username,
       avatarUrl: profile.avatar_url,
-      ...opts,
     });
   }
 
@@ -440,12 +438,7 @@ export default function Friends() {
                   busy={busyId === u.id || busyId === outReq?.id}
                   onAdd={() => handleSend(u.id)}
                   onCancel={() => outReq && handleCancel(outReq.id)}
-                  onTap={() =>
-                    openInfoSheet(u, {
-                      isFriend: false,
-                      isOutgoing: outgoingIds.has(u.id),
-                    })
-                  }
+                  onTap={() => openInfoSheet(u)}
                 />
               );
             })}
@@ -480,13 +473,8 @@ export default function Friends() {
                 rank={i + 1}
                 friend={f.friend}
                 stats={statsMap.get(f.friend.id)}
-                onTap={() =>
-                  openInfoSheet(f.friend, {
-                    isFriend: true,
-                    isOutgoing: false,
-                    rankAmongFriends: i + 1,
-                  })
-                }
+                onTap={() => openInfoSheet(f.friend)}
+                onRemove={() => setRemoveTarget(f.friend)}
               />
             ))}
           </div>
@@ -568,19 +556,6 @@ export default function Friends() {
           displayName={infoSheet.displayName}
           avatarUrl={infoSheet.avatarUrl}
           exerciseId={activeExercise.id}
-          rankAmongFriends={infoSheet.rankAmongFriends}
-          isFriend={infoSheet.isFriend}
-          isOutgoing={infoSheet.isOutgoing}
-          isBusy={busyId === infoSheet.userId}
-          onAdd={async () => {
-            await handleSend(infoSheet.userId);
-            setInfoSheet(null);
-          }}
-          onRemove={() => {
-            setInfoSheet(null);
-            const friend = friends.find(f => f.friend.id === infoSheet.userId)?.friend;
-            if (friend) setRemoveTarget(friend);
-          }}
           onClose={() => setInfoSheet(null)}
         />
       )}
