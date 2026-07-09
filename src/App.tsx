@@ -36,7 +36,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
 import { EnrollmentModal } from '@/components/EnrollmentModal';
-import { IdentityPrompt } from '@/components/IdentityPrompt';
+import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { PushProvider } from '@/context/PushContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { InstallHintProvider } from '@/components/InstallHint';
@@ -103,7 +103,7 @@ export default function App() {
               <PushProvider>
                 <AppLayout />
                 <EnrollmentModal />
-                <IdentityPrompt />
+                <OnboardingFlow />
               </PushProvider>
             </ExerciseProvider>
           </ProtectedRoute>
