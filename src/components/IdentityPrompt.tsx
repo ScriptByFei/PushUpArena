@@ -1,6 +1,7 @@
 /**
  * IdentityPrompt – erscheint einmalig für User ohne user_identities-Eintrag.
- * Fragt Vorname + Nachname ab und speichert sie.
+ * Prüft zuerst user_metadata (neuer User nach Email-Bestätigung) — zeigt
+ * das Sheet nur wenn wirklich kein Name bekannt ist.
  */
 import { FormEvent, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -18,6 +19,15 @@ export function IdentityPrompt() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Wenn der Name schon in user_metadata steht (neue Registrierung oder Google),
+    // kein Prompt zeigen — onAuthStateChange speichert ihn in user_identities.
+    const meta = user.user_metadata;
+    const metaFirst = (meta?.first_name || meta?.given_name || '') as string;
+    const metaLast  = (meta?.last_name  || meta?.family_name || '') as string;
+    if (metaFirst.trim() && metaLast.trim()) return;
+
+    // Sonst: DB prüfen (bestehende User ohne Metadaten)
     supabase
       .from('user_identities')
       .select('user_id')
