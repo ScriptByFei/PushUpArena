@@ -63,8 +63,9 @@ export function OnboardingFlow() {
       const confirmed = (profile as Record<string, unknown> | null)
         ?.display_name_confirmed as boolean | undefined;
 
-      if (!hasIdentity) {
-        // Alter User ohne Namen → erst Echt-Namen erfassen
+      if (!hasIdentity && confirmed === false) {
+        // Nur neue User (display_name_confirmed = false) bekommen den Namen-Schritt.
+        // Bestehende User ohne user_identities (confirmed = true) sehen nichts.
         setStep('identity');
         return;
       }
