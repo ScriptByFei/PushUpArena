@@ -13,6 +13,8 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastNameInitial, setLastNameInitial] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -24,6 +26,14 @@ export default function Register() {
     e.preventDefault();
     setError(null);
 
+    if (!firstName.trim()) {
+      setError('Bitte gib deinen Vornamen an.');
+      return;
+    }
+    if (!lastNameInitial.trim()) {
+      setError('Bitte gib den ersten Buchstaben deines Nachnamens an.');
+      return;
+    }
     if (password.length < 8) {
       setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
       return;
@@ -34,7 +44,9 @@ export default function Register() {
     }
 
     setLoading(true);
-    const { error: err, needsEmailConfirmation } = await signUp(email.trim(), password);
+    const { error: err, needsEmailConfirmation } = await signUp(
+      email.trim(), password, firstName.trim(), lastNameInitial.trim()
+    );
     setLoading(false);
 
     if (err) {
@@ -98,6 +110,32 @@ export default function Register() {
             {error}
           </div>
         )}
+        <div className="flex gap-3">
+          <Field label="Vorname" htmlFor="firstName" className="flex-1">
+            <Input
+              id="firstName"
+              name="firstName"
+              autoComplete="given-name"
+              required
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="Max"
+            />
+          </Field>
+          <Field label="Nachname (1. Buchstabe)" htmlFor="lastNameInitial" className="w-28">
+            <Input
+              id="lastNameInitial"
+              name="lastNameInitial"
+              autoComplete="family-name"
+              required
+              maxLength={1}
+              value={lastNameInitial}
+              onChange={(e) => setLastNameInitial(e.target.value.replace(/[^a-zA-ZäöüÄÖÜ]/, ''))}
+              placeholder="M"
+            />
+          </Field>
+        </div>
+
         <Field label="E-Mail" htmlFor="email">
           <Input
             id="email"
