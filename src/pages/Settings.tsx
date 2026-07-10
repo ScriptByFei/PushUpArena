@@ -50,6 +50,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [exercisesOpen, setExercisesOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [notifTypesOpen, setNotifTypesOpen] = useState(false);
 
   // Load per-exercise push enabled state
@@ -303,46 +304,63 @@ const [deleteOpen, setDeleteOpen] = useState(false);
 
       {/* 3b · Schnelleingabe */}
       <Card>
-        <CardTitle>Schnelleingabe · {exercise?.name}</CardTitle>
-        <p className="mt-1 text-xs text-slate-400">
-          Diese 4 Zahlen erscheinen als Buttons beim Eintragen.
-        </p>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {quickFields.map((val, i) => (
-            <div key={i}>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={100000}
-                value={val}
-                placeholder="–"
-                className="text-center font-bold"
-                onChange={(e) => {
-                  const next = [...quickFields];
-                  next[i] = e.target.value;
-                  setQuickFields(next);
-                }}
-              />
-            </div>
-          ))}
-        </div>
-        <Button
-          fullWidth
-          className="mt-3"
-          loading={quickSaving}
-          onClick={async () => {
-            const nums = quickFields
-              .map((v) => parseInt(v, 10))
-              .filter((n) => !isNaN(n) && n > 0);
-            if (nums.length === 0) { toast.error('Mindestens eine Zahl eingeben.'); return; }
-            const { error } = await saveQuickAmounts(nums);
-            if (error) toast.error(error);
-            else toast.success('Schnelleingabe gespeichert.');
-          }}
+        <button
+          onClick={() => setQuickOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 text-left"
+          aria-expanded={quickOpen}
         >
-          Speichern
-        </Button>
+          <CardTitle>Schnelleingabe · {exercise?.name}</CardTitle>
+          <svg
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${quickOpen ? 'rotate-180' : ''}`}
+          >
+            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+          </svg>
+        </button>
+        {quickOpen && (
+          <>
+            <p className="mt-1 text-xs text-slate-400">
+              Diese 4 Zahlen erscheinen als Buttons beim Eintragen.
+            </p>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {quickFields.map((val, i) => (
+                <div key={i}>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={100000}
+                    value={val}
+                    placeholder="–"
+                    className="text-center font-bold"
+                    onChange={(e) => {
+                      const next = [...quickFields];
+                      next[i] = e.target.value;
+                      setQuickFields(next);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <Button
+              fullWidth
+              className="mt-3"
+              loading={quickSaving}
+              onClick={async () => {
+                const nums = quickFields
+                  .map((v) => parseInt(v, 10))
+                  .filter((n) => !isNaN(n) && n > 0);
+                if (nums.length === 0) { toast.error('Mindestens eine Zahl eingeben.'); return; }
+                const { error } = await saveQuickAmounts(nums);
+                if (error) toast.error(error);
+                else toast.success('Schnelleingabe gespeichert.');
+              }}
+            >
+              Speichern
+            </Button>
+          </>
+        )}
       </Card>
 
       {/* 4 · Benachrichtigungen */}
