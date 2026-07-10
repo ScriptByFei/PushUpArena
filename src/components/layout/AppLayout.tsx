@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
+import { PushBanner } from '@/components/PushBanner';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -75,6 +76,8 @@ export function AppLayout() {
           <SettingsIcon className="h-5 w-5" />
         </Link>
       </header>
+
+      <PushBanner />
 
       <main className="flex-1 px-4 pb-32 pt-4">
         <Outlet />
