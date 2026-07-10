@@ -89,9 +89,20 @@ export default function Profile() {
             }}
           />
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-xl font-extrabold">
-              {profile.display_name || profile.username}
-            </h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="truncate text-xl font-extrabold">
+                {profile.display_name || profile.username}
+              </h2>
+              {!editing && (
+                <button
+                  onClick={() => { setForm({ display_name: profile.display_name ?? '' }); setEditing(true); }}
+                  className="shrink-0 text-base leading-none text-slate-400 hover:text-slate-200 transition"
+                  title="Name ändern"
+                >
+                  ✏️
+                </button>
+              )}
+            </div>
             <p className="text-sm text-slate-400">
               {realHandle ?? `@${profile.username}`}
             </p>
@@ -104,19 +115,9 @@ export default function Profile() {
             <LogoutIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-            <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
-          </div>
-          {!editing && (
-            <Button size="sm" variant="secondary" onClick={() => {
-              setForm({ display_name: profile.display_name ?? '' });
-              setEditing(true);
-            }}>
-              Bearbeiten
-            </Button>
-          )}
+        <div className="mt-3">
+          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+          <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
         </div>
       </Card>
 
