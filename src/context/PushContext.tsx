@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { requestPushPermission, removePushSubscription } from '@/lib/pushNotifications';
+import { requestPushPermission, removePushSubscription, initPushNotifications } from '@/lib/pushNotifications';
 
 const pushSupported =
   typeof window !== 'undefined' &&
@@ -22,7 +22,10 @@ export function PushProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (pushSupported) setPushPermission(Notification.permission);
+    if (!pushSupported) return;
+    setPushPermission(Notification.permission);
+    // Sicherstellen, dass die Subscription in der DB ist, falls Permission bereits erteilt wurde
+    void initPushNotifications();
   }, []);
 
   async function togglePush() {

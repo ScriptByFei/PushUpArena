@@ -39,12 +39,12 @@ export function PushPrompt() {
 
   async function onEnable() {
     setBusy(true);
-    localStorage.setItem(STORAGE_KEY, '1');
     try {
       await requestPushPermission();
     } catch (_) {
       // Browser-Dialog abgelehnt — kein Fehler zeigen
     } finally {
+      localStorage.setItem(STORAGE_KEY, '1');
       setBusy(false);
       setVisible(false);
     }

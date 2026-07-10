@@ -94,8 +94,6 @@ export function OnboardingFlow() {
 
   function goToPushOrDone() {
     if (pushSupported && Notification.permission === 'default') {
-      // Als "gezeigt" markieren damit PushPrompt nicht nochmal erscheint
-      localStorage.setItem('push-prompted', '1');
       setStep('push');
     } else {
       setStep('done');
@@ -149,8 +147,10 @@ export function OnboardingFlow() {
     try {
       await requestPushPermission();
     } catch (_) {
-      // Fehler ignorieren — User sieht es im Browser-Dialog
+      // Fehler ignorieren
     } finally {
+      // Erst nach dem Versuch als "gezeigt" markieren
+      localStorage.setItem('push-prompted', '1');
       setPushBusy(false);
       setStep('done');
     }
