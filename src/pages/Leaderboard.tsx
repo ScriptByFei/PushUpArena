@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { useGlobalLeaderboard } from '@/hooks/useGlobalLeaderboard';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { supabase } from '@/lib/supabase';
 import type { LeaderboardRow } from '@/lib/database.types';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
+
+type ViewMode = 'friends' | 'global';
 
 const TABS = [
   { key: 'today_amount' as const, label: 'Heute', icon: '', iconSrc: undefined as string | undefined },
@@ -147,43 +150,84 @@ function TodaySetsSheet({ row, exerciseId, onClose }: TodaySetsSheetProps) {
 // ── Hauptseite ────────────────────────────────────────────────────────────────
 export default function Leaderboard() {
   const { exercise: activeExercise, loading: exLoading } = useExercise();
-  const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(activeExercise?.id);
+  const [viewMode, setViewMode] = useState<ViewMode>('friends');
+  const { rows: friendRows, loading: friendLoading, error: friendError, refetch: refetchFriends, sortKey, setSortKey } = useLeaderboard(activeExercise?.id);
+  const { rows: globalRows, loading: globalLoading, error: globalError, refetch: refetchGlobal } = useGlobalLeaderboard(activeExercise?.id);
   const [infoSheet, setInfoSheet] = useState<{ userId: string; displayName: string; avatarUrl: string | null } | null>(null);
+
+  const isGlobal = viewMode === 'global';
+  const rows = isGlobal ? globalRows : friendRows;
+  const loading = isGlobal ? globalLoading : friendLoading;
+  const error = isGlobal ? globalError : friendError;
+  const refetch = isGlobal ? refetchGlobal : refetchFriends;
 
   if (exLoading || loading) return <LoadingState label="Lade Rangliste …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
   const hasPodium = rows.length >= 3;
-  const sortLabel = TABS.find((t) => t.key === sortKey)?.label ?? '';
+  const sortLabel = isGlobal ? 'Heute' : (TABS.find((t) => t.key === sortKey)?.label ?? '');
+  const displaySortKey: 'today_amount' | 'total_amount' = isGlobal ? 'today_amount' : sortKey;
 
   function handleTap(row: LeaderboardRow) {
     setInfoSheet({ userId: row.user_id, displayName: row.display_name || row.username, avatarUrl: row.avatar_url });
   }
 
+  // Eigene Position in globaler Rangliste
+  const myGlobalRank = isGlobal ? rows.findIndex((r) => r.is_me) + 1 : 0;
+
   return (
     <div className="space-y-4">
 
-      {/* Übungsauswahl + Heute/Gesamt in einer Zeile */}
+      {/* Freunde / Global Toggle */}
+      <div className="flex rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
+        {(['friends', 'global'] as ViewMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            className={`flex-1 py-2.5 text-sm font-semibold transition ${
+              viewMode === mode ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-ink-700'
+            }`}
+          >
+            {mode === 'friends' ? '👥 Freunde' : '🌍 Global'}
+          </button>
+        ))}
+      </div>
+
+      {/* Übungsauswahl + Heute/Gesamt (nur bei Freunde) */}
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">
           <ExerciseDropdown />
         </div>
-        <div className="flex shrink-0 rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setSortKey(t.key)}
-              className={`px-3 py-2.5 text-sm font-semibold transition ${
-                sortKey === t.key
-                  ? 'bg-brand-600 text-white'
-                  : 'text-slate-400 hover:bg-ink-700'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {!isGlobal && (
+          <div className="flex shrink-0 rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setSortKey(t.key)}
+                className={`px-3 py-2.5 text-sm font-semibold transition ${
+                  sortKey === t.key
+                    ? 'bg-brand-600 text-white'
+                    : 'text-slate-400 hover:bg-ink-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {isGlobal && (
+          <span className="shrink-0 rounded-xl border border-ink-700 bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white">
+            Heute
+          </span>
+        )}
       </div>
+
+      {/* Eigene Position im Global-Ranking */}
+      {isGlobal && myGlobalRank > 0 && (
+        <p className="text-center text-xs text-slate-400">
+          Du bist heute auf <span className="font-bold text-brand-300">Platz {myGlobalRank}</span> von {rows.length} Aktiven
+        </p>
+      )}
 
 {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
@@ -255,7 +299,7 @@ export default function Leaderboard() {
                           🔥<span className="text-[10px] font-medium align-sub">x {row.current_streak}</span>
                         </span>
                       )}
-                      <p className={`text-sm font-extrabold ${scoreColor}`}>{row[sortKey]}</p>
+                      <p className={`text-sm font-extrabold ${scoreColor}`}>{row[displaySortKey]}</p>
                       <p className="text-[9px] uppercase tracking-wide text-slate-500">{sortLabel}</p>
                     </div>
                   );
@@ -301,7 +345,7 @@ export default function Leaderboard() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="flex items-center justify-end gap-1 text-base font-extrabold text-brand-200">
-                        {row[sortKey]}
+                        {row[displaySortKey]}
                       </p>
                       <p className="text-[10px] uppercase tracking-wide text-slate-500">
                         {sortLabel}
