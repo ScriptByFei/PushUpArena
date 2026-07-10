@@ -98,22 +98,34 @@ export default function AuthConfirm() {
 
   // success
   return (
-    <AuthLayout title="E-Mail bestätigt ✓">
-      <div className="space-y-5 text-sm text-slate-300">
-        <p className="text-emerald-300 font-medium">
-          Dein Konto ist jetzt aktiv!
-        </p>
+    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-10 text-center">
+      {/* Animierter Erfolgs-Kreis */}
+      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/15 ring-4 ring-emerald-500/30 animate-pop-in">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-12 w-12 text-emerald-400"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      </div>
 
+      <h1 className="text-2xl font-extrabold text-slate-100">E-Mail bestätigt!</h1>
+      <p className="mt-2 text-base text-emerald-400 font-medium">Dein Konto ist jetzt aktiv 🎉</p>
+
+      <div className="mt-6 w-full max-w-xs space-y-4 text-sm text-slate-400">
         {isIOS() ? (
           <>
             <p>
               Schließe diesen Browser und öffne die{' '}
-              <strong className="text-slate-100">PushupArena</strong>-App auf deinem
-              Homescreen. Melde dich dort mit deiner E-Mail an.
+              <strong className="text-slate-200">PushupArena</strong>-App auf deinem Homescreen.
             </p>
-            <div className="rounded-xl border border-ink-600 bg-ink-800 px-4 py-3 text-xs text-slate-400">
-              💡 Falls du die App noch nicht auf dem Homescreen hast: Öffne{' '}
-              <strong>pushuparena.app</strong> in Safari → Teilen → „Zum Home-Bildschirm".
+            <div className="rounded-2xl border border-ink-600 bg-ink-800 px-4 py-3 text-left text-xs">
+              💡 App noch nicht installiert? Safari → Teilen <span className="text-slate-500">↑</span> → „Zum Home-Bildschirm"
             </div>
           </>
         ) : (
@@ -125,6 +137,6 @@ export default function AuthConfirm() {
           </>
         )}
       </div>
-    </AuthLayout>
+    </div>
   );
 }
