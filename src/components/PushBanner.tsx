@@ -1,10 +1,10 @@
 /**
- * PushBanner – erscheint bei jedem App-Start wenn Push noch nicht aktiviert.
- * Blendet sich nach 5 Sekunden automatisch aus (oder bei Klick auf X / Aktivieren).
- * Wird nicht angezeigt wenn der User Push bewusst über die Glocke deaktiviert hat.
+ * PushBanner – erscheint bei jedem App-Start wenn die Glocke inaktiv ist.
+ * Blendet sich nach 5 Sekunden automatisch aus.
+ * Nicht anzeigen wenn OS-Permission 'denied' (User hat im Browser blockiert).
  */
 import { useEffect, useRef, useState } from 'react';
-import { requestPushPermission, PUSH_USER_DISABLED_KEY } from '@/lib/pushNotifications';
+import { usePush } from '@/context/PushContext';
 
 const AUTO_DISMISS_MS = 5000;
 const SHOW_DELAY_MS = 800;
@@ -16,20 +16,19 @@ const pushSupported =
   'PushManager' in window;
 
 export function PushBanner() {
+  const { pushPermission, busy, togglePush } = usePush();
   const [visible, setVisible] = useState(false);
-  const [busy, setBusy] = useState(false);
   const autoDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!pushSupported) return;
-    // Nur zeigen wenn noch nie aktiviert (nicht 'granted' und nicht 'denied')
-    if (Notification.permission !== 'default') return;
-    // Nicht zeigen wenn User Push bewusst über Glocke abgelehnt hat
-    if (localStorage.getItem(PUSH_USER_DISABLED_KEY)) return;
+    // Glocke aktiv → kein Banner nötig
+    if (pushPermission === 'granted') { setVisible(false); return; }
+    // OS hat Push komplett geblockt → können wir nichts tun
+    if (Notification.permission === 'denied') return;
 
     const showTimer = setTimeout(() => {
       setVisible(true);
-      // Auto-dismiss nach 5 Sekunden
       autoDismissRef.current = setTimeout(() => setVisible(false), AUTO_DISMISS_MS);
     }, SHOW_DELAY_MS);
 
@@ -37,7 +36,7 @@ export function PushBanner() {
       clearTimeout(showTimer);
       if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
     };
-  }, []);
+  }, [pushPermission]);
 
   function dismiss() {
     if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
@@ -46,16 +45,8 @@ export function PushBanner() {
 
   async function onEnable() {
     if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
-    setBusy(true);
-    try {
-      await requestPushPermission();
-    } catch (_) {
-      // ignorieren
-    } finally {
-      localStorage.setItem('push-prompted', '1');
-      setBusy(false);
-      setVisible(false);
-    }
+    await togglePush();
+    setVisible(false);
   }
 
   if (!visible) return null;
