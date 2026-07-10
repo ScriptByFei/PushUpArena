@@ -6,8 +6,9 @@ import { useGlobalLeaderboard } from '@/hooks/useGlobalLeaderboard';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { supabase } from '@/lib/supabase';
-import type { LeaderboardRow } from '@/lib/database.types';
+import type { LeaderboardRow, GlobalLeaderboardRow } from '@/lib/database.types';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
+import { UserPlusIcon } from '@/components/ui/icons';
 
 type ViewMode = 'friends' | 'global';
 
@@ -154,6 +155,8 @@ export default function Leaderboard() {
   const { rows: friendRows, loading: friendLoading, error: friendError, refetch: refetchFriends, sortKey, setSortKey } = useLeaderboard(activeExercise?.id);
   const { rows: globalRows, loading: globalLoading, error: globalError, refetch: refetchGlobal } = useGlobalLeaderboard(activeExercise?.id);
   const [infoSheet, setInfoSheet] = useState<{ userId: string; displayName: string; avatarUrl: string | null } | null>(null);
+  const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
+  const [requestFeedback, setRequestFeedback] = useState<{ userId: string; ok: boolean } | null>(null);
 
   const isGlobal = viewMode === 'global';
   const rows = isGlobal ? globalRows : friendRows;
@@ -170,6 +173,18 @@ export default function Leaderboard() {
 
   function handleTap(row: LeaderboardRow) {
     setInfoSheet({ userId: row.user_id, displayName: row.display_name || row.username, avatarUrl: row.avatar_url });
+  }
+
+  async function handleAddFriend(e: React.MouseEvent, row: GlobalLeaderboardRow) {
+    e.stopPropagation();
+    setSentRequests((prev) => new Set(prev).add(row.user_id));
+    const { error: err } = await supabase.rpc('send_friend_request', { p_receiver: row.user_id });
+    setRequestFeedback({ userId: row.user_id, ok: !err });
+    if (err) {
+      // Revert optimistic update on error
+      setSentRequests((prev) => { const next = new Set(prev); next.delete(row.user_id); return next; });
+    }
+    setTimeout(() => setRequestFeedback(null), 2500);
   }
 
   // Eigene Position in globaler Rangliste
@@ -343,6 +358,29 @@ export default function Leaderboard() {
                         )}
                       </p>
                     </div>
+                    {/* Add-friend button (global mode only) */}
+                    {isGlobal && !row.is_me && (() => {
+                      const gRow = row as GlobalLeaderboardRow;
+                      const alreadySent = sentRequests.has(row.user_id);
+                      const feedback = requestFeedback?.userId === row.user_id ? requestFeedback : null;
+                      if (gRow.is_friend) return null;
+                      if (gRow.has_pending_request || alreadySent) {
+                        return (
+                          <span className="shrink-0 text-[10px] text-slate-500 mr-2">
+                            {feedback?.ok === false ? '✗' : '✓ Anfrage'}
+                          </span>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={(e) => void handleAddFriend(e, gRow)}
+                          aria-label="Als Freund hinzufügen"
+                          className="shrink-0 mr-2 rounded-lg p-1.5 text-slate-400 hover:bg-ink-700 hover:text-brand-300 transition active:scale-95"
+                        >
+                          <UserPlusIcon className="h-4 w-4" />
+                        </button>
+                      );
+                    })()}
                     <div className="shrink-0 text-right">
                       <p className="flex items-center justify-end gap-1 text-base font-extrabold text-brand-200">
                         {row[displaySortKey]}

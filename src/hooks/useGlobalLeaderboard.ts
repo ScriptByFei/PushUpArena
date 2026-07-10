@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { LeaderboardRow } from '@/lib/database.types';
+import type { GlobalLeaderboardRow } from '@/lib/database.types';
 
 export function useGlobalLeaderboard(exerciseId?: string) {
-  const [rows, setRows] = useState<LeaderboardRow[]>([]);
+  const [rows, setRows] = useState<GlobalLeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +15,7 @@ export function useGlobalLeaderboard(exerciseId?: string) {
       p_exercise: exerciseId,
     });
     if (err) setError(err.message);
-    else setRows((data ?? []) as LeaderboardRow[]);
+    else setRows((data ?? []) as GlobalLeaderboardRow[]);
     setLoading(false);
   }, [exerciseId]);
 
