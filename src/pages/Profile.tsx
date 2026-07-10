@@ -47,7 +47,7 @@ export default function Profile() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [realHandle, setRealHandle] = useState<string | null>(null);
   const [recapModalOpen, setRecapModalOpen] = useState(false);
-  const { recap, dismiss: dismissRecap } = useDailyRecap();
+  const { recap, dismiss: dismissRecap, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
 
   useEffect(() => {
     if (!user) return;
@@ -178,6 +178,11 @@ export default function Profile() {
         <DailyRecapModal
           recap={recap}
           onClose={() => { setRecapModalOpen(false); void dismissRecap(); }}
+          onPrev={goToPrev}
+          onNext={goToNext}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          navLoading={navLoading}
         />
       )}
 

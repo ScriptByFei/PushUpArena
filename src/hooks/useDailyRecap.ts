@@ -30,15 +30,15 @@ export function useDailyRecap() {
   const { enrolledExercises, loading: exLoading } = useExercise();
   const [recap, setRecap] = useState<DailyRecap | null>(null);
   const [open, setOpen] = useState(false);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [currentDateIdx, setCurrentDateIdx] = useState(0); // 0 = neuestes Datum
+  const [navLoading, setNavLoading] = useState(false);
 
+  const pushups = enrolledExercises.find((e) => e.slug === 'pushups');
+
+  // ── Auto-show beim ersten Login des Tages ──────────────────────────────────
   useEffect(() => {
-    if (!user || exLoading) return;
-
-    // Nur für Pushups (primary exercise)
-    const pushups = enrolledExercises.find((e) => e.slug === 'pushups');
-    if (!pushups) return;
-
-    // Schnell-Check: bereits heute angezeigt?
+    if (!user || exLoading || !pushups) return;
     if (localStorage.getItem(shownKey())) return;
 
     let cancelled = false;
@@ -55,15 +55,69 @@ export function useDailyRecap() {
           setOpen(true);
         }
       } catch {
-        // Fehler lautlos ignorieren — App startet normal
+        // Fehler lautlos ignorieren
       }
     })();
 
     return () => { cancelled = true; };
-  }, [user, exLoading, enrolledExercises]);
+  }, [user, exLoading, pushups]);
 
+  // ── Verfügbare Daten laden (für Navigation) ────────────────────────────────
+  useEffect(() => {
+    if (!user || exLoading || !pushups) return;
+    let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .rpc('get_my_recap_dates', { p_exercise: pushups.id })
+      .then(({ data }: { data: { recap_date: string }[] | null }) => {
+        if (!cancelled && data) {
+          setAvailableDates(data.map((r) => r.recap_date));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [user, exLoading, pushups]);
+
+  // ── Recap für ein bestimmtes Datum laden ───────────────────────────────────
+  const loadDate = useCallback(
+    async (date: string) => {
+      if (!pushups) return;
+      setNavLoading(true);
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any).rpc('get_my_daily_recap', {
+          p_exercise: pushups.id,
+          p_date: date,
+        });
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) setRecap(row as DailyRecap);
+      } catch {
+        // ignore
+      } finally {
+        setNavLoading(false);
+      }
+    },
+    [pushups],
+  );
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  const goToPrev = useCallback(() => {
+    const nextIdx = currentDateIdx + 1;
+    if (nextIdx >= availableDates.length) return;
+    setCurrentDateIdx(nextIdx);
+    void loadDate(availableDates[nextIdx]);
+  }, [currentDateIdx, availableDates, loadDate]);
+
+  const goToNext = useCallback(() => {
+    const nextIdx = currentDateIdx - 1;
+    if (nextIdx < 0) return;
+    setCurrentDateIdx(nextIdx);
+    void loadDate(availableDates[nextIdx]);
+  }, [currentDateIdx, availableDates, loadDate]);
+
+  // ── Dismiss ────────────────────────────────────────────────────────────────
   const dismiss = useCallback(async () => {
     setOpen(false);
+    setCurrentDateIdx(0);
     localStorage.setItem(shownKey(), '1');
     if (recap) {
       await supabase
@@ -73,5 +127,14 @@ export function useDailyRecap() {
     }
   }, [recap]);
 
-  return { recap, open, dismiss };
+  return {
+    recap,
+    open,
+    dismiss,
+    goToPrev,
+    goToNext,
+    hasPrev: currentDateIdx < availableDates.length - 1,
+    hasNext: currentDateIdx > 0,
+    navLoading,
+  };
 }

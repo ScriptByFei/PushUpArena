@@ -28,7 +28,7 @@ export function AppLayout() {
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
-  const { recap, open: recapOpen, dismiss: dismissRecap } = useDailyRecap();
+  const { recap, open: recapOpen, dismiss: dismissRecap, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -90,7 +90,15 @@ export function AppLayout() {
 
       {/* Daily Recap Modal — einmal pro Tag beim ersten Login */}
       {recapOpen && recap && (
-        <DailyRecapModal recap={recap} onClose={dismissRecap} />
+        <DailyRecapModal
+          recap={recap}
+          onClose={dismissRecap}
+          onPrev={goToPrev}
+          onNext={goToNext}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          navLoading={navLoading}
+        />
       )}
     </div>
   );

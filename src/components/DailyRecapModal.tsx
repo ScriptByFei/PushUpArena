@@ -105,9 +105,22 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 interface Props {
   recap: DailyRecap;
   onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  navLoading?: boolean;
 }
 
-export function DailyRecapModal({ recap, onClose }: Props) {
+export function DailyRecapModal({
+  recap,
+  onClose,
+  onPrev,
+  onNext,
+  hasPrev = false,
+  hasNext = false,
+  navLoading = false,
+}: Props) {
   const [visible, setVisible] = useState(false);
 
   // Einblend-Animation nach Mount
@@ -147,6 +160,41 @@ export function DailyRecapModal({ recap, onClose }: Props) {
         {/* Drag-Handle */}
         <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-ink-600" />
 
+        {/* ── Datums-Navigation ──────────────────────────────────────── */}
+        {(onPrev || onNext) && (
+          <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3">
+            <button
+              onClick={onPrev}
+              disabled={!hasPrev || navLoading}
+              className={`rounded-full p-2 transition ${
+                hasPrev && !navLoading
+                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
+                  : 'text-ink-600 cursor-default'
+              }`}
+              aria-label="Vorheriger Tag"
+            >
+              ←
+            </button>
+            <p className="text-xs font-semibold text-slate-400">
+              {new Date(recap.recap_date + 'T12:00:00').toLocaleDateString('de-DE', {
+                weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+              })}
+            </p>
+            <button
+              onClick={onNext}
+              disabled={!hasNext || navLoading}
+              className={`rounded-full p-2 transition ${
+                hasNext && !navLoading
+                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
+                  : 'text-ink-600 cursor-default'
+              }`}
+              aria-label="Nächster Tag"
+            >
+              →
+            </button>
+          </div>
+        )}
+
         {/* Scrollbarer Inhalt */}
         <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
 
@@ -156,7 +204,7 @@ export function DailyRecapModal({ recap, onClose }: Props) {
               visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
             }`}
           >
-            <p className="text-xl font-extrabold text-slate-100">🏆 Dein gestriger Arena-Rückblick</p>
+            <p className="text-xl font-extrabold text-slate-100">🏆 Arena-Rückblick</p>
             <p className="mt-1 text-xs text-slate-500">
               {new Date(recap.recap_date + 'T12:00:00').toLocaleDateString('de-DE', {
                 weekday: 'long', day: 'numeric', month: 'long',
