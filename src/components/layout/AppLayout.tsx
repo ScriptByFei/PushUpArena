@@ -4,6 +4,8 @@ import { BottomNav } from './BottomNav';
 import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { PushBanner } from '@/components/PushBanner';
+import { DailyRecapModal } from '@/components/DailyRecapModal';
+import { useDailyRecap } from '@/hooks/useDailyRecap';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -26,6 +28,7 @@ export function AppLayout() {
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
+  const { recap, open: recapOpen, dismiss: dismissRecap } = useDailyRecap();
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -84,6 +87,11 @@ export function AppLayout() {
       </main>
 
       <BottomNav />
+
+      {/* Daily Recap Modal — einmal pro Tag beim ersten Login */}
+      {recapOpen && recap && (
+        <DailyRecapModal recap={recap} onClose={dismissRecap} />
+      )}
     </div>
   );
 }
