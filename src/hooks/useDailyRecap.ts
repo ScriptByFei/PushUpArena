@@ -99,6 +99,29 @@ export function useDailyRecap() {
     [pushups],
   );
 
+  // ── Manuelles Öffnen (ignoriert localStorage) ──────────────────────────────
+  const forceLoad = useCallback(async () => {
+    if (!pushups) return;
+    setNavLoading(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).rpc('get_my_daily_recap', {
+        p_exercise: pushups.id,
+      });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) {
+        setRecap(row as DailyRecap);
+        setCurrentDateIdx(0);
+      } else {
+        setRecap(null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setNavLoading(false);
+    }
+  }, [pushups]);
+
   // ── Navigation ─────────────────────────────────────────────────────────────
   const goToPrev = useCallback(() => {
     const nextIdx = currentDateIdx + 1;
@@ -131,6 +154,7 @@ export function useDailyRecap() {
     recap,
     open,
     dismiss,
+    forceLoad,
     goToPrev,
     goToNext,
     hasPrev: currentDateIdx < availableDates.length - 1,

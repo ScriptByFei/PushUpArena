@@ -47,7 +47,7 @@ export default function Profile() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [realHandle, setRealHandle] = useState<string | null>(null);
   const [recapModalOpen, setRecapModalOpen] = useState(false);
-  const { recap, dismiss: dismissRecap, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
+  const { recap, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
 
   useEffect(() => {
     if (!user) return;
@@ -120,7 +120,10 @@ export default function Profile() {
               <LogoutIcon className="h-5 w-5" />
             </button>
             <button
-              onClick={() => setRecapModalOpen(true)}
+              onClick={async () => {
+                await forceLoad();
+                setRecapModalOpen(true);
+              }}
               className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-brand-400 transition"
               title="Tages-Recap"
               aria-label="Tages-Recap"
@@ -174,16 +177,39 @@ export default function Profile() {
       )}
 
       {/* Tages-Recap Modal */}
-      {recapModalOpen && recap && (
-        <DailyRecapModal
-          recap={recap}
-          onClose={() => { setRecapModalOpen(false); void dismissRecap(); }}
-          onPrev={goToPrev}
-          onNext={goToNext}
-          hasPrev={hasPrev}
-          hasNext={hasNext}
-          navLoading={navLoading}
-        />
+      {recapModalOpen && (
+        recap ? (
+          <DailyRecapModal
+            recap={recap}
+            onClose={() => { setRecapModalOpen(false); void dismissRecap(); }}
+            onPrev={goToPrev}
+            onNext={goToNext}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            navLoading={navLoading}
+          />
+        ) : !navLoading ? (
+          /* Kein Recap verfügbar */
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setRecapModalOpen(false)}
+          >
+            <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+              <p className="text-center text-base font-bold text-slate-100">Noch kein Recap</p>
+              <p className="mt-2 text-center text-sm text-slate-500">
+                Der erste Rückblick erscheint morgen früh nach Mitternacht.
+              </p>
+              <button
+                onClick={() => setRecapModalOpen(false)}
+                className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        ) : null
       )}
 
       {/* Abmelden-Bestätigung */}
