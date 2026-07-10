@@ -1,18 +1,81 @@
 import { useExercise } from '@/context/ExerciseContext';
 import { usePodiumHistory } from '@/hooks/usePodiumHistory';
+import { useDailyPodiumSlider } from '@/hooks/useDailyPodiumSlider';
 import { Avatar } from '@/components/ui/Avatar';
+import { PodiumDisplay } from '@/components/PodiumDisplay';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 
 export default function Achievements() {
   const { enrolledExercises, loading: exLoading } = useExercise();
   const pushups = enrolledExercises.find((ex) => ex.slug === 'pushups');
   const { rows, loading, error, refetch } = usePodiumHistory(pushups?.id);
+  const {
+    dates,
+    sliderIdx,
+    setSliderIdx,
+    top3,
+    loading: podiumLoading,
+    datesLoading,
+    selectedDate,
+  } = useDailyPodiumSlider(pushups?.id);
 
   if (exLoading || loading) return <LoadingState label="Lade Erfolge …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
+  const formattedDate = selectedDate
+    ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('de-DE', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      })
+    : '–';
+
   return (
     <div className="space-y-4">
+
+      {/* ── Tages-Podest mit Datums-Slider ────────────────────────── */}
+      {!datesLoading && dates.length > 0 && (
+        <div className="rounded-2xl border border-ink-700 bg-ink-800/70 px-4 pb-5 pt-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500 text-center">
+            🏆 Tages-Podest
+          </p>
+
+          {/* Datums-Anzeige */}
+          <p className="text-center text-sm font-semibold text-slate-300 mb-3">
+            {formattedDate}
+          </p>
+
+          {/* Schieberegler */}
+          <div className="px-1 mb-4">
+            <input
+              type="range"
+              min={0}
+              max={dates.length - 1}
+              value={sliderIdx}
+              onChange={(e) => setSliderIdx(Number(e.target.value))}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer
+                bg-ink-600 accent-brand-500
+                [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5
+                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand-500
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-md"
+            />
+            <div className="flex justify-between mt-1 text-[10px] text-slate-600">
+              <span>{new Date(dates[0] + 'T12:00:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}</span>
+              <span>{new Date(dates[dates.length - 1] + 'T12:00:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}</span>
+            </div>
+          </div>
+
+          {/* Podest */}
+          {podiumLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            </div>
+          ) : top3 && top3.length > 0 ? (
+            <PodiumDisplay entries={top3} />
+          ) : (
+            <p className="text-center text-sm text-slate-500 py-4">Keine Daten für diesen Tag.</p>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-slate-500 text-center">
         Täglich werden die globalen Top 3 mit Gold, Silber und Bronze ausgezeichnet.
       </p>
