@@ -30,6 +30,7 @@ export function AppLayout() {
   const hiddenAtRef = useRef<number | null>(null);
   const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
   const [recapManualOpen, setRecapManualOpen] = useState(false);
+  const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -61,32 +62,39 @@ export function AppLayout() {
         >
           <RecapIcon className="h-5 w-5" />
         </button>
-        {/* Glocke — Benachrichtigungen an/aus */}
-        <button
-          onClick={togglePush}
-          disabled={busy}
-          aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
-          className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${
-            pushActive ? 'text-brand-400' : 'text-slate-500'
-          }`}
-        >
-          {pushActive
-            ? <BellIcon className="h-5 w-5" />
-            : <BellOffIcon className="h-5 w-5" />
-          }
-        </button>
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
           {title}
         </span>
-        {/* Settings rechts */}
-        <Link
-          to="/settings"
-          aria-label="Einstellungen"
-          className="ml-auto shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </Link>
+        {/* Glocke + Settings rechts */}
+        <div className="ml-auto flex items-center">
+          <button
+            onClick={() => {
+              if (pushActive) {
+                setBellConfirmOpen(true);
+              } else {
+                void togglePush();
+              }
+            }}
+            disabled={busy}
+            aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
+            className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${
+              pushActive ? 'text-brand-400' : 'text-slate-500'
+            }`}
+          >
+            {pushActive
+              ? <BellIcon className="h-5 w-5" />
+              : <BellOffIcon className="h-5 w-5" />
+            }
+          </button>
+          <Link
+            to="/settings"
+            aria-label="Einstellungen"
+            className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
+          >
+            <SettingsIcon className="h-5 w-5" />
+          </Link>
+        </div>
       </header>
 
       <PushBanner />
@@ -108,6 +116,36 @@ export function AppLayout() {
           hasNext={hasNext}
           navLoading={navLoading}
         />
+      )}
+      {/* Bestätigung: Benachrichtigungen deaktivieren */}
+      {bellConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setBellConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+            <p className="mb-1 text-center text-base font-bold text-slate-100">Benachrichtigungen deaktivieren?</p>
+            <p className="mb-6 text-center text-sm text-slate-500">Du verpasst dann tägliche Erinnerungen und Ranglisten-Updates.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBellConfirmOpen(false)}
+                className="flex-1 rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => { setBellConfirmOpen(false); void togglePush(); }}
+                className="flex-1 rounded-2xl bg-red-500/20 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/30 transition"
+              >
+                Deaktivieren
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {/* Kein Recap verfügbar (manuell geöffnet) */}
       {recapManualOpen && !recap && !navLoading && (
