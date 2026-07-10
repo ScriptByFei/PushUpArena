@@ -4,6 +4,7 @@ import { useToast } from '@/context/ToastContext';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useAuth } from '@/context/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/lib/supabase';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -251,6 +252,7 @@ export default function Friends() {
   const toast = useToast();
   const { exercise: activeExercise, enrolledExercises, switchExercise } = useExercise();
   const { rows: leaderRows } = useLeaderboard(activeExercise?.id);
+  const { profile: myProfile } = useProfile();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -308,12 +310,14 @@ export default function Friends() {
     return friendStreaks + (meStreak > 0 ? 1 : 0);
   }, [friends, statsMap, leaderRows]);
 
-  // Eigenes Profil aus leaderRows
+  // Eigenes Profil — aus leaderRows wenn vorhanden (hat Einträge für diese Übung),
+  // sonst Fallback auf useProfile() damit (du) immer sichtbar bleibt
   const meRow = useMemo(() => leaderRows.find(r => r.is_me), [leaderRows]);
-  const meProfile = useMemo<FriendProfile | null>(() =>
-    meRow ? { id: meRow.user_id, username: meRow.username, display_name: meRow.display_name, avatar_url: meRow.avatar_url } : null,
-    [meRow]
-  );
+  const meProfile = useMemo<FriendProfile | null>(() => {
+    if (meRow) return { id: meRow.user_id, username: meRow.username, display_name: meRow.display_name, avatar_url: meRow.avatar_url };
+    if (myProfile && user) return { id: user.id, username: myProfile.username ?? '', display_name: myProfile.display_name, avatar_url: myProfile.avatar_url };
+    return null;
+  }, [meRow, myProfile, user]);
 
   // Ranked friends (by today_amount) + eigener Eintrag
   const rankedFriends = useMemo(() => {
