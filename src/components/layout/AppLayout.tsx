@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
+import { SettingsIcon, BellIcon, BellOffIcon, RecapIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { PushBanner } from '@/components/PushBanner';
 import { DailyRecapModal } from '@/components/DailyRecapModal';
@@ -28,7 +28,8 @@ export function AppLayout() {
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
-  const { recap, open: recapOpen, dismiss: dismissRecap, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
+  const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
+  const [recapManualOpen, setRecapManualOpen] = useState(false);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -52,7 +53,15 @@ export function AppLayout() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Glocke links — Benachrichtigungen an/aus */}
+        {/* Recap-Button links */}
+        <button
+          onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
+          aria-label="Tages-Recap"
+          className="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-ink-800 hover:text-brand-400"
+        >
+          <RecapIcon className="h-5 w-5" />
+        </button>
+        {/* Glocke — Benachrichtigungen an/aus */}
         <button
           onClick={togglePush}
           disabled={busy}
@@ -88,17 +97,41 @@ export function AppLayout() {
 
       <BottomNav />
 
-      {/* Daily Recap Modal — einmal pro Tag beim ersten Login */}
-      {recapOpen && recap && (
+      {/* Daily Recap Modal — auto-show oder manuell */}
+      {(recapOpen || recapManualOpen) && recap && (
         <DailyRecapModal
           recap={recap}
-          onClose={dismissRecap}
+          onClose={() => { setRecapManualOpen(false); void dismissRecap(); }}
           onPrev={goToPrev}
           onNext={goToNext}
           hasPrev={hasPrev}
           hasNext={hasNext}
           navLoading={navLoading}
         />
+      )}
+      {/* Kein Recap verfügbar (manuell geöffnet) */}
+      {recapManualOpen && !recap && !navLoading && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setRecapManualOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+            <p className="text-center text-base font-bold text-slate-100">Noch kein Recap</p>
+            <p className="mt-2 text-center text-sm text-slate-500">
+              Der erste Rückblick erscheint morgen früh nach Mitternacht.
+            </p>
+            <button
+              onClick={() => setRecapManualOpen(false)}
+              className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
+            >
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
