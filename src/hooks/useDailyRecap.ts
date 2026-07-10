@@ -38,8 +38,8 @@ export function useDailyRecap() {
     const pushups = enrolledExercises.find((e) => e.slug === 'pushups');
     if (!pushups) return;
 
-    // Schnell-Check: bereits heute angezeigt?
-    if (localStorage.getItem(shownKey())) return;
+    // Schnell-Check: bereits heute angezeigt? (PREVIEW: Check deaktiviert)
+    // if (localStorage.getItem(shownKey())) return;
 
     let cancelled = false;
     (async () => {
