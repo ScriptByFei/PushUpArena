@@ -12,8 +12,10 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { LogoutIcon } from '@/components/ui/icons';
+import { LogoutIcon, RecapIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
+import { DailyRecapModal } from '@/components/DailyRecapModal';
+import { useDailyRecap } from '@/hooks/useDailyRecap';
 
 
 // ─── StatCell ───────────────────────────────────────────────────────
@@ -44,6 +46,8 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [realHandle, setRealHandle] = useState<string | null>(null);
+  const [recapModalOpen, setRecapModalOpen] = useState(false);
+  const { recap, dismiss: dismissRecap } = useDailyRecap();
 
   useEffect(() => {
     if (!user) return;
@@ -107,13 +111,23 @@ export default function Profile() {
               {realHandle ?? `@${profile.username}`}
             </p>
           </div>
-          <button
-            onClick={() => setConfirmLogout(true)}
-            className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
-            title="Abmelden"
-          >
-            <LogoutIcon className="h-5 w-5" />
-          </button>
+          <div className="flex shrink-0 flex-col gap-1">
+            <button
+              onClick={() => setConfirmLogout(true)}
+              className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
+              title="Abmelden"
+            >
+              <LogoutIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setRecapModalOpen(true)}
+              className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-brand-400 transition"
+              title="Tages-Recap"
+              aria-label="Tages-Recap"
+            >
+              <RecapIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="mt-3">
           <p className="text-xs text-slate-500 truncate">{user?.email}</p>
@@ -157,6 +171,14 @@ export default function Profile() {
               <StatCell label="Letzte 30 Tage" value={stats.last30Days} />
             </div>
           </Card>
+      )}
+
+      {/* Tages-Recap Modal */}
+      {recapModalOpen && recap && (
+        <DailyRecapModal
+          recap={recap}
+          onClose={() => { setRecapModalOpen(false); void dismissRecap(); }}
+        />
       )}
 
       {/* Abmelden-Bestätigung */}

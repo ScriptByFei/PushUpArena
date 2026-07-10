@@ -67,6 +67,19 @@ export const LogoutIcon = (p: IconProps) => (
   </svg>
 );
 
+export const RecapIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    {/* Counterclockwise arc – "looking back" */}
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    {/* Clipboard with list lines */}
+    <rect x="9" y="9" width="6" height="7" rx="1" />
+    <path d="M10.5 9V8a1.5 1.5 0 0 1 3 0v1" />
+    <line x1="11" y1="12" x2="13" y2="12" />
+    <line x1="11" y1="14" x2="13" y2="14" />
+  </svg>
+);
+
 export const SearchIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <circle cx="11" cy="11" r="7" />
