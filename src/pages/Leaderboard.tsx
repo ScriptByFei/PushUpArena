@@ -237,12 +237,6 @@ export default function Leaderboard() {
         )}
       </div>
 
-      {/* Eigene Position im Global-Ranking */}
-      {isGlobal && myGlobalRank > 0 && (
-        <p className="text-center text-xs text-slate-400">
-          Du bist heute auf <span className="font-bold text-brand-300">Platz {myGlobalRank}</span> von {rows.length} Aktiven
-        </p>
-      )}
 
 {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
