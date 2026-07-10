@@ -57,7 +57,7 @@ export function AppLayout() {
         <button
           onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
           aria-label="Tages-Recap"
-          className="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-ink-800"
+          className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
         >
           <RecapIcon className="h-6 w-6" />
         </button>
