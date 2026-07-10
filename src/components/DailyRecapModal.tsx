@@ -212,79 +212,96 @@ export function DailyRecapModal({
             </p>
           </div>
 
-          <div className="space-y-3">
-            {/* ── Karte 1: Leistung ────────────────────────────── */}
-            <Card delay={80}>
-              <SectionLabel>💪 Deine Leistung</SectionLabel>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-4xl font-extrabold text-slate-100 leading-none">
-                    {recap.yesterday_pushups}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">Push-ups gestern</p>
-                </div>
-                <div className="text-right">
-                  {recap.yesterday_rank ? (
-                    <>
-                      <p className="text-2xl font-extrabold text-brand-300">
-                        #{recap.yesterday_rank}
-                      </p>
-                      <p className="text-xs text-slate-500">Platzierung</p>
-                    </>
-                  ) : (
-                    <p className="text-sm text-slate-500">–</p>
-                  )}
-                </div>
-              </div>
-              {hasDelta && (
-                <div className={`mt-3 flex items-center gap-1.5 text-sm font-semibold ${
-                  delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }`}>
-                  <span>{delta >= 0 ? '↑' : '↓'}</span>
-                  <span>
-                    {Math.abs(delta)} zum Vortag ({recap.prev_day_pushups} Push-ups)
-                  </span>
-                </div>
-              )}
-              {!hasDelta && recap.yesterday_pushups === 0 && (
-                <p className="mt-2 text-sm text-slate-500">Gestern kein Training eingetragen.</p>
-              )}
-            </Card>
+          {/* Navigations-Ladeindikator */}
+          {navLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            </div>
+          ) : (
 
-            {/* ── Karte 2: Medaille ────────────────────────────── */}
-            <Card delay={180}>
-              <SectionLabel>🏅 Deine Medaille</SectionLabel>
-              <div className="flex items-center gap-4">
-                {img ? (
-                  <img
-                    src={img}
-                    alt={recap.yesterday_medal ?? ''}
-                    className={`h-16 w-16 object-contain shrink-0 ${
-                      recap.yesterday_medal === 'gold' ? 'animate-glow drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]' : ''
-                    }`}
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-ink-700 text-3xl">
-                    🎯
+          <div className="space-y-3">
+            {recap.yesterday_pushups === 0 && !recap.yesterday_rank ? (
+              /* ── Ruhetag ─────────────────────────────────────── */
+              <Card delay={80}>
+                <div className="flex flex-col items-center py-3 text-center gap-2">
+                  <span className="text-4xl">💤</span>
+                  <p className="text-base font-bold text-slate-200">Ruhetag</p>
+                  <p className="text-sm text-slate-500">Kein Training an diesem Tag eingetragen.</p>
+                </div>
+              </Card>
+            ) : (
+              /* ── Karte 1: Leistung ────────────────────────────── */
+              <Card delay={80}>
+                <SectionLabel>💪 Deine Leistung</SectionLabel>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-4xl font-extrabold text-slate-100 leading-none">
+                      {recap.yesterday_pushups}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">Push-ups</p>
+                  </div>
+                  <div className="text-right">
+                    {recap.yesterday_rank ? (
+                      <>
+                        <p className="text-2xl font-extrabold text-brand-300">
+                          #{recap.yesterday_rank}
+                        </p>
+                        <p className="text-xs text-slate-500">Platzierung</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-slate-500">–</p>
+                    )}
+                  </div>
+                </div>
+                {hasDelta && (
+                  <div className={`mt-3 flex items-center gap-1.5 text-sm font-semibold ${
+                    delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }`}>
+                    <span>{delta >= 0 ? '↑' : '↓'}</span>
+                    <span>
+                      {Math.abs(delta)} zum Vortag ({recap.prev_day_pushups} Push-ups)
+                    </span>
                   </div>
                 )}
-                <div>
-                  <p className="text-base font-bold text-slate-100 leading-snug">
-                    {medalLabel(recap.yesterday_medal)}
-                  </p>
-                  {recap.yesterday_medal && (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Top-3 in der globalen Tageswertung
-                    </p>
+              </Card>
+            )}
+
+            {/* ── Karte 2: Medaille (nur wenn trainiert) ────────── */}
+            {(recap.yesterday_pushups > 0 || recap.yesterday_rank) && (
+              <Card delay={180}>
+                <SectionLabel>🏅 Deine Medaille</SectionLabel>
+                <div className="flex items-center gap-4">
+                  {img ? (
+                    <img
+                      src={img}
+                      alt={recap.yesterday_medal ?? ''}
+                      className={`h-16 w-16 object-contain shrink-0 ${
+                        recap.yesterday_medal === 'gold' ? 'animate-glow drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]' : ''
+                      }`}
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-ink-700 text-3xl">
+                      🎯
+                    </div>
                   )}
+                  <div>
+                    <p className="text-base font-bold text-slate-100 leading-snug">
+                      {medalLabel(recap.yesterday_medal)}
+                    </p>
+                    {recap.yesterday_medal && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Top-3 in der globalen Tageswertung
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
 
             {/* ── Karte 3: Top 3 ───────────────────────────────── */}
             {top3.length > 0 && (
               <Card delay={300}>
-                <SectionLabel>🏆 Top 3 gestern</SectionLabel>
+                <SectionLabel>🏆 Top 3 dieses Tages</SectionLabel>
                 <Podium entries={top3} />
                 {/* Detailzeilen */}
                 <div className="mt-4 space-y-2">
@@ -302,6 +319,7 @@ export function DailyRecapModal({
               </Card>
             )}
           </div>
+          )} {/* end navLoading ternary */}
         </div>
 
         {/* ── CTA ──────────────────────────────────────────────── */}

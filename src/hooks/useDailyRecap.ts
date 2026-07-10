@@ -20,6 +20,11 @@ export interface DailyRecap {
   top_three: TopThreeEntry[] | null;
 }
 
+export interface RecapDateEntry {
+  recap_date: string;
+  has_data: boolean;
+}
+
 const shownKey = () => {
   const today = new Date().toISOString().split('T')[0];
   return `daily-recap-shown-${today}`;
@@ -30,7 +35,7 @@ export function useDailyRecap() {
   const { enrolledExercises, loading: exLoading } = useExercise();
   const [recap, setRecap] = useState<DailyRecap | null>(null);
   const [open, setOpen] = useState(false);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableDates, setAvailableDates] = useState<RecapDateEntry[]>([]);
   const [currentDateIdx, setCurrentDateIdx] = useState(0); // 0 = neuestes Datum
   const [navLoading, setNavLoading] = useState(false);
 
@@ -69,27 +74,38 @@ export function useDailyRecap() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .rpc('get_my_recap_dates', { p_exercise: pushups.id })
-      .then(({ data }: { data: { recap_date: string }[] | null }) => {
-        if (!cancelled && data) {
-          setAvailableDates(data.map((r) => r.recap_date));
-        }
+      .then(({ data }: { data: RecapDateEntry[] | null }) => {
+        if (!cancelled && data) setAvailableDates(data);
       });
     return () => { cancelled = true; };
   }, [user, exLoading, pushups]);
 
   // ── Recap für ein bestimmtes Datum laden ───────────────────────────────────
   const loadDate = useCallback(
-    async (date: string) => {
+    async (entry: RecapDateEntry) => {
       if (!pushups) return;
       setNavLoading(true);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (supabase as any).rpc('get_my_daily_recap', {
-          p_exercise: pushups.id,
-          p_date: date,
-        });
-        const row = Array.isArray(data) ? data[0] : data;
-        if (row) setRecap(row as DailyRecap);
+        if (!entry.has_data) {
+          // Kein Row in DB — leeren Platzhalter setzen
+          setRecap({
+            id: '',
+            recap_date: entry.recap_date,
+            yesterday_pushups: 0,
+            prev_day_pushups: 0,
+            yesterday_rank: null,
+            yesterday_medal: null,
+            top_three: null,
+          });
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data } = await (supabase as any).rpc('get_my_daily_recap', {
+            p_exercise: pushups.id,
+            p_date: entry.recap_date,
+          });
+          const row = Array.isArray(data) ? data[0] : data;
+          if (row) setRecap(row as DailyRecap);
+        }
       } catch {
         // ignore
       } finally {
@@ -142,7 +158,7 @@ export function useDailyRecap() {
     setOpen(false);
     setCurrentDateIdx(0);
     localStorage.setItem(shownKey(), '1');
-    if (recap) {
+    if (recap?.id) {
       await supabase
         .from('daily_recaps')
         .update({ shown_at: new Date().toISOString() })
