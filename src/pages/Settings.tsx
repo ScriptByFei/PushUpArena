@@ -49,6 +49,7 @@ const [deleteOpen, setDeleteOpen] = useState(false);
   const [exPushSaving, setExPushSaving] = useState(false);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [exercisesOpen, setExercisesOpen] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
   const [notifTypesOpen, setNotifTypesOpen] = useState(false);
 
   // Load per-exercise push enabled state
@@ -249,40 +250,55 @@ const [deleteOpen, setDeleteOpen] = useState(false);
 
       {/* 3 · Ziele */}
       <Card>
-        <CardTitle>Ziele · {exercise?.name}</CardTitle>
-        <form onSubmit={onSaveGoals} className="mt-3">
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="daily" className="mb-1 block text-xs text-slate-400">
-                Tagesziel <span className="text-slate-600">(0 = kein)</span>
-              </label>
-              <Input
-                id="daily"
-                type="number"
-                min={0}
-                max={100000}
-                value={daily}
-                onChange={(e) => setDaily(e.target.value)}
-              />
+        <button
+          onClick={() => setGoalsOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 text-left"
+          aria-expanded={goalsOpen}
+        >
+          <CardTitle>Ziele · {exercise?.name}</CardTitle>
+          <svg
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${goalsOpen ? 'rotate-180' : ''}`}
+          >
+            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+          </svg>
+        </button>
+        {goalsOpen && (
+          <form onSubmit={onSaveGoals} className="mt-3">
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="daily" className="mb-1 block text-xs text-slate-400">
+                  Tagesziel <span className="text-slate-600">(0 = kein)</span>
+                </label>
+                <Input
+                  id="daily"
+                  type="number"
+                  min={0}
+                  max={100000}
+                  value={daily}
+                  onChange={(e) => setDaily(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="weekly" className="mb-1 block text-xs text-slate-400">
+                  Wochenziel <span className="text-slate-600">(0 = kein)</span>
+                </label>
+                <Input
+                  id="weekly"
+                  type="number"
+                  min={0}
+                  max={700000}
+                  value={weekly}
+                  onChange={(e) => setWeekly(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="weekly" className="mb-1 block text-xs text-slate-400">
-                Wochenziel <span className="text-slate-600">(0 = kein)</span>
-              </label>
-              <Input
-                id="weekly"
-                type="number"
-                min={0}
-                max={700000}
-                value={weekly}
-                onChange={(e) => setWeekly(e.target.value)}
-              />
-            </div>
-          </div>
-          <Button type="submit" fullWidth loading={savingGoals}>
-            Ziele speichern
-          </Button>
-        </form>
+            <Button type="submit" fullWidth loading={savingGoals}>
+              Ziele speichern
+            </Button>
+          </form>
+        )}
       </Card>
 
       {/* 3b · Schnelleingabe */}
