@@ -24,6 +24,8 @@ export interface UserInfoSheetProps {
   avatarUrl: string | null;
   exerciseId: string;
   onClose: () => void;
+  /** Zeigt zusätzlich die heutigen Sätze am Ende des Sheets */
+  showTodaySets?: boolean;
 }
 
 const WEEK_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -34,9 +36,12 @@ export function UserInfoSheet({
   avatarUrl,
   exerciseId,
   onClose,
+  showTodaySets = false,
 }: UserInfoSheetProps) {
   const [stats, setStats] = useState<UserPublicStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sets, setSets] = useState<number[] | null>(null);
+  const [setsLoading, setSetsLoading] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +58,22 @@ export function UserInfoSheet({
 
     return () => { cancelled = true; };
   }, [userId, exerciseId]);
+
+  useEffect(() => {
+    if (!showTodaySets) return;
+    let cancelled = false;
+    setSetsLoading(true);
+    setSets(null);
+    supabase
+      .rpc('get_friend_today_sets', { p_user_id: userId, p_exercise: exerciseId })
+      .then(({ data }) => {
+        if (!cancelled) {
+          setSets(((data ?? []) as { amount: number }[]).map((r) => r.amount));
+          setSetsLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [userId, exerciseId, showTodaySets]);
 
   function onOverlayClick(e: React.MouseEvent) {
     if (e.target === overlayRef.current) onClose();
@@ -73,7 +94,7 @@ export function UserInfoSheet({
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
       onClick={onOverlayClick}
     >
-      <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-4 pb-8 pt-3">
+      <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-4 pb-8 pt-3 max-h-[85dvh] overflow-y-auto">
         {/* Drag handle */}
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-600" />
 
@@ -130,6 +151,37 @@ export function UserInfoSheet({
             </div>
           </>
         ) : null}
+
+        {/* ── Heutige Sätze (optional) ─────────────────────────────── */}
+        {showTodaySets && (
+          <div className="mt-3 rounded-2xl border border-ink-700 bg-ink-800 px-3 py-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+              💪 Heutige Sätze
+            </p>
+            {setsLoading ? (
+              <div className="flex justify-center py-3">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+              </div>
+            ) : !sets || sets.length === 0 ? (
+              <p className="py-2 text-center text-sm text-slate-500">Heute noch nichts eingetragen</p>
+            ) : (
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${Math.min(sets.length, 5)}, 1fr)` }}
+              >
+                {sets.map((amount, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center rounded-xl bg-ink-700 px-2 py-2 text-center"
+                  >
+                    <span className="text-[10px] text-slate-500">Satz {i + 1}</span>
+                    <span className="text-base font-extrabold text-brand-300">{amount}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

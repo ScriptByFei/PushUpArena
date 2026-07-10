@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { supabase } from '@/lib/supabase';
 import type { LeaderboardRow } from '@/lib/database.types';
+import { UserInfoSheet } from '@/components/UserInfoSheet';
 
 const TABS = [
   { key: 'today_amount' as const, label: 'Heute', icon: '', iconSrc: undefined as string | undefined },
@@ -147,9 +148,7 @@ function TodaySetsSheet({ row, exerciseId, onClose }: TodaySetsSheetProps) {
 export default function Leaderboard() {
   const { exercise: activeExercise, loading: exLoading } = useExercise();
   const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(activeExercise?.id);
-  const [selectedRow, setSelectedRow] = useState<LeaderboardRow | null>(null);
-
-  const isToday = sortKey === 'today_amount';
+  const [infoSheet, setInfoSheet] = useState<{ userId: string; displayName: string; avatarUrl: string | null } | null>(null);
 
   if (exLoading || loading) return <LoadingState label="Lade Rangliste …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -158,7 +157,7 @@ export default function Leaderboard() {
   const sortLabel = TABS.find((t) => t.key === sortKey)?.label ?? '';
 
   function handleTap(row: LeaderboardRow) {
-    if (isToday) setSelectedRow(row);
+    setInfoSheet({ userId: row.user_id, displayName: row.display_name || row.username, avatarUrl: row.avatar_url });
   }
 
   return (
@@ -209,7 +208,7 @@ export default function Leaderboard() {
 
                 {/* P1 Avatar – goldener Ring Mitte */}
                 <div
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                   style={{ left: '50%', top: '31%' }}
                   onClick={() => handleTap(rows[0])}
                 >
@@ -218,7 +217,7 @@ export default function Leaderboard() {
 
                 {/* P2 Avatar – silberner Ring links */}
                 <div
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                   style={{ left: '22%', top: '48%' }}
                   onClick={() => handleTap(rows[1])}
                 >
@@ -227,7 +226,7 @@ export default function Leaderboard() {
 
                 {/* P3 Avatar – bronzener Ring rechts */}
                 <div
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                   style={{ left: '78%', top: '53%' }}
                   onClick={() => handleTap(rows[2])}
                 >
@@ -275,7 +274,7 @@ export default function Leaderboard() {
                     onClick={() => handleTap(row)}
                     className={`flex items-center gap-3 px-4 py-3 ${
                       row.is_me ? 'bg-brand-600/10' : ''
-                    } ${isToday ? 'cursor-pointer active:bg-ink-700/60 transition' : ''}`}
+                    } cursor-pointer active:bg-ink-700/60 transition`}
                   >
                     <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-500">
                       {(hasPodium ? 3 : 0) + idx + 1}
@@ -316,12 +315,15 @@ export default function Leaderboard() {
         </>
       )}
 
-      {/* Bottom Sheet: heutige Sätze */}
-      {selectedRow && activeExercise && (
-        <TodaySetsSheet
-          row={selectedRow}
+      {/* User Info Sheet */}
+      {infoSheet && activeExercise && (
+        <UserInfoSheet
+          userId={infoSheet.userId}
+          displayName={infoSheet.displayName}
+          avatarUrl={infoSheet.avatarUrl}
           exerciseId={activeExercise.id}
-          onClose={() => setSelectedRow(null)}
+          onClose={() => setInfoSheet(null)}
+          showTodaySets
         />
       )}
 
