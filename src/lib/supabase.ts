@@ -26,8 +26,8 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       detectSessionInUrl: true,
       flowType: 'implicit',
+      // Passkeys (WebAuthn) – muss im auth-Block stehen
+      experimental: { passkey: true },
     },
-    // Passkeys (WebAuthn) feature flag
-    experimental: { passkey: true },
   },
 );

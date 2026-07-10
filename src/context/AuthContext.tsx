@@ -131,15 +131,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       async signInWithPasskey() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.auth as any).signInWithPasskey();
-        return { error };
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await (supabase.auth as any).signInWithPasskey();
+          return { error };
+        } catch (e) {
+          return { error: e as AuthError };
+        }
       },
 
       async registerPasskey() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.auth as any).registerPasskey();
-        return { error };
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await (supabase.auth as any).registerPasskey();
+          return { error };
+        } catch (e) {
+          return { error: e as AuthError };
+        }
       },
 
       async signOut() {
