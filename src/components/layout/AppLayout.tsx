@@ -59,7 +59,7 @@ export function AppLayout() {
           aria-label="Tages-Recap"
           className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
         >
-          <RecapIcon className="h-6 w-6" />
+          <RecapIcon className="h-5 w-5" />
         </button>
         {/* Glocke — Benachrichtigungen an/aus */}
         <button

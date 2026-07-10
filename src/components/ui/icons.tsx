@@ -69,14 +69,17 @@ export const LogoutIcon = (p: IconProps) => (
 
 export const RecapIcon = (p: IconProps) => (
   <svg {...base(p)}>
-    {/* Counterclockwise arc – "looking back" */}
+    {/* Counterclockwise circle with arrow */}
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
     <path d="M3 3v5h5" />
-    {/* Clipboard with list lines */}
-    <rect x="9" y="9" width="6" height="7" rx="1" />
-    <path d="M10.5 9V8a1.5 1.5 0 0 1 3 0v1" />
-    <line x1="11" y1="12" x2="13" y2="12" />
-    <line x1="11" y1="14" x2="13" y2="14" />
+    {/* Bar chart: 3 ascending bars */}
+    <line x1="7" y1="17" x2="7" y2="15" />
+    <line x1="9.5" y1="17" x2="9.5" y2="13" />
+    <line x1="12" y1="17" x2="12" y2="11" />
+    {/* Document with text lines */}
+    <rect x="11" y="9" width="5.5" height="7" rx="1" />
+    <line x1="12.5" y1="12" x2="15.5" y2="12" />
+    <line x1="12.5" y1="14.5" x2="15.5" y2="14.5" />
   </svg>
 );
 
