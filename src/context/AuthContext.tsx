@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
           options: {
-            emailRedirectTo: redirectTo('/'),
+            emailRedirectTo: redirectTo('/auth/confirm'),
             // Namen in User-Metadaten speichern – funktioniert auch ohne Session.
             // Beim ersten Login werden sie von onAuthStateChange in user_identities übertragen.
             data: firstName && lastName
