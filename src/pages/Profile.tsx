@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise } from '@/context/ExerciseContext';
-import { ExercisePicker } from '@/components/ExercisePicker';
+import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -73,7 +73,7 @@ export default function Profile() {
 
   return (
     <div className="space-y-4">
-      <ExercisePicker />
+      <ExerciseDropdown />
 
       {/* Profil-Header */}
       <Card>

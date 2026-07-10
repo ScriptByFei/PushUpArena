@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
-import { ExercisePicker } from '@/components/ExercisePicker';
+import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
@@ -40,7 +40,7 @@ export default function Activity() {
 
   return (
     <div className="space-y-4">
-      <ExercisePicker />
+      <ExerciseDropdown />
 
       {/* Zeitraum-Zusammenfassung */}
       <PeriodSummaryCard exercise={exercise} />

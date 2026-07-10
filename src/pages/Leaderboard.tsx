@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
-import { ExercisePicker } from '@/components/ExercisePicker';
+import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
@@ -164,7 +164,7 @@ export default function Leaderboard() {
   return (
     <div className="space-y-4">
 
-      <ExercisePicker />
+      <ExerciseDropdown />
 
 {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
