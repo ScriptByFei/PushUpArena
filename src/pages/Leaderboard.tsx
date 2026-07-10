@@ -164,7 +164,27 @@ export default function Leaderboard() {
   return (
     <div className="space-y-4">
 
-      <ExerciseDropdown />
+      {/* Übungsauswahl + Heute/Gesamt in einer Zeile */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <ExerciseDropdown />
+        </div>
+        <div className="flex shrink-0 rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setSortKey(t.key)}
+              className={`px-3 py-2.5 text-sm font-semibold transition ${
+                sortKey === t.key
+                  ? 'bg-brand-600 text-white'
+                  : 'text-slate-400 hover:bg-ink-700'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
 {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
@@ -244,26 +264,6 @@ export default function Leaderboard() {
               </div>
             </div>
           )}
-
-          {/* Tab-Leiste: Heute / Gesamt */}
-          <div className="grid grid-cols-2 gap-2">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setSortKey(t.key)}
-                className={`flex items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-sm font-semibold transition ${
-                  sortKey === t.key
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
-                }`}
-              >
-                {t.iconSrc
-                  ? <img src={t.iconSrc} alt={t.label} className="h-4 w-4 object-contain" />
-                  : <span>{t.icon}</span>}
-                {t.label}
-              </button>
-            ))}
-          </div>
 
           {/* Liste Platz 4+ (oder alle wenn kein Podest) */}
           {(hasPodium ? rows.slice(3) : rows).length > 0 && (
