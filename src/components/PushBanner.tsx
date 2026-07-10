@@ -1,13 +1,13 @@
 /**
- * PushBanner – schmaler, dauerhaft wegklickbarer Banner für User
- * die Push noch nicht aktiviert haben (Permission = 'default').
- * Erscheint auf allen geschützten Seiten, bis der User aktiviert
- * oder dauerhaft schließt.
+ * PushBanner – erscheint bei jedem App-Start wenn Push noch nicht aktiviert.
+ * Blendet sich nach 5 Sekunden automatisch aus (oder bei Klick auf X / Aktivieren).
+ * Wird nicht angezeigt wenn der User Push bewusst über die Glocke deaktiviert hat.
  */
-import { useEffect, useState } from 'react';
-import { requestPushPermission } from '@/lib/pushNotifications';
+import { useEffect, useRef, useState } from 'react';
+import { requestPushPermission, PUSH_USER_DISABLED_KEY } from '@/lib/pushNotifications';
 
-const DISMISSED_KEY = 'push-banner-dismissed';
+const AUTO_DISMISS_MS = 5000;
+const SHOW_DELAY_MS = 800;
 
 const pushSupported =
   typeof window !== 'undefined' &&
@@ -18,29 +18,40 @@ const pushSupported =
 export function PushBanner() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const autoDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!pushSupported) return;
+    // Nur zeigen wenn noch nie aktiviert (nicht 'granted' und nicht 'denied')
     if (Notification.permission !== 'default') return;
-    if (localStorage.getItem(DISMISSED_KEY)) return;
-    // Kurze Verzögerung damit die Seite zuerst lädt
-    const t = setTimeout(() => setVisible(true), 800);
-    return () => clearTimeout(t);
+    // Nicht zeigen wenn User Push bewusst über Glocke abgelehnt hat
+    if (localStorage.getItem(PUSH_USER_DISABLED_KEY)) return;
+
+    const showTimer = setTimeout(() => {
+      setVisible(true);
+      // Auto-dismiss nach 5 Sekunden
+      autoDismissRef.current = setTimeout(() => setVisible(false), AUTO_DISMISS_MS);
+    }, SHOW_DELAY_MS);
+
+    return () => {
+      clearTimeout(showTimer);
+      if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
+    };
   }, []);
 
   function dismiss() {
-    localStorage.setItem(DISMISSED_KEY, '1');
+    if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
     setVisible(false);
   }
 
   async function onEnable() {
+    if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
     setBusy(true);
     try {
       await requestPushPermission();
     } catch (_) {
       // ignorieren
     } finally {
-      localStorage.setItem(DISMISSED_KEY, '1');
       localStorage.setItem('push-prompted', '1');
       setBusy(false);
       setVisible(false);
