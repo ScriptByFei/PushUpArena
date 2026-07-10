@@ -33,15 +33,14 @@ function rankSuffix(rank: number): string {
 // ── Podest ──────────────────────────────────────────────────────────────────
 
 function Podium({ entries }: { entries: TopThreeEntry[] }) {
-  const byRank = [
-    entries.find((e) => e.rank === 1),
-    entries.find((e) => e.rank === 2),
-    entries.find((e) => e.rank === 3),
-  ];
+  // Sortiere nach Rang (dann Pushups absteigend bei Gleichstand), nimm erste 3 positional.
+  // So werden Gleichstände korrekt im Podest angezeigt (z.B. zwei Rang-2-Einträge).
+  const sorted = [...entries].sort((a, b) => a.rank - b.rank || b.pushups - a.pushups);
+  const [first, second, third] = sorted;
 
   const heights = ['h-20', 'h-14', 'h-10'];
   // Reihenfolge: 2 – 1 – 3
-  const display = [byRank[1], byRank[0], byRank[2]];
+  const display = [second, first, third];
   const displayHeights = [heights[1], heights[0], heights[2]];
   const medals = ['🥈', '🥇', '🥉'];
   const textColors = ['text-slate-300', 'text-amber-300', 'text-orange-400'];
