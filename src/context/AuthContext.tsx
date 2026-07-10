@@ -23,6 +23,8 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
+  signInWithPasskey: () => Promise<AuthResult>;
+  registerPasskey: () => Promise<AuthResult>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<AuthResult>;
   updatePassword: (password: string) => Promise<AuthResult>;
@@ -125,6 +127,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           provider: 'google',
           options: { redirectTo: redirectTo('/') },
         });
+        return { error };
+      },
+
+      async signInWithPasskey() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.auth as any).signInWithPasskey();
+        return { error };
+      },
+
+      async registerPasskey() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.auth as any).registerPasskey();
         return { error };
       },
 

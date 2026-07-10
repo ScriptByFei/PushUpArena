@@ -20,7 +20,7 @@ import { useQuickAmounts } from '@/hooks/useQuickAmounts';
 const DELETE_PHRASE = 'LÖSCHEN';
 
 export default function Settings() {
-  const { user, signOut, updatePassword } = useAuth();
+  const { user, signOut, updatePassword, registerPasskey } = useAuth();
   const { exercise, enrolledExercises, declinedExercises, enroll } = useExercise();
   const { loading: profileLoading } = useProfile();
   const { goal, loading: goalLoading, saveGoals } = useGoals(exercise?.id);
@@ -34,6 +34,8 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPw, setSavingPw] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyDone, setPasskeyDone] = useState(false);
 
   // Google/OAuth-User haben kein Passwort → Sicherheitsabschnitt verstecken
   const isOAuthUser = user?.app_metadata?.provider !== 'email';
@@ -133,6 +135,14 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       setNewPassword('');
       setConfirmPassword('');
     }
+  }
+
+  async function onRegisterPasskey() {
+    setPasskeyLoading(true);
+    const { error } = await registerPasskey();
+    setPasskeyLoading(false);
+    if (error) toast.error('Passkey konnte nicht eingerichtet werden.');
+    else { setPasskeyDone(true); toast.success('Passkey eingerichtet!'); }
   }
 
   function closeDelete() {
@@ -543,7 +553,34 @@ const [deleteOpen, setDeleteOpen] = useState(false);
         </Card>
       )}
 
-      {/* 6 · Rechtliches */}
+      {/* 6 · Passkey */}
+      <Card>
+        <CardTitle>Passkey / Face ID</CardTitle>
+        <p className="mt-1 mb-3 text-sm text-slate-400">
+          Richte einen Passkey ein, um dich beim nächsten Mal per Face ID oder Fingerabdruck anzumelden — kein Passwort nötig.
+        </p>
+        {passkeyDone ? (
+          <p className="text-sm text-emerald-400 font-medium">✓ Passkey erfolgreich eingerichtet!</p>
+        ) : (
+          <Button
+            variant="secondary"
+            fullWidth
+            loading={passkeyLoading}
+            onClick={onRegisterPasskey}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                <path d="M10 10v5a2 2 0 0 0 4 0v-1" />
+                <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Z" />
+              </svg>
+              Passkey einrichten
+            </span>
+          </Button>
+        )}
+      </Card>
+
+      {/* 7 · Rechtliches */}
       <Card>
         <CardTitle>Rechtliches</CardTitle>
         <div className="mt-2 flex flex-col gap-1 text-sm">

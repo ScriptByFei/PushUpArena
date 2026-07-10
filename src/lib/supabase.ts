@@ -27,5 +27,7 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true,
       flowType: 'implicit',
     },
+    // Passkeys (WebAuthn) feature flag
+    experimental: { passkey: true },
   },
 );
