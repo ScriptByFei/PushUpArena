@@ -38,29 +38,33 @@ export default function Achievements() {
             🏆 Tages-Podest
           </p>
 
-          {/* Datums-Anzeige */}
-          <p className="text-center text-sm font-semibold text-slate-300 mb-3">
-            {formattedDate}
-          </p>
-
-          {/* Schieberegler */}
-          <div className="px-1 mb-4">
-            <input
-              type="range"
-              min={0}
-              max={dates.length - 1}
-              value={sliderIdx}
-              onChange={(e) => setSliderIdx(Number(e.target.value))}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer
-                bg-ink-600 accent-brand-500
-                [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5
-                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand-500
-                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-md"
-            />
-            <div className="flex justify-between mt-1 text-[10px] text-slate-600">
-              <span>{new Date(dates[0] + 'T12:00:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}</span>
-              <span>{new Date(dates[dates.length - 1] + 'T12:00:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}</span>
-            </div>
+          {/* Datums-Navigation mit Pfeilen */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setSliderIdx((i) => Math.max(0, i - 1))}
+              disabled={sliderIdx === 0 || podiumLoading}
+              className={`rounded-full p-2 transition ${
+                sliderIdx > 0 && !podiumLoading
+                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
+                  : 'text-ink-600 cursor-default'
+              }`}
+              aria-label="Vorheriger Tag"
+            >
+              ←
+            </button>
+            <p className="text-sm font-semibold text-slate-300">{formattedDate}</p>
+            <button
+              onClick={() => setSliderIdx((i) => Math.min(dates.length - 1, i + 1))}
+              disabled={sliderIdx === dates.length - 1 || podiumLoading}
+              className={`rounded-full p-2 transition ${
+                sliderIdx < dates.length - 1 && !podiumLoading
+                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
+                  : 'text-ink-600 cursor-default'
+              }`}
+              aria-label="Nächster Tag"
+            >
+              →
+            </button>
           </div>
 
           {/* Podest */}
