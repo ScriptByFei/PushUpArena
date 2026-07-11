@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon, BellIcon, BellOffIcon, RecapIcon } from '@/components/ui/icons';
+import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { DailyRecapModal } from '@/components/DailyRecapModal';
 import { useDailyRecap } from '@/hooks/useDailyRecap';
@@ -59,7 +59,7 @@ export function AppLayout() {
           aria-label="Tages-Recap"
           className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
         >
-          <RecapIcon className="h-5 w-5" />
+          <img src="/recap-icon.png" alt="" className="h-5 w-5 object-contain rounded-sm" />
         </button>
         {/* Titel absolut zentriert */}
         <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
