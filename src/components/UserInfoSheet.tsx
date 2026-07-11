@@ -51,9 +51,13 @@ export function UserInfoSheet({
 
     supabase
       .rpc('get_user_public_stats', { p_user_id: userId, p_exercise: exerciseId })
-      .then(({ data }) => {
-        if (!cancelled && data) setStats(data as unknown as UserPublicStats);
-        if (!cancelled) setLoading(false);
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) { setLoading(false); return; }
+        // Supabase may return an array for scalar-returning functions
+        const raw = Array.isArray(data) ? data[0] : data;
+        if (raw) setStats(raw as unknown as UserPublicStats);
+        setLoading(false);
       });
 
     return () => { cancelled = true; };
