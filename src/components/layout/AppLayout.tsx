@@ -28,7 +28,7 @@ export function AppLayout() {
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
-  const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
+  const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading, medalCounts } = useDailyRecap();
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
 
@@ -115,6 +115,7 @@ export function AppLayout() {
           hasPrev={hasPrev}
           hasNext={hasNext}
           navLoading={navLoading}
+          medalCounts={medalCounts}
         />
       )}
       {/* Bestätigung: Benachrichtigungen deaktivieren */}

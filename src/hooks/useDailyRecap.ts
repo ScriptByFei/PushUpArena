@@ -30,6 +30,12 @@ const shownKey = () => {
   return `daily-recap-shown-${today}`;
 };
 
+export interface MedalCounts {
+  gold: number;
+  silver: number;
+  bronze: number;
+}
+
 export function useDailyRecap() {
   const { user } = useAuth();
   const { enrolledExercises, loading: exLoading } = useExercise();
@@ -38,6 +44,7 @@ export function useDailyRecap() {
   const [availableDates, setAvailableDates] = useState<RecapDateEntry[]>([]);
   const [currentDateIdx, setCurrentDateIdx] = useState(0); // 0 = neuestes Datum
   const [navLoading, setNavLoading] = useState(false);
+  const [medalCounts, setMedalCounts] = useState<MedalCounts | null>(null);
 
   const pushups = enrolledExercises.find((e) => e.slug === 'pushups');
 
@@ -67,7 +74,7 @@ export function useDailyRecap() {
     return () => { cancelled = true; };
   }, [user, exLoading, pushups]);
 
-  // ── Verfügbare Daten laden (für Navigation) ────────────────────────────────
+  // ── Verfügbare Daten + Medaillen-Zähler laden ─────────────────────────────
   useEffect(() => {
     if (!user || exLoading || !pushups) return;
     let cancelled = false;
@@ -76,6 +83,15 @@ export function useDailyRecap() {
       .rpc('get_my_recap_dates', { p_exercise: pushups.id })
       .then(({ data }: { data: RecapDateEntry[] | null }) => {
         if (!cancelled && data) setAvailableDates(data);
+      });
+    // Medaillen-Zähler
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .rpc('get_my_medal_counts', { p_exercise: pushups.id })
+      .then(({ data }: { data: { gold_count: number; silver_count: number; bronze_count: number }[] | null }) => {
+        if (!cancelled && data && data[0]) {
+          setMedalCounts({ gold: data[0].gold_count, silver: data[0].silver_count, bronze: data[0].bronze_count });
+        }
       });
     return () => { cancelled = true; };
   }, [user, exLoading, pushups]);
@@ -176,5 +192,6 @@ export function useDailyRecap() {
     hasPrev: currentDateIdx < availableDates.length - 1,
     hasNext: currentDateIdx > 0,
     navLoading,
+    medalCounts,
   };
 }
