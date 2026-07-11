@@ -52,11 +52,21 @@ export function UserInfoSheet({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .rpc('get_user_public_stats', { p_user_id: userId, p_exercise: exerciseId })
-      .then(({ data }: { data: UserPublicStats[] | null }) => {
+      .then(({ data, error }: { data: unknown; error: unknown }) => {
         if (cancelled) return;
+        if (error) {
+          console.error('[UserInfoSheet] get_user_public_stats error:', error, 'userId:', userId, 'exerciseId:', exerciseId);
+          setLoading(false);
+          return;
+        }
+        console.log('[UserInfoSheet] data:', JSON.stringify(data));
         const row = Array.isArray(data) ? data[0] : data;
-        if (row) setStats(row as UserPublicStats);
+        if (row && typeof row === 'object') setStats(row as UserPublicStats);
         setLoading(false);
+      })
+      .catch((err: unknown) => {
+        console.error('[UserInfoSheet] rpc threw:', err);
+        if (!cancelled) setLoading(false);
       });
 
     return () => { cancelled = true; };
