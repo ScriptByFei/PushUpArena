@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SettingsIcon, BellIcon, BellOffIcon, RecapIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
-import { PushBanner } from '@/components/PushBanner';
 import { DailyRecapModal } from '@/components/DailyRecapModal';
 import { useDailyRecap } from '@/hooks/useDailyRecap';
 
@@ -96,8 +95,6 @@ export function AppLayout() {
           </Link>
         </div>
       </header>
-
-      <PushBanner />
 
       <main className="flex-1 px-4 pb-32 pt-4">
         <Outlet />
