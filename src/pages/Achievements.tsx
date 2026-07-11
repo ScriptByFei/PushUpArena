@@ -1,21 +1,85 @@
 import { useExercise } from '@/context/ExerciseContext';
 import { usePodiumHistory } from '@/hooks/usePodiumHistory';
+import { useDailyPodiumSlider } from '@/hooks/useDailyPodiumSlider';
 import { Avatar } from '@/components/ui/Avatar';
+import { PodiumDisplay } from '@/components/PodiumDisplay';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 
 export default function Achievements() {
   const { enrolledExercises, loading: exLoading } = useExercise();
-
-  // Medaillen nur für PushUps
   const pushups = enrolledExercises.find((ex) => ex.slug === 'pushups');
   const { rows, loading, error, refetch } = usePodiumHistory(pushups?.id);
+  const {
+    dates,
+    sliderIdx,
+    setSliderIdx,
+    top3,
+    loading: podiumLoading,
+    datesLoading,
+    selectedDate,
+  } = useDailyPodiumSlider(pushups?.id);
 
   if (exLoading || loading) return <LoadingState label="Lade Erfolge …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
+  const formattedDate = selectedDate
+    ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('de-DE', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      })
+    : '–';
+
   return (
     <div className="space-y-4">
-      {/* Info */}
+
+      {/* ── Tages-Podest mit Datums-Slider ────────────────────────── */}
+      {!datesLoading && dates.length > 0 && (
+        <div className="rounded-2xl border border-ink-700 bg-ink-800/70 px-4 pb-5 pt-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500 text-center">
+            🏆 Tages-Podest
+          </p>
+
+          {/* Datums-Navigation mit Pfeilen */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setSliderIdx((i) => Math.max(0, i - 1))}
+              disabled={sliderIdx === 0 || podiumLoading}
+              className={`rounded-full p-2 transition ${
+                sliderIdx > 0 && !podiumLoading
+                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
+                  : 'text-ink-600 cursor-default'
+              }`}
+              aria-label="Vorheriger Tag"
+            >
+              ←
+            </button>
+            <p className="text-sm font-semibold text-slate-300">{formattedDate}</p>
+            <button
+              onClick={() => setSliderIdx((i) => Math.min(dates.length - 1, i + 1))}
+              disabled={sliderIdx === dates.length - 1 || podiumLoading}
+              className={`rounded-full p-2 transition ${
+                sliderIdx < dates.length - 1 && !podiumLoading
+                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
+                  : 'text-ink-600 cursor-default'
+              }`}
+              aria-label="Nächster Tag"
+            >
+              →
+            </button>
+          </div>
+
+          {/* Podest */}
+          {podiumLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            </div>
+          ) : top3 && top3.length > 0 ? (
+            <PodiumDisplay entries={top3} />
+          ) : (
+            <p className="text-center text-sm text-slate-500 py-4">Keine Daten für diesen Tag.</p>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-slate-500 text-center">
         Täglich werden die globalen Top 3 mit Gold, Silber und Bronze ausgezeichnet.
       </p>
