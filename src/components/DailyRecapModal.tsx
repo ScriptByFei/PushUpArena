@@ -435,7 +435,7 @@ export function DailyRecapModal({
           className="w-full rounded-2xl bg-brand-600 py-3.5 text-base font-extrabold text-white
             shadow-[0_0_24px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.98]"
         >
-          💪 Heute angreifen
+          💪 Los geht's!
         </button>
       </div>
     </div>
