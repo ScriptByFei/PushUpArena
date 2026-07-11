@@ -37,8 +37,26 @@ export default function Settings() {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyDone, setPasskeyDone] = useState(false);
 
+  // Existing passkeys from MFA/WebAuthn factors
+  const [passkeyFactors, setPasskeyFactors] = useState<{ id: string; friendly_name?: string; created_at: string }[]>([]);
+  const [passkeyChecked, setPasskeyChecked] = useState(false);
+  const [passkeyRemoving, setPasskeyRemoving] = useState<string | null>(null);
+
   // Google/OAuth-User haben kein Passwort → Sicherheitsabschnitt verstecken
   const isOAuthUser = user?.app_metadata?.provider !== 'email';
+
+  // Load registered passkeys
+  useEffect(() => {
+    supabase.auth.mfa.listFactors().then(({ data }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const webauthn = ((data as any)?.all ?? []).filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (f: any) => f.factor_type === 'webauthn' && f.status === 'verified'
+      );
+      setPasskeyFactors(webauthn);
+      setPasskeyChecked(true);
+    });
+  }, []);
 
 const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -143,8 +161,32 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     setPasskeyLoading(true);
     const { error } = await registerPasskey();
     setPasskeyLoading(false);
-    if (error) toast.error('Passkey konnte nicht eingerichtet werden.');
-    else { setPasskeyDone(true); toast.success('Passkey eingerichtet!'); }
+    if (error) {
+      toast.error('Passkey konnte nicht eingerichtet werden.');
+    } else {
+      setPasskeyDone(true);
+      toast.success('Passkey eingerichtet!');
+      // Refresh factor list to show the new passkey
+      supabase.auth.mfa.listFactors().then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const webauthn = ((data as any)?.all ?? []).filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (f: any) => f.factor_type === 'webauthn' && f.status === 'verified'
+        );
+        setPasskeyFactors(webauthn);
+      });
+    }
+  }
+
+  async function onRemovePasskey(factorId: string) {
+    setPasskeyRemoving(factorId);
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    setPasskeyRemoving(null);
+    if (error) toast.error('Passkey konnte nicht entfernt werden.');
+    else {
+      setPasskeyFactors((prev) => prev.filter((f) => f.id !== factorId));
+      toast.success('Passkey entfernt.');
+    }
   }
 
   function closeDelete() {
@@ -590,28 +632,60 @@ const [deleteOpen, setDeleteOpen] = useState(false);
       {/* 6 · Passkey */}
       <Card>
         <CardTitle>Passkey / Face ID</CardTitle>
-        <p className="mt-1 mb-3 text-sm text-slate-400">
-          Richte einen Passkey ein, um dich beim nächsten Mal per Face ID oder Fingerabdruck anzumelden — kein Passwort nötig.
+        <p className="mt-1 text-sm text-slate-400">
+          Melde dich per Face ID oder Fingerabdruck an — kein Passwort nötig.
         </p>
-        {passkeyDone ? (
-          <p className="text-sm text-emerald-400 font-medium">✓ Passkey erfolgreich eingerichtet!</p>
-        ) : (
-          <Button
-            variant="secondary"
-            fullWidth
-            loading={passkeyLoading}
-            onClick={onRegisterPasskey}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
-                <path d="M10 10v5a2 2 0 0 0 4 0v-1" />
-                <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Z" />
-              </svg>
-              Passkey einrichten
-            </span>
-          </Button>
+
+        {/* Active passkeys */}
+        {passkeyChecked && passkeyFactors.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {passkeyFactors.map((factor) => (
+              <div
+                key={factor.id}
+                className="flex items-center gap-3 rounded-xl border border-emerald-600/30 bg-emerald-500/10 px-3 py-2.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-emerald-400">
+                  <path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                  <path d="M10 10v5a2 2 0 0 0 4 0v-1" />
+                  <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Z" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-emerald-300">
+                    {factor.friendly_name || 'Passkey aktiv'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Eingerichtet am {new Date(factor.created_at).toLocaleDateString('de-DE')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onRemovePasskey(factor.id)}
+                  disabled={passkeyRemoving === factor.id}
+                  className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition disabled:opacity-50"
+                >
+                  {passkeyRemoving === factor.id ? '…' : 'Entfernen'}
+                </button>
+              </div>
+            ))}
+          </div>
         )}
+
+        {/* Register button — always available to add more passkeys */}
+        <Button
+          variant="secondary"
+          fullWidth
+          className="mt-3"
+          loading={passkeyLoading}
+          onClick={onRegisterPasskey}
+        >
+          <span className="flex items-center justify-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+              <path d="M10 10v5a2 2 0 0 0 4 0v-1" />
+              <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Z" />
+            </svg>
+            {passkeyFactors.length > 0 ? 'Weiteren Passkey hinzufügen' : 'Passkey einrichten'}
+          </span>
+        </Button>
       </Card>
 
       {/* 7 · Rechtliches */}
