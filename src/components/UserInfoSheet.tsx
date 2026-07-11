@@ -49,14 +49,13 @@ export function UserInfoSheet({
     setLoading(true);
     setStats(null);
 
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
       .rpc('get_user_public_stats', { p_user_id: userId, p_exercise: exerciseId })
-      .then(({ data, error }) => {
+      .then(({ data }: { data: UserPublicStats[] | null }) => {
         if (cancelled) return;
-        if (error) { setLoading(false); return; }
-        // Supabase may return an array for scalar-returning functions
-        const raw = Array.isArray(data) ? data[0] : data;
-        if (raw) setStats(raw as unknown as UserPublicStats);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) setStats(row as UserPublicStats);
         setLoading(false);
       });
 
