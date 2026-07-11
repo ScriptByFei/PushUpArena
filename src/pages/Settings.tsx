@@ -45,17 +45,13 @@ export default function Settings() {
   // Google/OAuth-User haben kein Passwort → Sicherheitsabschnitt verstecken
   const isOAuthUser = user?.app_metadata?.provider !== 'email';
 
-  // Load registered passkeys
+  // Load registered passkeys from auth.webauthn_credentials via SECURITY DEFINER RPC
   useEffect(() => {
-    supabase.auth.mfa.listFactors().then(({ data }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const webauthn = ((data as any)?.all ?? []).filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (f: any) => f.factor_type === 'webauthn' && f.status === 'verified'
-      );
-      setPasskeyFactors(webauthn);
+    supabase.rpc('get_my_passkeys').then(({ data }) => {
+      setPasskeyFactors((data as typeof passkeyFactors) ?? []);
       setPasskeyChecked(true);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 const [deleteOpen, setDeleteOpen] = useState(false);
@@ -166,25 +162,20 @@ const [deleteOpen, setDeleteOpen] = useState(false);
     } else {
       setPasskeyDone(true);
       toast.success('Passkey eingerichtet!');
-      // Refresh factor list to show the new passkey
-      supabase.auth.mfa.listFactors().then(({ data }) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const webauthn = ((data as any)?.all ?? []).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (f: any) => f.factor_type === 'webauthn' && f.status === 'verified'
-        );
-        setPasskeyFactors(webauthn);
+      // Refresh list from DB
+      supabase.rpc('get_my_passkeys').then(({ data }) => {
+        setPasskeyFactors((data as typeof passkeyFactors) ?? []);
       });
     }
   }
 
-  async function onRemovePasskey(factorId: string) {
-    setPasskeyRemoving(factorId);
-    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+  async function onRemovePasskey(credentialId: string) {
+    setPasskeyRemoving(credentialId);
+    const { error } = await supabase.rpc('delete_my_passkey', { p_credential_id: credentialId });
     setPasskeyRemoving(null);
     if (error) toast.error('Passkey konnte nicht entfernt werden.');
     else {
-      setPasskeyFactors((prev) => prev.filter((f) => f.id !== factorId));
+      setPasskeyFactors((prev) => prev.filter((f) => f.id !== credentialId));
       toast.success('Passkey entfernt.');
     }
   }
