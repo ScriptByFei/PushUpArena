@@ -13,7 +13,6 @@ export interface PodiumRow {
   half_silver: number;
   half_bronze: number;
   is_me: boolean;
-  is_friend: boolean;
 }
 
 export function usePodiumHistory(exerciseId?: string) {
@@ -26,7 +25,7 @@ export function usePodiumHistory(exerciseId?: string) {
     setLoading(true);
     setError(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error: err } = await (supabase as any).rpc('get_global_podium_history', {
+    const { data, error: err } = await (supabase as any).rpc('get_friend_podium_history', {
       p_exercise: exerciseId,
     });
     if (err) setError(err.message);

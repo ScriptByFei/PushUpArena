@@ -67,31 +67,6 @@ export const LogoutIcon = (p: IconProps) => (
   </svg>
 );
 
-export const UserPlusIcon = (p: IconProps) => (
-  <svg {...base(p)}>
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <line x1="19" y1="8" x2="19" y2="14" />
-    <line x1="22" y1="11" x2="16" y2="11" />
-  </svg>
-);
-
-export const RecapIcon = (p: IconProps) => (
-  <svg {...base(p)}>
-    {/* Counterclockwise circle with arrow */}
-    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-    <path d="M3 3v5h5" />
-    {/* Bar chart: 3 ascending bars */}
-    <line x1="7" y1="17" x2="7" y2="15" />
-    <line x1="9.5" y1="17" x2="9.5" y2="13" />
-    <line x1="12" y1="17" x2="12" y2="11" />
-    {/* Document with text lines */}
-    <rect x="11" y="9" width="5.5" height="7" rx="1" />
-    <line x1="12.5" y1="12" x2="15.5" y2="12" />
-    <line x1="12.5" y1="14.5" x2="15.5" y2="14.5" />
-  </svg>
-);
-
 export const SearchIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <circle cx="11" cy="11" r="7" />

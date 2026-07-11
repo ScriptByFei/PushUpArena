@@ -230,17 +230,15 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
                                 {formatTime(item.entry.performed_at)}
                               </p>
                               {isEditableToday(item.entry.performed_at) && (
-                                <>
-                                  <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-ink-700 hover:text-slate-200">
-                                    <EditIcon className="h-4 w-4" />
-                                  </button>
-                                  <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </>
+                                <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-ink-700 hover:text-slate-200">
+                                  <EditIcon className="h-4 w-4" />
+                                </button>
                               )}
+                              <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
                             </div>
                           ) : (
                             <div key={`r-${item.id}`} className="flex items-center gap-3 rounded-xl bg-ink-800/60 px-3 py-2">
@@ -248,12 +246,10 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
                                 😴
                               </div>
                               <p className="flex-1 text-xs text-slate-400">Ruhetag</p>
-                              {item.rest_date === berlinToday() && (
-                                <button aria-label="Ruhetag löschen" onClick={() => setDeletingRD({ id: item.id, rest_date: item.rest_date })}
-                                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
-                                  <TrashIcon className="h-4 w-4" />
-                                </button>
-                              )}
+                              <button aria-label="Ruhetag löschen" onClick={() => setDeletingRD({ id: item.id, rest_date: item.rest_date })}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
                             </div>
                           )
                         )}

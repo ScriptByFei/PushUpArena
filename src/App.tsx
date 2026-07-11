@@ -36,8 +36,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PWAUpdater } from '@/components/PWAUpdater';
 import { ExerciseProvider } from '@/context/ExerciseContext';
 import { EnrollmentModal } from '@/components/EnrollmentModal';
-import { OnboardingFlow } from '@/components/OnboardingFlow';
-import { PushPrompt } from '@/components/PushPrompt';
+import { IdentityPrompt } from '@/components/IdentityPrompt';
 import { PushProvider } from '@/context/PushContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { InstallHintProvider } from '@/components/InstallHint';
@@ -46,7 +45,6 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 import ResetPassword from '@/pages/auth/ResetPassword';
-import AuthConfirm from '@/pages/auth/AuthConfirm';
 import Dashboard from '@/pages/Dashboard';
 import Track from '@/pages/Track';
 import Friends from '@/pages/Friends';
@@ -91,7 +89,6 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/auth/confirm" element={<AuthConfirm />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/imprint" element={<Imprint />} />
 
@@ -106,8 +103,7 @@ export default function App() {
               <PushProvider>
                 <AppLayout />
                 <EnrollmentModal />
-                <OnboardingFlow />
-                <PushPrompt />
+                <IdentityPrompt />
               </PushProvider>
             </ExerciseProvider>
           </ProtectedRoute>

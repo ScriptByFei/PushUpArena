@@ -9,7 +9,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function Login() {
-  const { session, signIn, signInWithGoogle, signInWithPasskey } = useAuth();
+  const { session, signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -17,7 +17,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const installHintActive = useInstallHintActive();
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -54,18 +53,6 @@ export default function Login() {
       setGoogleLoading(false);
     }
     // Bei Erfolg leitet Supabase per Redirect weiter.
-  }
-
-  async function onPasskey() {
-    setError(null);
-    setPasskeyLoading(true);
-    const { error: err } = await signInWithPasskey();
-    setPasskeyLoading(false);
-    if (err) {
-      setError('Passkey-Anmeldung fehlgeschlagen. Bitte mit E-Mail und Passwort anmelden.');
-      return;
-    }
-    navigate(from, { replace: true });
   }
 
   return (
@@ -130,26 +117,6 @@ export default function Login() {
       </div>
 
       <GoogleButton onClick={onGoogle} loading={googleLoading} />
-
-      <button
-        onClick={onPasskey}
-        disabled={passkeyLoading}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-ink-600 bg-ink-800 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-ink-700 disabled:opacity-50"
-      >
-        {passkeyLoading ? (
-          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-brand-400">
-            <path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
-            <path d="M10 10v5a2 2 0 0 0 4 0v-1" />
-            <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Z" />
-          </svg>
-        )}
-        Mit Passkey / Face ID anmelden
-      </button>
     </AuthLayout>
   );
 }

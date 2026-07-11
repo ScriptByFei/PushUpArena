@@ -14,13 +14,9 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   return buf;
 }
 
-export const PUSH_USER_DISABLED_KEY = 'push-user-disabled';
-
 export async function initPushNotifications(): Promise<void> {
   if (initialized) return;
   initialized = true;
-  // Respect explicit user opt-out — don't re-subscribe silently
-  if (localStorage.getItem(PUSH_USER_DISABLED_KEY)) return;
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     void ensureSubscription();
   }

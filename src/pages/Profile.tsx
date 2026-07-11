@@ -1,21 +1,18 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
-import { useExercise } from '@/context/ExerciseContext';
-import { ExerciseDropdown } from '@/components/ExerciseDropdown';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
+import type { Exercise } from '@/lib/database.types';
 import { useToast } from '@/context/ToastContext';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { AvatarUpload } from '@/components/AvatarUpload';
-import { LogoutIcon, RecapIcon } from '@/components/ui/icons';
+import { LogoutIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
-import { DailyRecapModal } from '@/components/DailyRecapModal';
-import { useDailyRecap } from '@/hooks/useDailyRecap';
 
 
 // ─── StatCell ───────────────────────────────────────────────────────
@@ -38,31 +35,15 @@ export default function Profile() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
-  const { exercise } = useExercise();
+  const { exercise: activeExercise, enrolledExercises } = useExercise();
+  const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
+  const exercise = localExercise ?? activeExercise;
   const { stats, loading: statsLoading, error: statsError } = useProfileStats(exercise?.id);
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ display_name: '' });
   const [saving, setSaving] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [realHandle, setRealHandle] = useState<string | null>(null);
-  const [recapModalOpen, setRecapModalOpen] = useState(false);
-  const { recap, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading } = useDailyRecap();
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('user_identities')
-      .select('first_name, last_name')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const handle = `@${data.first_name.trim()} ${data.last_name.trim()}`;
-          setRealHandle(handle);
-        }
-      });
-  }, [user]);
 
   if (profileLoading || !profile) return <LoadingState label="Lade Profil …" />;
 
@@ -77,7 +58,24 @@ export default function Profile() {
 
   return (
     <div className="space-y-4">
-      <ExerciseDropdown />
+      {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
+      {enrolledExercises.length > 1 && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
+          {enrolledExercises.map((ex) => {
+            const isActive = ex.id === exercise?.id;
+            return (
+              <button key={ex.id} onClick={() => setLocalExercise(ex)}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
+                }`}
+              >
+                <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-5 w-5 rounded-md object-cover" />
+                {ex.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Profil-Header */}
       <Card>
@@ -93,48 +91,32 @@ export default function Profile() {
             }}
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <h2 className="truncate text-xl font-extrabold">
-                {profile.display_name || profile.username}
-              </h2>
-              {!editing && (
-                <button
-                  onClick={() => { setForm({ display_name: profile.display_name ?? '' }); setEditing(true); }}
-                  className="shrink-0 text-base leading-none text-slate-400 hover:text-slate-200 transition"
-                  title="Name ändern"
-                >
-                  ✏️
-                </button>
-              )}
-            </div>
-            <p className="text-sm text-slate-400">
-              {realHandle ?? `@${profile.username}`}
-            </p>
+            <h2 className="truncate text-xl font-extrabold">
+              {profile.display_name || profile.username}
+            </h2>
+            <p className="text-sm text-slate-400">@{profile.username}</p>
           </div>
-          <div className="flex shrink-0 flex-col gap-1">
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
-              title="Abmelden"
-            >
-              <LogoutIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={async () => {
-                await forceLoad();
-                setRecapModalOpen(true);
-              }}
-              className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-brand-400 transition"
-              title="Tages-Recap"
-              aria-label="Tages-Recap"
-            >
-              <RecapIcon className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
+            title="Abmelden"
+          >
+            <LogoutIcon className="h-5 w-5" />
+          </button>
         </div>
-        <div className="mt-3">
-          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-          <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
+        <div className="mt-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
+          </div>
+          {!editing && (
+            <Button size="sm" variant="secondary" onClick={() => {
+              setForm({ display_name: profile.display_name ?? '' });
+              setEditing(true);
+            }}>
+              Bearbeiten
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -174,42 +156,6 @@ export default function Profile() {
               <StatCell label="Letzte 30 Tage" value={stats.last30Days} />
             </div>
           </Card>
-      )}
-
-      {/* Tages-Recap Modal */}
-      {recapModalOpen && (
-        recap ? (
-          <DailyRecapModal
-            recap={recap}
-            onClose={() => { setRecapModalOpen(false); void dismissRecap(); }}
-            onPrev={goToPrev}
-            onNext={goToNext}
-            hasPrev={hasPrev}
-            hasNext={hasNext}
-            navLoading={navLoading}
-          />
-        ) : !navLoading ? (
-          /* Kein Recap verfügbar */
-          <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => setRecapModalOpen(false)}
-          >
-            <div className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
-              onClick={(e) => e.stopPropagation()}>
-              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
-              <p className="text-center text-base font-bold text-slate-100">Noch kein Recap</p>
-              <p className="mt-2 text-center text-sm text-slate-500">
-                Der erste Rückblick erscheint morgen früh nach Mitternacht.
-              </p>
-              <button
-                onClick={() => setRecapModalOpen(false)}
-                className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        ) : null
       )}
 
       {/* Abmelden-Bestätigung */}

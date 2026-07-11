@@ -21,10 +21,8 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<AuthResult>;
+  signUp: (email: string, password: string, firstName?: string, lastNameInitial?: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
-  signInWithPasskey: () => Promise<AuthResult>;
-  registerPasskey: () => Promise<AuthResult>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<AuthResult>;
   updatePassword: (password: string) => Promise<AuthResult>;
@@ -54,23 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (newSession?.user) {
         void OneSignal.login(newSession.user.id);
-        // Namen aus Metadaten übertragen (manuelle Reg: first_name/last_name;
-        // Google OAuth: given_name/family_name)
-        const meta = newSession.user.user_metadata;
-        const firstName = (meta?.first_name || meta?.given_name || '') as string;
-        const lastName  = (meta?.last_name  || meta?.family_name || '') as string;
-        if (firstName.trim() && lastName.trim()) {
-          void supabase.from('user_identities').upsert({
-            user_id: newSession.user.id,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-          }, { onConflict: 'user_id', ignoreDuplicates: true });
-          // Default-Anzeigename setzen, falls noch keiner vergeben wurde
-          void supabase.from('profiles')
-            .update({ display_name: `${firstName.trim()} ${lastName.trim()}` })
-            .eq('id', newSession.user.id)
-            .is('display_name', null);
-        }
       } else {
         void OneSignal.logout();
       }
@@ -93,29 +74,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       },
 
-      async signUp(email, password, firstName, lastName) {
+      async signUp(email, password, firstName, lastNameInitial) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            emailRedirectTo: redirectTo('/auth/confirm'),
-            // Namen in User-Metadaten speichern – funktioniert auch ohne Session.
-            // Beim ersten Login werden sie von onAuthStateChange in user_identities übertragen.
-            data: firstName && lastName
-              ? { first_name: firstName.trim(), last_name: lastName.trim() }
-              : undefined,
-          },
+          options: { emailRedirectTo: redirectTo('/') },
         });
         // identities leer => E-Mail bereits registriert; ansonsten Bestätigung nötig,
         // solange keine Session zurückkam.
         const needsEmailConfirmation = !error && !data.session;
 
-        // Falls kein Email-Confirm nötig (Confirm deaktiviert), direkt speichern
-        if (!error && data.session && data.user && firstName && lastName) {
+        // Realnamen speichern wenn vorhanden (auch ohne Session, user_id steht in data.user)
+        if (!error && data.user && firstName && lastNameInitial) {
           await supabase.from('user_identities').upsert({
             user_id: data.user.id,
             first_name: firstName.trim(),
-            last_name: lastName.trim(),
+            last_name_initial: lastNameInitial.toUpperCase().charAt(0),
           }, { onConflict: 'user_id' });
         }
 
@@ -128,26 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: { redirectTo: redirectTo('/') },
         });
         return { error };
-      },
-
-      async signInWithPasskey() {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error } = await (supabase.auth as any).signInWithPasskey();
-          return { error };
-        } catch (e) {
-          return { error: e as AuthError };
-        }
-      },
-
-      async registerPasskey() {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error } = await (supabase.auth as any).registerPasskey();
-          return { error };
-        } catch (e) {
-          return { error: e as AuthError };
-        }
       },
 
       async signOut() {

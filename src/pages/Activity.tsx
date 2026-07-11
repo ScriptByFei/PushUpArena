@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useExercise } from '@/context/ExerciseContext';
-import { ExerciseDropdown } from '@/components/ExerciseDropdown';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
+import type { Exercise } from '@/lib/database.types';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
@@ -12,7 +12,9 @@ import { PeriodSummaryCard } from '@/components/PeriodSummaryCard';
 import { WorkoutHistory } from '@/components/WorkoutHistory';
 
 export default function Activity() {
-  const { exercise } = useExercise();
+  const { exercise: activeExercise, enrolledExercises } = useExercise();
+  const [localExercise, setLocalExercise] = useState<Exercise | null>(null);
+  const exercise = localExercise ?? activeExercise;
   const { stats, loading, error } = useProfileStats(exercise?.id);
   const { goal } = useGoals(exercise?.id);
   const { restDays } = useRestDays(exercise?.id);
@@ -40,7 +42,26 @@ export default function Activity() {
 
   return (
     <div className="space-y-4">
-      <ExerciseDropdown />
+      {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
+      {enrolledExercises.length > 1 && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
+          {enrolledExercises.map((ex) => {
+            const isActive = ex.id === exercise?.id;
+            return (
+              <button
+                key={ex.id}
+                onClick={() => setLocalExercise(ex)}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
+                }`}
+              >
+                <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-5 w-5 rounded-md object-cover" />
+                {ex.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Zeitraum-Zusammenfassung */}
       <PeriodSummaryCard exercise={exercise} />

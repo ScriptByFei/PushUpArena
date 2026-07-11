@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
 
-// Diese Pfade bleiben im Browser zugänglich (E-Mail-Links, Rechtliches)
-const BROWSER_ALLOWED = ['/auth/confirm', '/reset-password', '/forgot-password', '/privacy', '/imprint'];
+const STORAGE_KEY = 'pwa-install-hint-dismissed';
 
 function isStandalone(): boolean {
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
@@ -19,15 +17,18 @@ const InstallHintContext = createContext(false);
 export function useInstallHintActive() { return useContext(InstallHintContext); }
 
 export function InstallHintProvider({ children }: { children: ReactNode }) {
-  const [standalone, setStandalone] = useState(true); // optimistic: avoid flash
-  const { pathname } = useLocation();
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
-    setStandalone(isStandalone());
+    if (isStandalone()) return;
+    if (localStorage.getItem(STORAGE_KEY) === '1') return;
+    setActive(true);
   }, []);
 
-  const isAllowedInBrowser = BROWSER_ALLOWED.some((p) => pathname.startsWith(p));
-  const active = !standalone && !isAllowedInBrowser;
+  function dismiss() {
+    localStorage.setItem(STORAGE_KEY, '1');
+    setActive(false);
+  }
 
   const ios = isIOS();
 
@@ -35,14 +36,12 @@ export function InstallHintProvider({ children }: { children: ReactNode }) {
     <InstallHintContext.Provider value={active}>
       {children}
       {active && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-ink-950/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-ink-950/80 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-ink-600 bg-ink-800 shadow-2xl overflow-hidden">
             <div className="bg-brand-500/10 border-b border-ink-600 px-6 pt-6 pb-5 text-center">
               <img src="/icons/icon-192.png" alt="PushUpArena" className="mx-auto mb-3 h-16 w-16 rounded-2xl shadow-lg" />
               <h2 className="text-lg font-bold text-slate-100">App installieren</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                PushupArena ist nur als installierte App verfügbar.
-              </p>
+              <p className="mt-1 text-sm text-slate-400">Für das beste Erlebnis inkl. Push-Benachrichtigungen</p>
             </div>
             <div className="px-6 py-5">
               {ios ? (
@@ -72,6 +71,14 @@ export function InstallHintProvider({ children }: { children: ReactNode }) {
                   </li>
                 </ol>
               )}
+            </div>
+            <div className="border-t border-ink-700 px-6 py-4 text-center">
+              <button
+                onClick={dismiss}
+                className="text-xs text-slate-500 hover:text-slate-400 transition-colors underline underline-offset-2"
+              >
+                Trotzdem im Browser fortfahren
+              </button>
             </div>
           </div>
         </div>

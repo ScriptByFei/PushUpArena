@@ -14,7 +14,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [lastNameInitial, setLastNameInitial] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -30,8 +30,8 @@ export default function Register() {
       setError('Bitte gib deinen Vornamen an.');
       return;
     }
-    if (!lastName.trim()) {
-      setError('Bitte gib deinen Nachnamen an.');
+    if (!lastNameInitial.trim()) {
+      setError('Bitte gib den ersten Buchstaben deines Nachnamens an.');
       return;
     }
     if (password.length < 8) {
@@ -45,7 +45,7 @@ export default function Register() {
 
     setLoading(true);
     const { error: err, needsEmailConfirmation } = await signUp(
-      email.trim(), password, firstName.trim(), lastName.trim()
+      email.trim(), password, firstName.trim(), lastNameInitial.trim()
     );
     setLoading(false);
 
@@ -122,15 +122,16 @@ export default function Register() {
               placeholder="Max"
             />
           </Field>
-          <Field label="Nachname" htmlFor="lastName" className="flex-1">
+          <Field label="Nachname (1. Buchstabe)" htmlFor="lastNameInitial" className="w-28">
             <Input
-              id="lastName"
-              name="lastName"
+              id="lastNameInitial"
+              name="lastNameInitial"
               autoComplete="family-name"
               required
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Mustermann"
+              maxLength={1}
+              value={lastNameInitial}
+              onChange={(e) => setLastNameInitial(e.target.value.replace(/[^a-zA-ZäöüÄÖÜ]/, ''))}
+              placeholder="M"
             />
           </Field>
         </div>
