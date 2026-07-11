@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useExercise } from '@/context/ExerciseContext';
-import { ExerciseDropdown } from '@/components/ExerciseDropdown';
+import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
-import { useGlobalLeaderboard } from '@/hooks/useGlobalLeaderboard';
 import { Avatar } from '@/components/ui/Avatar';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
 import { supabase } from '@/lib/supabase';
-import type { LeaderboardRow, GlobalLeaderboardRow } from '@/lib/database.types';
-import { UserInfoSheet } from '@/components/UserInfoSheet';
-import { UserPlusIcon } from '@/components/ui/icons';
-
-type ViewMode = 'friends' | 'global';
+import type { LeaderboardRow } from '@/lib/database.types';
 
 const TABS = [
   { key: 'today_amount' as const, label: 'Heute', icon: '', iconSrc: undefined as string | undefined },
@@ -150,107 +144,67 @@ function TodaySetsSheet({ row, exerciseId, onClose }: TodaySetsSheetProps) {
 
 // ── Hauptseite ────────────────────────────────────────────────────────────────
 export default function Leaderboard() {
-  const { exercise: activeExercise, loading: exLoading } = useExercise();
-  const [viewMode, setViewMode] = useState<ViewMode>('friends');
-  const { rows: friendRows, loading: friendLoading, error: friendError, refetch: refetchFriends, sortKey, setSortKey } = useLeaderboard(activeExercise?.id);
-  const { rows: globalRows, loading: globalLoading, error: globalError, refetch: refetchGlobal } = useGlobalLeaderboard(activeExercise?.id);
-  const [infoSheet, setInfoSheet] = useState<{ userId: string; displayName: string; avatarUrl: string | null } | null>(null);
-  const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
-  const [requestFeedback, setRequestFeedback] = useState<{ userId: string; ok: boolean } | null>(null);
-  const [rulesOpen, setRulesOpen] = useState(false);
+  const { exercise: activeExercise, enrolledExercises, loading: exLoading } = useExercise();
+  const [leaderExercise, setLeaderExercise] = useState<typeof activeExercise>(null);
+  const shownExercise = leaderExercise ?? activeExercise;
+  const { rows, loading, error, refetch, sortKey, setSortKey } = useLeaderboard(shownExercise?.id);
+  const [selectedRow, setSelectedRow] = useState<LeaderboardRow | null>(null);
 
-  const isGlobal = viewMode === 'global';
-  const rows = isGlobal ? globalRows : friendRows;
-  const loading = isGlobal ? globalLoading : friendLoading;
-  const error = isGlobal ? globalError : friendError;
-  const refetch = isGlobal ? refetchGlobal : refetchFriends;
+  const isToday = sortKey === 'today_amount';
 
   if (exLoading || loading) return <LoadingState label="Lade Rangliste …" />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
   const hasPodium = rows.length >= 3;
-  const sortLabel = isGlobal ? 'Heute' : (TABS.find((t) => t.key === sortKey)?.label ?? '');
-  const displaySortKey: 'today_amount' | 'total_amount' = isGlobal ? 'today_amount' : sortKey;
+  const sortLabel = TABS.find((t) => t.key === sortKey)?.label ?? '';
 
   function handleTap(row: LeaderboardRow) {
-    setInfoSheet({ userId: row.user_id, displayName: row.display_name || row.username, avatarUrl: row.avatar_url });
+    if (isToday) setSelectedRow(row);
   }
-
-  async function handleAddFriend(e: React.MouseEvent, row: GlobalLeaderboardRow) {
-    e.stopPropagation();
-    setSentRequests((prev) => new Set(prev).add(row.user_id));
-    const { error: err } = await supabase.rpc('send_friend_request', { p_receiver: row.user_id });
-    setRequestFeedback({ userId: row.user_id, ok: !err });
-    if (err) {
-      // Revert optimistic update on error
-      setSentRequests((prev) => { const next = new Set(prev); next.delete(row.user_id); return next; });
-    }
-    setTimeout(() => setRequestFeedback(null), 2500);
-  }
-
-  // Eigene Position in globaler Rangliste
-  const myGlobalRank = isGlobal ? rows.findIndex((r) => r.is_me) + 1 : 0;
 
   return (
     <div className="space-y-4">
 
-      {/* Freunde / Global Toggle */}
-      <div className="flex rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
-        {(['friends', 'global'] as ViewMode[]).map((mode) => (
+      {/* Übungs-Switcher (nur wenn >1 eingeschrieben) */}
+      {enrolledExercises.length > 1 && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enrolledExercises.length}, 1fr)` }}>
+          {enrolledExercises.map((ex) => {
+            const isActive = ex.id === (shownExercise?.id);
+            return (
+              <button
+                key={ex.id}
+                onClick={() => setLeaderExercise(ex)}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive ? 'bg-brand-600 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
+                }`}
+              >
+                <img src={EXERCISE_ICONS[ex.slug] ?? '/pushup-icon.png'} alt={ex.name} className="h-5 w-5 rounded-md object-cover" />
+                {ex.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Tab-Leiste */}
+      <div className="grid grid-cols-2 gap-2">
+        {TABS.map((t) => (
           <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={`flex-1 py-2.5 text-sm font-semibold transition ${
-              viewMode === mode ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-ink-700'
+            key={t.key}
+            onClick={() => setSortKey(t.key)}
+            className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-sm font-semibold transition ${
+              sortKey === t.key
+                ? 'bg-brand-600 text-white'
+                : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
             }`}
           >
-            {mode === 'friends' ? '👥 Freunde' : '🌍 Global'}
+            {t.iconSrc
+              ? <img src={t.iconSrc} alt={t.label} className="h-5 w-5 object-contain" />
+              : <span>{t.icon}</span>}
+            {t.label}
           </button>
         ))}
       </div>
-
-      {/* Übungsauswahl + Heute/Gesamt (nur bei Freunde) */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <ExerciseDropdown />
-        </div>
-        {!isGlobal && (
-          <div className="flex shrink-0 rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setSortKey(t.key)}
-                className={`px-3 py-2.5 text-sm font-semibold transition ${
-                  sortKey === t.key
-                    ? 'bg-brand-600 text-white'
-                    : 'text-slate-400 hover:bg-ink-700'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {isGlobal && (
-          <div className="flex shrink-0 items-center gap-1">
-            <span className="rounded-xl border border-ink-700 bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white">
-              Heute
-            </span>
-            <button
-              onClick={() => setRulesOpen(true)}
-              aria-label="Spielregeln"
-              className="rounded-xl border border-ink-700 bg-ink-800 p-2.5 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-
 
 {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
@@ -275,7 +229,7 @@ export default function Leaderboard() {
 
                 {/* P1 Avatar – goldener Ring Mitte */}
                 <div
-                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
                   style={{ left: '50%', top: '31%' }}
                   onClick={() => handleTap(rows[0])}
                 >
@@ -284,7 +238,7 @@ export default function Leaderboard() {
 
                 {/* P2 Avatar – silberner Ring links */}
                 <div
-                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
                   style={{ left: '22%', top: '48%' }}
                   onClick={() => handleTap(rows[1])}
                 >
@@ -293,7 +247,7 @@ export default function Leaderboard() {
 
                 {/* P3 Avatar – bronzener Ring rechts */}
                 <div
-                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToday ? 'cursor-pointer' : ''}`}
                   style={{ left: '78%', top: '53%' }}
                   onClick={() => handleTap(rows[2])}
                 >
@@ -322,7 +276,7 @@ export default function Leaderboard() {
                           🔥<span className="text-[10px] font-medium align-sub">x {row.current_streak}</span>
                         </span>
                       )}
-                      <p className={`text-sm font-extrabold ${scoreColor}`}>{row[displaySortKey]}</p>
+                      <p className={`text-sm font-extrabold ${scoreColor}`}>{row[sortKey]}</p>
                       <p className="text-[9px] uppercase tracking-wide text-slate-500">{sortLabel}</p>
                     </div>
                   );
@@ -341,7 +295,7 @@ export default function Leaderboard() {
                     onClick={() => handleTap(row)}
                     className={`flex items-center gap-3 px-4 py-3 ${
                       row.is_me ? 'bg-brand-600/10' : ''
-                    } cursor-pointer active:bg-ink-700/60 transition`}
+                    } ${isToday ? 'cursor-pointer active:bg-ink-700/60 transition' : ''}`}
                   >
                     <span className="w-5 shrink-0 text-center text-sm font-bold text-slate-500">
                       {(hasPodium ? 3 : 0) + idx + 1}
@@ -366,32 +320,9 @@ export default function Leaderboard() {
                         )}
                       </p>
                     </div>
-                    {/* Add-friend button (global mode only) */}
-                    {isGlobal && !row.is_me && (() => {
-                      const gRow = row as GlobalLeaderboardRow;
-                      const alreadySent = sentRequests.has(row.user_id);
-                      const feedback = requestFeedback?.userId === row.user_id ? requestFeedback : null;
-                      if (gRow.is_friend) return null;
-                      if (gRow.has_pending_request || alreadySent) {
-                        return (
-                          <span className="shrink-0 text-[10px] text-slate-500 mr-2">
-                            {feedback?.ok === false ? '✗' : '✓ Anfrage'}
-                          </span>
-                        );
-                      }
-                      return (
-                        <button
-                          onClick={(e) => void handleAddFriend(e, gRow)}
-                          aria-label="Als Freund hinzufügen"
-                          className="shrink-0 mr-2 rounded-lg p-1.5 text-slate-400 hover:bg-ink-700 hover:text-brand-300 transition active:scale-95"
-                        >
-                          <UserPlusIcon className="h-4 w-4" />
-                        </button>
-                      );
-                    })()}
                     <div className="shrink-0 text-right">
                       <p className="flex items-center justify-end gap-1 text-base font-extrabold text-brand-200">
-                        {row[displaySortKey]}
+                        {row[sortKey]}
                       </p>
                       <p className="text-[10px] uppercase tracking-wide text-slate-500">
                         {sortLabel}
@@ -405,72 +336,12 @@ export default function Leaderboard() {
         </>
       )}
 
-      {/* Spielregeln Sheet */}
-      {rulesOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setRulesOpen(false)}
-        >
-          <div
-            className="w-full max-w-md animate-pop-in rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-ink-600" />
-            <h2 className="mb-4 text-center text-base font-bold text-slate-100">📋 Spielregeln</h2>
-
-            <div className="space-y-4 text-sm text-slate-300">
-              <div className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-lg">🏆</span>
-                <div>
-                  <p className="font-semibold text-slate-100">Tagesrangliste</p>
-                  <p className="text-slate-400">Gewertet werden alle Liegestütze, die du heute eingetragen hast.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-lg">⏱️</span>
-                <div>
-                  <p className="font-semibold text-slate-100">Gleichstand</p>
-                  <p className="text-slate-400">Bei gleicher Anzahl liegt vorne, wer diese Zahl zuerst erreicht hat. Wer früher trainiert, hat Priorität.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-lg">🚀</span>
-                <div>
-                  <p className="font-semibold text-slate-100">Überholen</p>
-                  <p className="text-slate-400">Du kannst einen Spieler mit gleicher Anzahl nur überholen, wenn du mindestens einen Liegestütz mehr schaffst.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-lg">🥇</span>
-                <div>
-                  <p className="font-semibold text-slate-100">Medaillen</p>
-                  <p className="text-slate-400">Gold, Silber und Bronze gehen an Platz 1, 2 und 3. Pro Tag gibt es jede Medaille nur einmal.</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setRulesOpen(false)}
-              className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
-            >
-              Verstanden
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* User Info Sheet */}
-      {infoSheet && activeExercise && (
-        <UserInfoSheet
-          userId={infoSheet.userId}
-          displayName={infoSheet.displayName}
-          avatarUrl={infoSheet.avatarUrl}
-          exerciseId={activeExercise.id}
-          onClose={() => setInfoSheet(null)}
-          showTodaySets
+      {/* Bottom Sheet: heutige Sätze */}
+      {selectedRow && shownExercise && (
+        <TodaySetsSheet
+          row={selectedRow}
+          exerciseId={shownExercise.id}
+          onClose={() => setSelectedRow(null)}
         />
       )}
 
