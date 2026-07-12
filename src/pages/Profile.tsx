@@ -7,7 +7,6 @@ import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise } from '@/context/ExerciseContext';
 import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useToast } from '@/context/ToastContext';
-import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
 import { LoadingState, ErrorState } from '@/components/ui/States';
@@ -15,23 +14,65 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { LogoutIcon } from '@/components/ui/icons';
 import { formatDate } from '@/lib/date';
 
+// ─── StatCell ────────────────────────────────────────────────────────────────
 
-// ─── StatCell ───────────────────────────────────────────────────────
 interface StatCellProps {
+  icon: string;
   label: string;
   value: string | number;
+  highlight?: 'orange' | 'gold' | 'medal';
   accent?: string;
 }
-function StatCell({ label, value, accent = 'text-brand-300' }: StatCellProps) {
+
+function StatCell({ icon, label, value, highlight, accent }: StatCellProps) {
+  const valueColor = highlight === 'orange'
+    ? 'text-orange-400'
+    : highlight === 'gold'
+    ? 'text-amber-400'
+    : highlight === 'medal'
+    ? 'text-brand-300'
+    : accent ?? 'text-brand-300';
+
+  const borderClass = highlight === 'orange'
+    ? 'border-orange-500/25'
+    : highlight === 'gold'
+    ? 'border-amber-500/25'
+    : highlight === 'medal'
+    ? 'border-brand-500/25'
+    : 'border-ink-700';
+
+  const glowStyle: React.CSSProperties = highlight === 'orange'
+    ? { boxShadow: '0 0 0 1px rgba(251,146,60,0.15), 0 0 18px rgba(251,146,60,0.1)' }
+    : highlight === 'gold'
+    ? { boxShadow: '0 0 0 1px rgba(245,158,11,0.15), 0 0 18px rgba(245,158,11,0.1)' }
+    : highlight === 'medal'
+    ? { boxShadow: '0 0 0 1px rgba(99,102,241,0.15), 0 0 14px rgba(99,102,241,0.08)' }
+    : {};
+
   return (
-    <div className="flex flex-col items-center rounded-xl border border-ink-700 bg-ink-800/60 px-3 py-3 text-center">
-      <span className={`text-lg font-extrabold ${accent}`}>{value}</span>
-      <span className="mt-0.5 text-[11px] leading-tight text-slate-400">{label}</span>
+    <div
+      className={`flex flex-col rounded-xl border bg-ink-800/60 px-2.5 pt-2 pb-2.5 ${borderClass}`}
+      style={glowStyle}
+    >
+      <span className="text-[13px] leading-none mb-1.5">{icon}</span>
+      <span className={`text-[17px] font-extrabold leading-tight ${valueColor}`}>{value}</span>
+      <span className="mt-0.5 text-[10px] leading-tight text-slate-500">{label}</span>
     </div>
   );
 }
 
-// ─── Main ───────────────────────────────────────────────────────────
+// ─── SectionLabel ────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+      {children}
+    </p>
+  );
+}
+
+// ─── Main ────────────────────────────────────────────────────────────────────
+
 export default function Profile() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -44,6 +85,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [realHandle, setRealHandle] = useState<string | null>(null);
+  const [medalCounts, setMedalCounts] = useState<{ gold: number; silver: number; bronze: number } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -53,12 +95,20 @@ export default function Profile() {
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) {
-          const handle = `@${data.first_name.trim()} ${data.last_name.trim()}`;
-          setRealHandle(handle);
-        }
+        if (data) setRealHandle(`@${data.first_name.trim()} ${data.last_name.trim()}`);
       });
   }, [user]);
+
+  useEffect(() => {
+    if (!exercise?.id || !user) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).rpc('get_my_medal_counts', { p_exercise: exercise.id })
+      .then(({ data }: { data: { gold_count: number; silver_count: number; bronze_count: number }[] | null }) => {
+        if (data?.[0]) {
+          setMedalCounts({ gold: data[0].gold_count, silver: data[0].silver_count, bronze: data[0].bronze_count });
+        }
+      });
+  }, [exercise?.id, user]);
 
   if (profileLoading || !profile) return <LoadingState label="Lade Profil …" />;
 
@@ -71,18 +121,26 @@ export default function Profile() {
     else { toast.success('Profil gespeichert.'); setEditing(false); }
   }
 
+  const totalMedals = medalCounts
+    ? medalCounts.gold + medalCounts.silver + medalCounts.bronze
+    : null;
+
+  const medalLabel = medalCounts
+    ? `🥇${medalCounts.gold} 🥈${medalCounts.silver} 🥉${medalCounts.bronze}`
+    : '–';
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <ExerciseDropdown />
 
-      {/* Profil-Header */}
-      <Card>
-        <div className="flex items-center gap-4">
+      {/* ── Profil-Karte ─────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-ink-700 bg-ink-800/60 px-4 py-3">
+        <div className="flex items-center gap-3">
           <AvatarUpload
             url={profile.avatar_url ?? null}
             name={profile.display_name || profile.username}
             userId={profile.id}
-            size={64}
+            size={80}
             onUploaded={async (newUrl) => {
               const { error } = await updateProfile({ avatar_url: newUrl });
               return { error };
@@ -90,44 +148,40 @@ export default function Profile() {
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h2 className="truncate text-xl font-extrabold">
+              <h2 className="truncate text-xl font-extrabold text-white">
                 {profile.display_name || profile.username}
               </h2>
               {!editing && (
                 <button
                   onClick={() => { setForm({ display_name: profile.display_name ?? '' }); setEditing(true); }}
-                  className="shrink-0 text-base leading-none text-slate-400 hover:text-slate-200 transition"
+                  className="shrink-0 text-sm leading-none text-slate-500 hover:text-slate-200 transition"
                   title="Name ändern"
                 >
                   ✏️
                 </button>
               )}
             </div>
-            <p className="text-sm text-slate-400">
+            <p className="text-[13px] text-slate-400 leading-tight">
               {realHandle ?? `@${profile.username}`}
             </p>
+            <p className="text-[11px] text-slate-500 truncate mt-0.5">{user?.email}</p>
+            <p className="text-[10px] text-slate-700 mt-0.5">Dabei seit {formatDate(profile.created_at)}</p>
           </div>
-          <div className="flex shrink-0 flex-col gap-1">
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="rounded-full p-1.5 text-slate-400 hover:bg-ink-700 hover:text-red-400 transition"
-              title="Abmelden"
-            >
-              <LogoutIcon className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="shrink-0 rounded-full p-1.5 text-slate-500 hover:bg-ink-700 hover:text-red-400 transition"
+            title="Abmelden"
+          >
+            <LogoutIcon className="h-5 w-5" />
+          </button>
         </div>
-        <div className="mt-3">
-          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-          <p className="text-xs text-slate-600">Dabei seit {formatDate(profile.created_at)}</p>
-        </div>
-      </Card>
+      </div>
 
-      {/* Profil bearbeiten */}
+      {/* ── Name bearbeiten ───────────────────────────────────────── */}
       {editing && (
-        <Card>
-          <CardTitle>Name ändern</CardTitle>
-          <form onSubmit={onSave} className="mt-3 space-y-3">
+        <div className="rounded-2xl border border-ink-700 bg-ink-800/60 px-4 py-4">
+          <p className="mb-3 text-sm font-semibold text-slate-300">Name ändern</p>
+          <form onSubmit={onSave} className="space-y-3">
             <Field label="Anzeigename" htmlFor="display_name">
               <Input id="display_name" maxLength={50} value={form.display_name}
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
@@ -137,31 +191,92 @@ export default function Profile() {
               <Button type="submit" fullWidth loading={saving}>Speichern</Button>
             </div>
           </form>
-        </Card>
+        </div>
       )}
 
-      {/* Statistik */}
+      {/* ── Hero-Kacheln ─────────────────────────────────────────── */}
+      {!statsLoading && (
+        <div
+          className="rounded-2xl border border-brand-500/20 px-4 py-3"
+          style={{
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(8,8,15,0.85) 100%)',
+            boxShadow: '0 0 32px rgba(99,102,241,0.08)',
+          }}
+        >
+          <div className="flex items-center justify-around">
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-orange-400 leading-none">
+                {stats.currentStreak}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-400">🔥 Streak</p>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-brand-300 leading-none">
+                {stats.totalAmount.toLocaleString('de-DE')}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-400">💪 Gesamt</p>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-amber-400 leading-none">
+                {totalMedals ?? '–'}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-400">🏅 Medaillen</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Statistiken ───────────────────────────────────────────── */}
       {statsLoading ? (
         <LoadingState label="Lade Statistiken …" />
       ) : statsError ? (
         <ErrorState message={statsError} />
       ) : (
-          <Card>
-            <CardTitle>Statistik</CardTitle>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <StatCell label="Gesamt" value={stats.totalAmount} />
-              <StatCell label="Ø pro Trainingstag" value={stats.avgPerActiveDay} />
-              <StatCell label="Längste Streak" value={`${stats.longestStreak} 👑`} accent="text-amber-400" />
-              <StatCell label="Akt. Streak" value={`${stats.currentStreak} 🔥`} accent="text-amber-300" />
-              <StatCell label="Bester Tag" value={stats.bestDay ? stats.bestDay.amount : '–'} accent="text-emerald-400" />
-              <StatCell label="Trainingstage" value={stats.trainingDays} />
-              <StatCell label="Letzte 7 Tage" value={stats.last7Days} />
-              <StatCell label="Letzte 30 Tage" value={stats.last30Days} />
+        <div className="space-y-3">
+          {/* Training */}
+          <div className="space-y-2">
+            <SectionLabel>Training</SectionLabel>
+            <div className="grid grid-cols-3 gap-2">
+              <StatCell icon="💪" label="Gesamt" value={stats.totalAmount.toLocaleString('de-DE')} />
+              <StatCell icon="📈" label="Ø pro Tag" value={stats.avgPerActiveDay} />
+              <StatCell icon="📅" label="Trainingstage" value={stats.trainingDays} />
             </div>
-          </Card>
+          </div>
+
+          {/* Rekorde */}
+          <div className="space-y-2">
+            <SectionLabel>Rekorde</SectionLabel>
+            <div className="grid grid-cols-3 gap-2">
+              <StatCell icon="🔥" label="Akt. Streak" value={`${stats.currentStreak}d`} highlight="orange" />
+              <StatCell icon="👑" label="Längste Streak" value={`${stats.longestStreak}d`} highlight="gold" />
+              <StatCell icon="🟢" label="Bester Tag" value={stats.bestDay ? stats.bestDay.amount : '–'} accent="text-emerald-400" />
+            </div>
+          </div>
+
+          {/* Aktivität */}
+          <div className="space-y-2">
+            <SectionLabel>Aktivität</SectionLabel>
+            <div className="grid grid-cols-2 gap-2">
+              <StatCell icon="📊" label="Letzte 7 Tage" value={stats.last7Days} />
+              <StatCell icon="📆" label="Letzte 30 Tage" value={stats.last30Days} />
+            </div>
+          </div>
+
+          {/* Erfolge */}
+          {medalCounts && (
+            <div className="space-y-2">
+              <SectionLabel>Erfolge</SectionLabel>
+              <div className="grid grid-cols-1 gap-2">
+                <StatCell icon="🏅" label="Medaillen" value={medalLabel} highlight="medal" />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Abmelden-Bestätigung */}
+      {/* ── Abmelden-Bestätigung ──────────────────────────────────── */}
       {confirmLogout && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
