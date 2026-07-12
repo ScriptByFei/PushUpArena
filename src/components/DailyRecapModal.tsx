@@ -231,7 +231,7 @@ function MedalAwardCard({
         border: `1.5px solid ${cfg.border}`,
         background: cfg.bg,
         boxShadow: cfg.glow,
-        padding: '28px 20px',
+        padding: '18px 16px',
       }}
     >
       {cfg.confetti && <Confetti />}
@@ -243,14 +243,14 @@ function MedalAwardCard({
         aria-hidden
       >
         <div
-          className="h-48 w-48 rounded-full medal-glow-pulse"
+          className="h-36 w-36 rounded-full medal-glow-pulse"
           style={{ background: `radial-gradient(circle, ${cfg.glowColor} 0%, transparent 70%)` }}
         />
       </div>
 
       {/* Label */}
       <p
-        className="relative mb-4 text-center text-xs font-bold uppercase tracking-widest"
+        className="relative mb-2 text-center text-xs font-bold uppercase tracking-widest"
         style={{ color: cfg.labelColor }}
       >
         {cfg.label}
@@ -262,34 +262,34 @@ function MedalAwardCard({
           <img
             src={img ?? '/trophy-gold.png'}
             alt={medal}
-            className="h-28 w-28 object-contain"
-            style={{ filter: `drop-shadow(0 0 20px ${cfg.glowColor})` }}
+            className="h-20 w-20 object-contain"
+            style={{ filter: `drop-shadow(0 0 16px ${cfg.glowColor})` }}
           />
         </div>
       </div>
 
       {/* Titel */}
-      <h2 className="relative mt-5 text-center text-2xl font-extrabold text-white">
+      <h2 className="relative mt-3 text-center text-xl font-extrabold text-white">
         {cfg.title}
       </h2>
 
       {/* Untertitel */}
-      <p className="relative mt-1.5 text-center text-sm text-slate-400">
+      <p className="relative mt-1 text-center text-sm text-slate-400">
         {cfg.subtitle}
       </p>
 
       {/* Medaillen-Zähler */}
       <div
-        className="relative mx-auto mt-5 flex max-w-[260px] items-center justify-between rounded-2xl px-5 py-3"
+        className="relative mx-auto mt-3 flex max-w-[240px] items-center justify-between rounded-2xl px-4 py-2"
         style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${cfg.border}` }}
       >
         <div className="text-center">
-          <p className="text-xl font-extrabold" style={{ color: cfg.labelColor }}>+1</p>
+          <p className="text-lg font-extrabold" style={{ color: cfg.labelColor }}>+1</p>
           <p className="text-[11px] text-slate-400">{cfg.countLabel}</p>
         </div>
-        <div className="h-8 w-px bg-white/10" />
+        <div className="h-7 w-px bg-white/10" />
         <div className="text-center">
-          <p className="text-xl font-extrabold text-white">{total ?? '–'}</p>
+          <p className="text-lg font-extrabold text-white">{total ?? '–'}</p>
           <p className="text-[11px] text-slate-400">
             {total === 1 ? cfg.countLabel : cfg.countLabelPl}
           </p>
@@ -298,7 +298,7 @@ function MedalAwardCard({
 
       {/* Motivationstext */}
       {cfg.motivation && (
-        <p className="relative mt-4 text-center text-xs text-slate-500">
+        <p className="relative mt-2.5 text-center text-xs text-slate-500">
           {cfg.motivation}
         </p>
       )}
@@ -311,9 +311,9 @@ function MedalAwardCard({
 function NoMedalCard({ bronzeGap }: { bronzeGap: number | null }) {
   const urgent = bronzeGap !== null && bronzeGap <= 15;
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-900 px-5 py-5">
-      <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink-800 text-3xl">
+    <div className="rounded-2xl border border-ink-700 bg-ink-900 px-4 py-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-800 text-2xl">
           🏅
         </div>
         <div className="flex-1">
@@ -342,7 +342,7 @@ function TrendLine({ positive }: { positive: boolean }) {
     : 'M0 4 C18 10, 36 18, 55 24 S78 30, 100 34';
   const dotY = positive ? 2 : 34;
   return (
-    <svg viewBox="0 0 100 36" className="h-9 w-28" fill="none" preserveAspectRatio="none">
+    <svg viewBox="0 0 100 36" className="h-7 w-20" fill="none" preserveAspectRatio="none">
       <defs>
         <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
@@ -358,15 +358,15 @@ function TrendLine({ positive }: { positive: boolean }) {
 // ── Podest ───────────────────────────────────────────────────────────────────
 
 const PODIUM_CFG = [
-  { ring: '2px solid #60a5fa', glow: '0 0 14px 2px rgba(96,165,250,0.35)',   badgeBg: '#3b82f6', scoreColor: 'text-slate-300',  size: 50, mt: 28, label: '2' },
-  { ring: '2px solid #f59e0b', glow: '0 0 20px 4px rgba(245,158,11,0.45)',   badgeBg: '#d97706', scoreColor: 'text-amber-400',  size: 68, mt: 0,  label: '1' },
-  { ring: '2px solid #c2763a', glow: '0 0 14px 2px rgba(194,118,58,0.35)',   badgeBg: '#c2510a', scoreColor: 'text-orange-400', size: 50, mt: 36, label: '3' },
+  { ring: '2px solid #60a5fa', glow: '0 0 14px 2px rgba(96,165,250,0.35)',   badgeBg: '#3b82f6', scoreColor: 'text-slate-300',  size: 42, mt: 22, label: '2' },
+  { ring: '2px solid #f59e0b', glow: '0 0 20px 4px rgba(245,158,11,0.45)',   badgeBg: '#d97706', scoreColor: 'text-amber-400',  size: 58, mt: 0,  label: '1' },
+  { ring: '2px solid #c2763a', glow: '0 0 14px 2px rgba(194,118,58,0.35)',   badgeBg: '#c2510a', scoreColor: 'text-orange-400', size: 42, mt: 28, label: '3' },
 ] as const;
 
 const PLAT_CFG = [
-  { bg: 'rgba(96,165,250,0.18)',  h: 16 },
-  { bg: 'rgba(245,158,11,0.25)',  h: 26 },
-  { bg: 'rgba(194,118,58,0.18)',  h: 10 },
+  { bg: 'rgba(96,165,250,0.18)',  h: 12 },
+  { bg: 'rgba(245,158,11,0.25)',  h: 20 },
+  { bg: 'rgba(194,118,58,0.18)',  h: 8 },
 ];
 
 function Podium({ entries }: { entries: TopThreeEntry[] }) {
@@ -375,7 +375,7 @@ function Podium({ entries }: { entries: TopThreeEntry[] }) {
   const display = [second, first, third];
 
   return (
-    <div className="flex items-end justify-center gap-6 pt-5 pb-2">
+    <div className="flex items-end justify-center gap-5 pt-3 pb-1">
       {display.map((entry, i) => {
         const cfg = PODIUM_CFG[i];
         const plat = PLAT_CFG[i];
@@ -596,12 +596,12 @@ export function DailyRecapModal({
         >
 
         {/* Hero */}
-        <div className="relative px-6 pb-5 pt-2 text-center">
+        <div className="relative px-4 pb-3 pt-1 text-center">
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-64 w-64 rounded-full bg-brand-600/10 blur-3xl" />
+            <div className="h-48 w-48 rounded-full bg-brand-600/10 blur-3xl" />
           </div>
-          <h1 className="relative text-3xl font-extrabold tracking-tight text-white">Arena-Rückblick</h1>
-          <p className="relative mt-0.5 text-sm text-slate-400">{dateLong}</p>
+          <h1 className="relative text-2xl font-extrabold tracking-tight text-white">Arena-Rückblick</h1>
+          <p className="relative mt-0 text-sm text-slate-400">{dateLong}</p>
         </div>
 
         {/* Karten */}
@@ -610,46 +610,46 @@ export function DailyRecapModal({
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
           </div>
         ) : (
-          <div className="space-y-3 px-4 pb-10">
+          <div className="space-y-3 px-3 pb-8">
 
             {isResting ? (
-              <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5 text-center">
-                <span className="text-4xl">💤</span>
+              <div className="rounded-2xl border border-ink-700 bg-ink-900 p-4 text-center">
+                <span className="text-3xl">💤</span>
                 <p className="mt-2 text-base font-bold text-slate-200">Ruhetag</p>
-                <p className="mt-1 text-sm text-slate-500">Kein Training eingetragen.</p>
+                <p className="mt-0.5 text-sm text-slate-500">Kein Training eingetragen.</p>
               </div>
             ) : (
               <>
                 {/* ── 1. Tagesleistung ──────────────────────────── */}
-                <div className="rounded-2xl border border-brand-500/35 bg-ink-900 p-4">
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-brand-400">
+                <div className="rounded-2xl border border-brand-500/35 bg-ink-900 p-3.5">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-brand-400">
                     💪 Deine Leistung
                   </p>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <p className="text-5xl font-extrabold leading-none text-white">
+                      <p className="text-4xl font-extrabold leading-none text-white">
                         {recap.yesterday_pushups}
                       </p>
-                      <p className="mt-1 text-sm text-slate-400">Push-ups</p>
-                      <div className="mt-3">
+                      <p className="mt-0.5 text-sm text-slate-400">Push-ups</p>
+                      <div className="mt-2">
                         <TrendLine positive={delta >= 0 || !hasDelta} />
                       </div>
                     </div>
                     {recap.yesterday_rank != null && (
                       <div className="flex shrink-0 flex-col items-center">
-                        <div className="flex h-[74px] w-[74px] flex-col items-center justify-center rounded-full border-2 border-brand-500 bg-brand-600/10">
-                          <span className="text-2xl font-extrabold text-brand-400">
+                        <div className="flex h-[62px] w-[62px] flex-col items-center justify-center rounded-full border-2 border-brand-500 bg-brand-600/10">
+                          <span className="text-xl font-extrabold text-brand-400">
                             #{recap.yesterday_rank}
                           </span>
                         </div>
-                        <p className="mt-1.5 text-center text-[10px] leading-tight text-slate-500">
+                        <p className="mt-1 text-center text-[10px] leading-tight text-slate-500">
                           Platzierung<br />von allen
                         </p>
                       </div>
                     )}
                   </div>
                   {hasDelta && (
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <p className={`flex items-center gap-1 text-sm font-semibold ${
                         delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
                       }`}>
@@ -672,7 +672,7 @@ export function DailyRecapModal({
 
                 {/* ── 3. Top 3 ──────────────────────────────────── */}
                 {top3.length > 0 && (
-                  <div className="rounded-2xl border border-ink-700 bg-ink-900 p-4">
+                  <div className="rounded-2xl border border-ink-700 bg-ink-900 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
                       🏆 Top 3 dieses Tages
                     </p>
@@ -692,7 +692,7 @@ export function DailyRecapModal({
               }}
             >
               <div
-                className="rounded-2xl border border-brand-500/25 p-6 text-center"
+                className="rounded-2xl border border-brand-500/25 p-5 text-center"
                 style={{
                   background: 'linear-gradient(145deg, rgba(99,102,241,0.13) 0%, rgba(8,8,15,0.97) 100%)',
                   boxShadow: '0 0 48px 0 rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
@@ -706,7 +706,7 @@ export function DailyRecapModal({
                 </p>
                 <button
                   onClick={handleStartTraining}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-[14px] text-base font-extrabold text-white
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-base font-extrabold text-white
                     shadow-[0_0_28px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.97]"
                 >
                   <span>💪</span>
