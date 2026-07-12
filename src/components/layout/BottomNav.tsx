@@ -81,7 +81,7 @@ export function BottomNav() {
     >
       {/* GlobalStats + FAB + Erfolge — kohärente schwebende Leiste */}
       <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full pb-1.5">
-        <div className="flex items-center gap-2 rounded-2xl border border-ink-700/70 bg-ink-900/90 px-2.5 py-1.5 shadow-lg backdrop-blur-sm">
+        <div className="flex items-center gap-2 rounded-2xl border border-ink-700/30 bg-ink-900/20 px-2.5 py-1.5 shadow-lg backdrop-blur-sm">
           {/* Globale Statistik */}
           <GlobalStatsFab />
 
