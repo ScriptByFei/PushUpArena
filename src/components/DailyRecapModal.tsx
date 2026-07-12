@@ -3,6 +3,7 @@
  * Medaillenvergabe als emotionaler Höhepunkt des Tages-Recaps.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar } from '@/components/ui/Avatar';
 import type { DailyRecap, TopThreeEntry, MedalCounts, RecapDateEntry } from '@/hooks/useDailyRecap';
 
@@ -495,6 +496,33 @@ export function DailyRecapModal({
     return () => cancelAnimationFrame(t);
   }, []);
 
+  // ── Abschluss-Karte ──────────────────────────────────────────────────────
+  const navigate = useNavigate();
+  const closingCardRef = useRef<HTMLDivElement>(null);
+  const [closingVisible, setClosingVisible] = useState(false);
+
+  useEffect(() => {
+    setClosingVisible(false); // reset on date change so card re-animates
+  }, [recap.recap_date]);
+
+  useEffect(() => {
+    const el = closingCardRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setClosingVisible(true); },
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [recap.recap_date]);
+
+  async function handleStartTraining() {
+    setVisible(false);
+    await new Promise((r) => setTimeout(r, 220));
+    onClose();
+    navigate('/track');
+  }
+
   const delta     = recap.yesterday_pushups - recap.prev_day_pushups;
   const hasDelta  = recap.prev_day_pushups > 0;
   const top3      = recap.top_three ?? [];
@@ -584,7 +612,7 @@ export function DailyRecapModal({
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
           </div>
         ) : (
-          <div className="space-y-3 px-4 pb-28">
+          <div className="space-y-3 px-4 pb-10">
 
             {isResting ? (
               <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5 text-center">
@@ -655,23 +683,43 @@ export function DailyRecapModal({
                 )}
               </>
             )}
+
+            {/* ── Abschluss-Karte ───────────────────────────────── */}
+            <div
+              ref={closingCardRef}
+              className="transition-[opacity,transform] duration-[250ms] ease-out"
+              style={{
+                opacity: closingVisible ? 1 : 0,
+                transform: closingVisible ? 'translateY(0)' : 'translateY(16px)',
+              }}
+            >
+              <div
+                className="rounded-2xl border border-brand-500/25 p-6 text-center"
+                style={{
+                  background: 'linear-gradient(145deg, rgba(99,102,241,0.13) 0%, rgba(8,8,15,0.97) 100%)',
+                  boxShadow: '0 0 48px 0 rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
+                }}
+              >
+                <p className="text-[13px] font-bold uppercase tracking-widest text-brand-400">
+                  🏁 Arena-Rückblick abgeschlossen
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  Du bist bereit für den heutigen Wettkampf.
+                </p>
+                <button
+                  onClick={handleStartTraining}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-[14px] text-base font-extrabold text-white
+                    shadow-[0_0_28px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.97]"
+                >
+                  <span>💪</span>
+                  <span>Training starten</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
         </div> {/* /slide-animated wrapper */}
-      </div>
-
-      {/* ── CTA ──────────────────────────────────────────────────── */}
-      <div
-        className="shrink-0 bg-gradient-to-t from-[#08080f] via-[#08080f]/90 to-transparent px-4 pt-3"
-        style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
-      >
-        <button
-          onClick={handleClose}
-          className="w-full rounded-2xl bg-brand-600 py-3.5 text-base font-extrabold text-white
-            shadow-[0_0_24px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.98]"
-        >
-          💪 Los geht's!
-        </button>
       </div>
 
       {/* ── Animationen ────────────────────────────────────────────── */}
