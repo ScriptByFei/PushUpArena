@@ -2,9 +2,84 @@
  * DailyRecapModal – Premium-Redesign
  * Medaillenvergabe als emotionaler Höhepunkt des Tages-Recaps.
  */
-import { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '@/components/ui/Avatar';
-import type { DailyRecap, TopThreeEntry, MedalCounts } from '@/hooks/useDailyRecap';
+import type { DailyRecap, TopThreeEntry, MedalCounts, RecapDateEntry } from '@/hooks/useDailyRecap';
+
+const SWIPE_HINT_KEY = 'recap-swipe-hint-v1';
+
+// ── Datums-Leiste ────────────────────────────────────────────────────────────
+
+function DateStrip({
+  dates,
+  currentIdx,
+  onSelect,
+  disabled,
+}: {
+  dates: RecapDateEntry[];
+  currentIdx: number;
+  onSelect: (idx: number) => void;
+  disabled?: boolean;
+}) {
+  const stripRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  // Display oldest → newest (left → right)
+  const displayDates = useMemo(
+    () => dates.map((d, i) => ({ ...d, originalIdx: i })).reverse(),
+    [dates],
+  );
+  const currentDisplayIdx = dates.length - 1 - currentIdx;
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    const btn = activeRef.current;
+    if (!strip || !btn) return;
+    const target = btn.offsetLeft - strip.offsetWidth / 2 + btn.offsetWidth / 2;
+    strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  }, [currentIdx, dates.length]);
+
+  if (dates.length <= 1) return null;
+
+  return (
+    <div
+      ref={stripRef}
+      className="flex gap-0.5 overflow-x-auto pb-1"
+      style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+    >
+      {/* Leading spacer so first item can be scrolled to center */}
+      <div className="shrink-0" style={{ minWidth: 'calc(50% - 26px)' }} />
+
+      {displayDates.map(({ recap_date, originalIdx }, di) => {
+        const isActive = di === currentDisplayIdx;
+        const d = new Date(recap_date + 'T12:00:00');
+        const weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '');
+        const dayNum = d.getDate();
+
+        return (
+          <button
+            key={recap_date}
+            ref={isActive ? activeRef : null}
+            onClick={() => !disabled && onSelect(originalIdx)}
+            className={`flex shrink-0 flex-col items-center rounded-xl px-3 transition-all duration-200 ${
+              isActive ? 'bg-white/10 py-1.5' : 'py-1 opacity-40 active:opacity-70'
+            }`}
+          >
+            <span className={`text-[10px] font-medium leading-tight ${isActive ? 'text-slate-300' : 'text-slate-500'}`}>
+              {weekday}
+            </span>
+            <span className={`font-bold leading-tight ${isActive ? 'text-[18px] text-white' : 'text-base text-slate-400'}`}>
+              {dayNum}
+            </span>
+          </button>
+        );
+      })}
+
+      {/* Trailing spacer */}
+      <div className="shrink-0" style={{ minWidth: 'calc(50% - 26px)' }} />
+    </div>
+  );
+}
 
 // ── Konfetti (Gold) ──────────────────────────────────────────────────────────
 
@@ -337,10 +412,9 @@ function Podium({ entries }: { entries: TopThreeEntry[] }) {
 interface Props {
   recap: DailyRecap;
   onClose: () => void;
-  onPrev?: () => void;
-  onNext?: () => void;
-  hasPrev?: boolean;
-  hasNext?: boolean;
+  availableDates?: RecapDateEntry[];
+  currentDateIdx?: number;
+  onDateSelect?: (idx: number) => void;
   navLoading?: boolean;
   medalCounts?: MedalCounts | null;
 }
@@ -348,14 +422,73 @@ interface Props {
 export function DailyRecapModal({
   recap,
   onClose,
-  onPrev,
-  onNext,
-  hasPrev = false,
-  hasNext = false,
+  availableDates = [],
+  currentDateIdx = 0,
+  onDateSelect,
   navLoading = false,
   medalCounts = null,
 }: Props) {
   const [visible, setVisible] = useState(false);
+
+  // ── Slide-Animation beim Datumswechsel ───────────────────────────────────
+  const pendingDir = useRef<'left' | 'right' | null>(null);
+  const [slideKey, setSlideKey] = useState(recap.recap_date);
+  const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
+  const prevDate = useRef(recap.recap_date);
+
+  useEffect(() => {
+    if (recap.recap_date !== prevDate.current) {
+      setSlideKey(recap.recap_date);
+      setSlideDir(pendingDir.current);
+      prevDate.current = recap.recap_date;
+    }
+  }, [recap.recap_date]);
+
+  function navigate(idx: number) {
+    if (navLoading || idx === currentDateIdx) return;
+    pendingDir.current = idx > currentDateIdx ? 'left' : 'right';
+    onDateSelect?.(idx);
+  }
+
+  // ── Swipe-Geste ──────────────────────────────────────────────────────────
+  const touchStartX = useRef<number | null>(null);
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 48) return;
+    if (delta < 0 && currentDateIdx > 0) {
+      // Swipe links → neuer Tag (kleinerer idx)
+      navigate(currentDateIdx - 1);
+    } else if (delta > 0 && currentDateIdx < availableDates.length - 1) {
+      // Swipe rechts → älterer Tag (größerer idx)
+      navigate(currentDateIdx + 1);
+    }
+  }
+
+  // ── Onboarding-Hint ──────────────────────────────────────────────────────
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    if (availableDates.length > 1 && !localStorage.getItem(SWIPE_HINT_KEY)) {
+      const show = setTimeout(() => setShowHint(true), 900);
+      return () => clearTimeout(show);
+    }
+  }, [availableDates.length]);
+
+  useEffect(() => {
+    if (!showHint) return;
+    const hide = setTimeout(() => {
+      setShowHint(false);
+      localStorage.setItem(SWIPE_HINT_KEY, '1');
+    }, 3000);
+    return () => clearTimeout(hide);
+  }, [showHint]);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => setVisible(true));
@@ -373,9 +506,6 @@ export function DailyRecapModal({
     ? Math.max(0, bronzeEntry.pushups - recap.yesterday_pushups)
     : null;
 
-  const dateShort = new Date(recap.recap_date + 'T12:00:00').toLocaleDateString('de-DE', {
-    weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
-  });
   const dateLong = new Date(recap.recap_date + 'T12:00:00').toLocaleDateString('de-DE', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
@@ -392,30 +522,22 @@ export function DailyRecapModal({
         visible ? 'opacity-100' : 'opacity-0'
       }`}
     >
+      {/* Onboarding-Swipe-Hint – über dem gesamten Modal */}
+      {showHint && (
+        <div className="pointer-events-none absolute inset-x-0 z-20 flex justify-center" style={{ top: '42%' }}>
+          <div className="rounded-2xl bg-black/75 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm animate-hint-fade">
+            ← Zwischen Tagen wischen →
+          </div>
+        </div>
+      )}
+
       {/* ── Header ───────────────────────────────────────────────── */}
       <div
-        className="flex shrink-0 items-center justify-between px-4 pb-2"
+        className="shrink-0 px-4"
         style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}
       >
-        <button
-          onClick={hasPrev ? onPrev : handleClose}
-          disabled={navLoading && hasPrev}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 active:scale-95"
-          aria-label={hasPrev ? 'Älter' : 'Schließen'}
-        >
-          ←
-        </button>
-        <span className="text-sm font-semibold text-brand-400">{dateShort}</span>
-        {hasNext ? (
-          <button
-            onClick={onNext}
-            disabled={navLoading}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 active:scale-95"
-            aria-label="Neuer"
-          >
-            →
-          </button>
-        ) : (
+        {/* Zeile: Leer links, ✕ rechts */}
+        <div className="flex items-center justify-end pb-1">
           <button
             onClick={handleClose}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:bg-white/10 active:scale-95"
@@ -423,11 +545,29 @@ export function DailyRecapModal({
           >
             ✕
           </button>
-        )}
+        </div>
+
+        {/* Datums-Leiste */}
+        <DateStrip
+          dates={availableDates}
+          currentIdx={currentDateIdx}
+          onSelect={navigate}
+          disabled={navLoading}
+        />
       </div>
 
-      {/* ── Scrollbarer Inhalt ────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
+      {/* ── Scrollbarer Inhalt (mit Swipe-Erkennung) ─────────────── */}
+      <div
+        className="flex-1 overflow-y-auto"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+
+        {/* Animierter Inhalts-Wrapper – Key-Wechsel triggert Slide */}
+        <div
+          key={slideKey}
+          className={slideDir === 'left' ? 'slide-from-left' : slideDir === 'right' ? 'slide-from-right' : ''}
+        >
 
         {/* Hero */}
         <div className="relative px-6 pb-5 pt-2 text-center">
@@ -517,6 +657,7 @@ export function DailyRecapModal({
             )}
           </div>
         )}
+        </div> {/* /slide-animated wrapper */}
       </div>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
@@ -535,6 +676,29 @@ export function DailyRecapModal({
 
       {/* ── Animationen ────────────────────────────────────────────── */}
       <style>{`
+        .slide-from-left {
+          animation: slideFromLeft 0.26s cubic-bezier(0.25,0.46,0.45,0.94) both;
+        }
+        .slide-from-right {
+          animation: slideFromRight 0.26s cubic-bezier(0.25,0.46,0.45,0.94) both;
+        }
+        .animate-hint-fade {
+          animation: hintFade 3s ease-in-out both;
+        }
+        @keyframes slideFromLeft {
+          from { opacity: 0; transform: translateX(-28px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideFromRight {
+          from { opacity: 0; transform: translateX(28px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes hintFade {
+          0%   { opacity: 0; transform: translateY(4px); }
+          15%  { opacity: 1; transform: translateY(0); }
+          75%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
         .medal-reveal {
           animation: medalReveal 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both;
         }

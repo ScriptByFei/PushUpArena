@@ -27,7 +27,7 @@ export function AppLayout() {
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
-  const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, goToPrev, goToNext, hasPrev, hasNext, navLoading, medalCounts } = useDailyRecap();
+  const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
 
@@ -107,10 +107,9 @@ export function AppLayout() {
         <DailyRecapModal
           recap={recap}
           onClose={() => { setRecapManualOpen(false); void dismissRecap(); }}
-          onPrev={goToPrev}
-          onNext={goToNext}
-          hasPrev={hasPrev}
-          hasNext={hasNext}
+          availableDates={availableDates}
+          currentDateIdx={currentDateIdx}
+          onDateSelect={goToDate}
           navLoading={navLoading}
           medalCounts={medalCounts}
         />

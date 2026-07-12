@@ -169,6 +169,12 @@ export function useDailyRecap() {
     void loadDate(availableDates[nextIdx]);
   }, [currentDateIdx, availableDates, loadDate]);
 
+  const goToDate = useCallback((idx: number) => {
+    if (idx < 0 || idx >= availableDates.length || idx === currentDateIdx) return;
+    setCurrentDateIdx(idx);
+    void loadDate(availableDates[idx]);
+  }, [availableDates, currentDateIdx, loadDate]);
+
   // ── Dismiss ────────────────────────────────────────────────────────────────
   const dismiss = useCallback(async () => {
     setOpen(false);
@@ -189,9 +195,12 @@ export function useDailyRecap() {
     forceLoad,
     goToPrev,
     goToNext,
+    goToDate,
     hasPrev: currentDateIdx < availableDates.length - 1,
     hasNext: currentDateIdx > 0,
     navLoading,
     medalCounts,
+    availableDates,
+    currentDateIdx,
   };
 }
