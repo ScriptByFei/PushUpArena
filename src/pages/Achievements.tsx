@@ -80,9 +80,14 @@ export default function Achievements() {
         </div>
       )}
 
-      <p className="text-xs text-slate-500 text-center">
-        Täglich werden die globalen Top 3 mit Gold, Silber und Bronze ausgezeichnet.
-      </p>
+      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-3 text-center space-y-1">
+        <p className="text-xs text-slate-400">
+          Täglich werden die globalen Top 3 mit Gold, Silber und Bronze ausgezeichnet.
+        </p>
+        <p className="text-xs text-slate-500">
+          🗓 Medaillenvergabe läuft seit dem <span className="font-semibold text-slate-300">6. Juli 2026</span>
+        </p>
+      </div>
 
       {rows.length === 0 ? (
         <EmptyState
