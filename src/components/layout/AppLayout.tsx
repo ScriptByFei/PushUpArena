@@ -31,7 +31,7 @@ export function AppLayout() {
   const hiddenAtRef = useRef<number | null>(null);
   const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
   const { enrolledExercises } = useExercise();
-  const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats';
+  const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats' && pathname !== '/achievements';
   const centerTitle = !showChip;
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
