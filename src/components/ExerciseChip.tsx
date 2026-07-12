@@ -32,7 +32,7 @@ export function ExerciseChip() {
           alt=""
           className="h-4 w-4 shrink-0 object-contain"
         />
-        <span className="max-w-[68px] truncate text-[11px] font-semibold text-white">
+        <span className="max-w-[100px] truncate text-[11px] font-semibold text-white">
           {exercise.name}
         </span>
         <svg

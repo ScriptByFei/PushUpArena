@@ -53,7 +53,7 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
+      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
         {/* Recap-Button links */}
         <button
           onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
@@ -62,17 +62,19 @@ export function AppLayout() {
         >
           <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
         </button>
-        {/* Titel + Exercise-Chip absolut zentriert */}
-        <div className="pointer-events-none absolute inset-x-0 flex items-center justify-center gap-2">
-          <span className="whitespace-nowrap text-base font-bold tracking-tight">{title}</span>
+
+        {/* Seitentitel — linksbündig, füllt verfügbaren Platz */}
+        <span className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-100">
+          {title}
+        </span>
+
+        {/* Exercise-Chip + Glocke + Settings — rechtsbündig */}
+        <div className="flex shrink-0 items-center gap-1">
           {pathname !== '/' && pathname !== '/global-stats' && (
-            <div className="pointer-events-auto shrink-0">
+            <div className="mr-1 max-w-[160px]">
               <ExerciseChip />
             </div>
           )}
-        </div>
-        {/* Glocke + Settings rechts */}
-        <div className="ml-auto flex items-center">
           <button
             onClick={() => {
               if (pushActive) {
