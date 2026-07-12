@@ -4,9 +4,9 @@ import { LoadingState, ErrorState } from '@/components/ui/States';
 const WEEKLY_GOAL = 10_000;
 
 const EXERCISES = [
-  { slug: 'pushups', label: 'PushUps', key: 'total_pushups' as const, text: 'text-brand-300',   glow: 'rgba(99,102,241,0.25)',  bar: 'bg-brand-500'   },
-  { slug: 'pullups', label: 'PullUps', key: 'total_pullups' as const, text: 'text-violet-300',  glow: 'rgba(139,92,246,0.25)', bar: 'bg-violet-500'  },
-  { slug: 'dips',    label: 'Dips',    key: 'total_dips'    as const, text: 'text-emerald-300', glow: 'rgba(16,185,129,0.25)', bar: 'bg-emerald-500' },
+  { slug: 'pushups', icon: 'pushup', label: 'PushUps', key: 'total_pushups' as const, text: 'text-brand-300',   glow: 'rgba(99,102,241,0.25)',  bar: 'bg-brand-500'   },
+  { slug: 'pullups', icon: 'pullup', label: 'PullUps', key: 'total_pullups' as const, text: 'text-violet-300',  glow: 'rgba(139,92,246,0.25)', bar: 'bg-violet-500'  },
+  { slug: 'dips',    icon: 'dips',   label: 'Dips',    key: 'total_dips'    as const, text: 'text-emerald-300', glow: 'rgba(16,185,129,0.25)', bar: 'bg-emerald-500' },
 ];
 
 function timeAgo(d: Date): string {
@@ -106,7 +106,7 @@ export default function GlobalStats() {
               className="flex flex-col items-center justify-center rounded-xl border border-ink-700/60 bg-ink-900/60 py-3 text-center"
               style={{ boxShadow: `0 0 14px ${ex.glow}` }}
             >
-              <img src={`/${ex.slug}-icon.png`} alt={ex.label} className="h-6 w-6 object-contain" />
+              <img src={`/${ex.icon}-icon.png`} alt={ex.label} className="h-6 w-6 object-contain" />
               <span className={`mt-1.5 tabular-nums text-base font-extrabold leading-none ${ex.text}`}>
                 {stats[ex.key].toLocaleString('de-DE')}
               </span>
