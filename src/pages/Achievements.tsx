@@ -4,7 +4,100 @@ import { useDailyPodiumSlider } from '@/hooks/useDailyPodiumSlider';
 import { Avatar } from '@/components/ui/Avatar';
 import { PodiumDisplay } from '@/components/PodiumDisplay';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/States';
+import type { PodiumRow } from '@/hooks/usePodiumHistory';
 
+// ── Rang-Badge (kompakt, farbig) ──────────────────────────────────
+function RankBadge({ idx }: { idx: number }) {
+  if (idx === 0) return <span className="text-[13px] leading-none" aria-label="Platz 1">🥇</span>;
+  if (idx === 1) return <span className="text-[13px] leading-none" aria-label="Platz 2">🥈</span>;
+  if (idx === 2) return <span className="text-[13px] leading-none" aria-label="Platz 3">🥉</span>;
+  return <span className="text-xs font-bold text-slate-500">{idx + 1}</span>;
+}
+
+// ── Persönliche Statistik ─────────────────────────────────────────
+function PersonalStats({ rows }: { rows: PodiumRow[] }) {
+  const myIdx = rows.findIndex((r) => r.is_me);
+  if (myIdx < 0) return null;
+
+  const myRow = rows[myIdx];
+  const myRank = myIdx + 1;
+  const myTotal = myRow.gold_count + myRow.silver_count + myRow.bronze_count;
+  const prevRow = myIdx > 0 ? rows[myIdx - 1] : null;
+  const prevTotal = prevRow
+    ? prevRow.gold_count + prevRow.silver_count + prevRow.bronze_count
+    : null;
+  const gap = prevTotal !== null ? prevTotal - myTotal : null;
+
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-0.5">
+      {/* Rang */}
+      <div className="shrink-0 min-w-[88px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Dein Rang</p>
+        <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">#{myRank}</p>
+      </div>
+
+      {/* Medaillen */}
+      <div className="shrink-0 min-w-[88px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Medaillen</p>
+        <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">{myTotal}</p>
+      </div>
+
+      {/* Abstand / Führung */}
+      {myRank === 1 ? (
+        <div className="shrink-0 min-w-[88px] rounded-xl border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-center">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-amber-500">Du führst</p>
+          <p className="mt-0.5 text-[17px]">🏆</p>
+        </div>
+      ) : gap !== null ? (
+        <div className="shrink-0 min-w-[100px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Bis nächster Rang</p>
+          <p className="mt-0.5 text-[17px] font-extrabold text-brand-300">{gap}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Motivationstext ───────────────────────────────────────────────
+function MotivationText({ rows }: { rows: PodiumRow[] }) {
+  const myIdx = rows.findIndex((r) => r.is_me);
+  if (myIdx < 0) return null;
+
+  const myRow = rows[myIdx];
+  const myRank = myIdx + 1;
+  const myTotal = myRow.gold_count + myRow.silver_count + myRow.bronze_count;
+  const prevRow = myIdx > 0 ? rows[myIdx - 1] : null;
+
+  let text = '';
+  if (myRank === 1) {
+    text = 'Du führst die Medaillenrangliste an! 🏆';
+  } else if (myTotal === 0) {
+    text = 'Heute kannst du deine erste Medaille gewinnen! 🎯';
+  } else if (prevRow) {
+    const goldGap = prevRow.gold_count - myRow.gold_count;
+    const totalGap =
+      (prevRow.gold_count + prevRow.silver_count + prevRow.bronze_count) -
+      (myRow.gold_count + myRow.silver_count + myRow.bronze_count);
+    if (goldGap === 1) {
+      text = `Mit einer Goldmedaille überholst du Platz ${myRank - 1}.`;
+    } else if (goldGap > 1) {
+      text = `Dir fehlen noch ${goldGap} Goldmedaillen bis zum nächsten Rang.`;
+    } else if (totalGap > 0) {
+      text = `Dir fehlt noch ${totalGap === 1 ? '1 Medaille' : `${totalGap} Medaillen`} bis zum nächsten Rang.`;
+    } else {
+      text = `Du bist nah dran an Platz ${myRank - 1}!`;
+    }
+  }
+
+  if (!text) return null;
+  return (
+    <div className="border-t border-ink-700/60 px-4 py-2.5 text-center">
+      <p className="text-xs text-slate-400">{text}</p>
+    </div>
+  );
+}
+
+// ── Hauptkomponente ───────────────────────────────────────────────
 export default function Achievements() {
   const { enrolledExercises, loading: exLoading } = useExercise();
   const pushups = enrolledExercises.find((ex) => ex.slug === 'pushups');
@@ -24,71 +117,89 @@ export default function Achievements() {
 
   const formattedDate = selectedDate
     ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('de-DE', {
-        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
       })
     : '–';
 
-  return (
-    <div className="space-y-4">
+  const canPrev = sliderIdx > 0 && !podiumLoading;
+  const canNext = sliderIdx < dates.length - 1 && !podiumLoading;
 
-      {/* ── Tages-Podest mit Datums-Slider ────────────────────────── */}
+  return (
+    <div className="space-y-3 pb-4">
+
+      {/* ── Tages-Podest ──────────────────────────────────────── */}
       {!datesLoading && dates.length > 0 && (
-        <div className="rounded-2xl border border-ink-700 bg-ink-800/70 px-4 pb-5 pt-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500 text-center">
+        <div className="rounded-2xl border border-ink-700 bg-ink-800/70 px-4 pb-3.5 pt-3">
+
+          {/* Titel */}
+          <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
             🏆 Tages-Podest
           </p>
 
-          {/* Datums-Navigation mit Pfeilen */}
-          <div className="flex items-center justify-between mb-4">
+          {/* Datumsnavigation */}
+          <div className="mt-1.5 flex items-center justify-center gap-1">
             <button
               onClick={() => setSliderIdx((i) => Math.max(0, i - 1))}
-              disabled={sliderIdx === 0 || podiumLoading}
-              className={`rounded-full p-2 transition ${
-                sliderIdx > 0 && !podiumLoading
-                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
-                  : 'text-ink-600 cursor-default'
-              }`}
+              disabled={!canPrev}
               aria-label="Vorheriger Tag"
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition active:scale-90 ${
+                canPrev
+                  ? 'text-slate-300 hover:bg-ink-700'
+                  : 'cursor-default text-ink-600'
+              }`}
             >
-              ←
+              ‹
             </button>
-            <p className="text-sm font-semibold text-slate-300">{formattedDate}</p>
+            <span className="min-w-[180px] text-center text-[13px] font-semibold text-slate-200">
+              {formattedDate}
+            </span>
             <button
               onClick={() => setSliderIdx((i) => Math.min(dates.length - 1, i + 1))}
-              disabled={sliderIdx === dates.length - 1 || podiumLoading}
-              className={`rounded-full p-2 transition ${
-                sliderIdx < dates.length - 1 && !podiumLoading
-                  ? 'text-slate-300 hover:bg-ink-700 active:scale-95'
-                  : 'text-ink-600 cursor-default'
-              }`}
+              disabled={!canNext}
               aria-label="Nächster Tag"
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition active:scale-90 ${
+                canNext
+                  ? 'text-slate-300 hover:bg-ink-700'
+                  : 'cursor-default text-ink-600'
+              }`}
             >
-              →
+              ›
             </button>
           </div>
 
-          {/* Podest */}
-          {podiumLoading ? (
-            <div className="flex justify-center py-6">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-            </div>
-          ) : top3 && top3.length > 0 ? (
-            <PodiumDisplay entries={top3} />
-          ) : (
-            <p className="text-center text-sm text-slate-500 py-4">Keine Daten für diesen Tag.</p>
-          )}
+          {/* Podest oder Ladestate */}
+          <div className="mt-2">
+            {podiumLoading ? (
+              <div className="flex justify-center py-5">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+              </div>
+            ) : top3 && top3.length > 0 ? (
+              <PodiumDisplay entries={top3} />
+            ) : (
+              <p className="py-3 text-center text-sm text-slate-500">Keine Daten für diesen Tag.</p>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-3 text-center space-y-1">
+      {/* ── Infobox ───────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-2.5 space-y-0.5">
         <p className="text-xs text-slate-400">
-          Täglich werden die globalen Top 3 mit Gold, Silber und Bronze ausgezeichnet.
+          🏅 Die globalen Top 3 erhalten täglich Gold, Silber und Bronze.
         </p>
         <p className="text-xs text-slate-500">
-          🗓 Medaillenvergabe läuft seit dem <span className="font-semibold text-slate-300">6. Juli 2026</span>
+          📅 Medaillenvergabe seit dem{' '}
+          <span className="font-semibold text-slate-300">6. Juli 2026</span>.
         </p>
       </div>
 
+      {/* ── Persönliche Kurzstatistik ─────────────────────────── */}
+      {rows.length > 0 && <PersonalStats rows={rows} />}
+
+      {/* ── Medaillenrangliste ────────────────────────────────── */}
       {rows.length === 0 ? (
         <EmptyState
           icon="🏆"
@@ -97,45 +208,89 @@ export default function Achievements() {
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-800/70">
-          <div className="flex items-center justify-between border-b border-ink-700 px-4 py-2">
-            <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Spieler</span>
-            <div className="flex gap-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
-              <span className="w-8 text-center">🥇</span>
-              <span className="w-8 text-center">🥈</span>
-              <span className="w-8 text-center">🥉</span>
+
+          {/* Abschnittstitel */}
+          <div className="flex items-center gap-2.5 border-b border-ink-700/60 px-4 py-3">
+            <span className="text-lg leading-none">🥇</span>
+            <div>
+              <p className="text-[13px] font-extrabold leading-tight text-slate-100">
+                Medaillenrangliste
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Gesamtwertung seit Beginn der Medaillenvergabe
+              </p>
             </div>
           </div>
 
-          <ul className="divide-y divide-ink-700">
-            {rows.map((row, idx) => {
-              const TROPHIES = ['/trophy-gold.png', '/trophy-silver.png', '/trophy-bronze.png'];
-              const trophy = TROPHIES[idx] ?? null;
-              return (
-                <li
-                  key={row.user_id}
-                  className={`flex items-center gap-3 px-4 py-3 ${row.is_me ? 'bg-brand-600/10' : ''}`}
-                >
-                  <span className="w-10 shrink-0 flex items-center justify-center">
-                    {trophy
-                      ? <img src={trophy} alt={`Platz ${idx + 1}`} className="w-10 h-10 object-contain" />
-                      : <span className="text-sm font-bold text-slate-500">{idx + 1}</span>}
+          {/* Tabellenkopf */}
+          <div className="flex items-center bg-ink-900/40 px-4 py-1.5">
+            <span className="w-6 shrink-0" />
+            <span className="w-8 shrink-0" />
+            <span className="ml-2 flex-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Spieler
+            </span>
+            <div className="flex shrink-0">
+              <span className="w-9 text-center text-base leading-none" aria-label="Goldmedaillen">🥇</span>
+              <span className="w-9 text-center text-base leading-none" aria-label="Silbermedaillen">🥈</span>
+              <span className="w-9 text-center text-base leading-none" aria-label="Bronzemedaillen">🥉</span>
+            </div>
+          </div>
+
+          {/* Zeilen */}
+          <ul className="divide-y divide-ink-700/50">
+            {rows.map((row, idx) => (
+              <li
+                key={row.user_id}
+                className={`flex items-center gap-2 px-4 py-2 ${
+                  row.is_me
+                    ? 'bg-brand-600/10 ring-1 ring-inset ring-brand-500/20'
+                    : ''
+                }`}
+              >
+                {/* Rang */}
+                <span className="flex w-6 shrink-0 items-center justify-center">
+                  <RankBadge idx={idx} />
+                </span>
+
+                {/* Avatar */}
+                <Avatar
+                  url={row.avatar_url}
+                  name={row.display_name || row.username}
+                  size={30}
+                />
+
+                {/* Name */}
+                <div className="ml-1.5 min-w-0 flex-1">
+                  <p
+                    className={`truncate text-sm font-semibold ${
+                      row.is_me ? 'text-white' : 'text-slate-200'
+                    }`}
+                  >
+                    {row.display_name || row.username}
+                    {row.is_me && (
+                      <span className="ml-1 text-[11px] font-medium text-brand-300">(du)</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Medaillenzahlen */}
+                <div className="flex shrink-0">
+                  <span className="w-9 text-center text-sm font-bold tabular-nums text-amber-300">
+                    {row.gold_count}
                   </span>
-                  <Avatar url={row.avatar_url} name={row.display_name || row.username} size={36} />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-200">
-                      {row.display_name || row.username}
-                      {row.is_me && <span className="ml-1 text-xs text-brand-300">(du)</span>}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-3 items-center">
-                    <span className="w-8 text-center text-sm font-bold text-amber-300">{row.gold_count}</span>
-                    <span className="w-8 text-center text-sm font-bold text-slate-300">{row.silver_count}</span>
-                    <span className="w-8 text-center text-sm font-bold text-orange-400">{row.bronze_count}</span>
-                  </div>
-                </li>
-              );
-            })}
+                  <span className="w-9 text-center text-sm font-bold tabular-nums text-slate-300">
+                    {row.silver_count}
+                  </span>
+                  <span className="w-9 text-center text-sm font-bold tabular-nums text-orange-400">
+                    {row.bronze_count}
+                  </span>
+                </div>
+              </li>
+            ))}
           </ul>
+
+          {/* Motivationstext */}
+          <MotivationText rows={rows} />
         </div>
       )}
     </div>
