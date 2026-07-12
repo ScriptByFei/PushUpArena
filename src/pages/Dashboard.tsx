@@ -202,31 +202,6 @@ export default function Dashboard() {
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
 
-      {/* Schnell-Eingabe */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>Schnell eintragen</CardTitle>
-          <Link to="/settings" className="text-xs text-brand-400 hover:text-brand-300">
-            Anpassen
-          </Link>
-        </div>
-        <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
-        <QuickAdd exerciseId={exercise.id} unit={unit} prevDailyTotal={statsLoading ? 0 : (stats.today_amount ?? 0)} onLogged={onLogged} />
-      </Card>
-
-      {/* Rückgängig-Banner */}
-      {lastEntry && (
-        <button
-          onClick={undoLast}
-          className="flex w-full animate-pop-in items-center justify-between rounded-xl border border-ink-700 bg-ink-800/70 px-4 py-2.5 text-sm"
-        >
-          <span className="text-slate-300">
-            Zuletzt <strong className="text-slate-100">+{lastEntry.amount}</strong> eingetragen
-          </span>
-          <span className="font-semibold text-brand-300">Rückgängig</span>
-        </button>
-      )}
-
       {/* Ziele */}
       <Card>
         <div className="flex items-center justify-between">
@@ -262,6 +237,31 @@ export default function Dashboard() {
             )}
           </div>
         )}
+      </Card>
+
+      {/* Rückgängig-Banner */}
+      {lastEntry && (
+        <button
+          onClick={undoLast}
+          className="flex w-full animate-pop-in items-center justify-between rounded-xl border border-ink-700 bg-ink-800/70 px-4 py-2.5 text-sm"
+        >
+          <span className="text-slate-300">
+            Zuletzt <strong className="text-slate-100">+{lastEntry.amount}</strong> eingetragen
+          </span>
+          <span className="font-semibold text-brand-300">Rückgängig</span>
+        </button>
+      )}
+
+      {/* Schnell-Eingabe */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <CardTitle>Schnell eintragen</CardTitle>
+          <Link to="/settings" className="text-xs text-brand-400 hover:text-brand-300">
+            Anpassen
+          </Link>
+        </div>
+        <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
+        <QuickAdd exerciseId={exercise.id} unit={unit} prevDailyTotal={statsLoading ? 0 : (stats.today_amount ?? 0)} onLogged={onLogged} />
       </Card>
 
       {/* Streak-Info Bottom Sheet */}
