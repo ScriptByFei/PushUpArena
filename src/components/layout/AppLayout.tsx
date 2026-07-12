@@ -53,14 +53,14 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur">
+      <header className="sticky top-0 z-30 relative flex items-center border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
         {/* Recap-Button links */}
         <button
           onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
           aria-label="Tages-Recap"
-          className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
+          className={`shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
         >
-          <img src="/recap-icon.png" alt="" className="h-14 w-14 object-contain rounded-sm" />
+          <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
         </button>
         {/* Titel + Exercise-Chip absolut zentriert */}
         <div className="pointer-events-none absolute inset-x-0 flex items-center justify-center gap-2">
@@ -83,26 +83,26 @@ export function AppLayout() {
             }}
             disabled={busy}
             aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
-            className={`shrink-0 rounded-lg p-2 transition hover:bg-ink-800 ${
+            className={`shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800 ${
               pushActive ? 'text-brand-400' : 'text-slate-500'
             }`}
           >
             {pushActive
-              ? <BellIcon className="h-5 w-5" />
-              : <BellOffIcon className="h-5 w-5" />
+              ? <BellIcon className="h-[18px] w-[18px]" />
+              : <BellOffIcon className="h-[18px] w-[18px]" />
             }
           </button>
           <Link
             to="/settings"
             aria-label="Einstellungen"
-            className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
           >
-            <SettingsIcon className="h-5 w-5" />
+            <SettingsIcon className="h-[18px] w-[18px]" />
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 px-4 pb-32 pt-4">
+      <main className="flex-1 px-4 pb-32 pt-3">
         <Outlet />
       </main>
 
