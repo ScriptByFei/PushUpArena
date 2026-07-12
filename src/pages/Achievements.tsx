@@ -46,8 +46,8 @@ function PersonalStats({ rows }: { rows: PodiumRow[] }) {
         <p className={valueCls}>#{myRank}</p>
       </div>
       <div className={chipCls}>
-        <p className={labelCls}>Medaillen</p>
-        <p className={valueCls}>{myTotal}</p>
+        <p className={labelCls}>Punkte</p>
+        <p className={valueCls}>{myRow.medal_points}</p>
       </div>
       <div className={chipCls}>
         <p className={labelCls}>Häufigste</p>
@@ -211,12 +211,15 @@ export default function Achievements() {
           {/* Abschnittstitel */}
           <div className="flex items-center gap-2.5 border-b border-ink-700/60 px-4 py-3">
             <span className="text-lg leading-none">🥇</span>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[13px] font-extrabold leading-tight text-slate-100">
                 Medaillenrangliste
               </p>
               <p className="text-[10px] text-slate-500">
                 Gesamtwertung seit Beginn der Medaillenvergabe
+              </p>
+              <p className="mt-0.5 text-[10px] text-slate-600">
+                🏆 Punkte: 🥇 10 · 🥈 5 · 🥉 2 · 💪 100+ = +1
               </p>
             </div>
           </div>
