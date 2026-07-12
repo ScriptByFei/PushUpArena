@@ -6,6 +6,7 @@ import { usePush } from '@/context/PushContext';
 import { DailyRecapModal } from '@/components/DailyRecapModal';
 import { useDailyRecap } from '@/hooks/useDailyRecap';
 import { ExerciseChip } from '@/components/ExerciseChip';
+import { useExercise } from '@/context/ExerciseContext';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -29,6 +30,9 @@ export function AppLayout() {
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
   const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
+  const { enrolledExercises } = useExercise();
+  const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats';
+  const centerTitle = !showChip;
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
 
@@ -63,8 +67,8 @@ export function AppLayout() {
           <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
         </button>
 
-        {/* Seitentitel — Dashboard: zentriert (absolut), sonst linksbündig */}
-        {pathname === '/' ? (
+        {/* Seitentitel — zentriert wenn kein Chip, sonst linksbündig */}
+        {centerTitle ? (
           <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight text-slate-100">
             {title}
           </span>
@@ -76,7 +80,7 @@ export function AppLayout() {
 
         {/* Exercise-Chip + Glocke + Settings — rechtsbündig */}
         <div className="flex shrink-0 items-center gap-1">
-          {pathname !== '/' && pathname !== '/global-stats' && (
+          {showChip && (
             <div className="mr-1 max-w-[160px]">
               <ExerciseChip />
             </div>
