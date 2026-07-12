@@ -22,11 +22,18 @@ function PersonalStats({ rows }: { rows: PodiumRow[] }) {
   const myRow = rows[myIdx];
   const myRank = myIdx + 1;
   const myTotal = myRow.gold_count + myRow.silver_count + myRow.bronze_count;
-  const prevRow = myIdx > 0 ? rows[myIdx - 1] : null;
-  const prevTotal = prevRow
-    ? prevRow.gold_count + prevRow.silver_count + prevRow.bronze_count
-    : null;
-  const gap = prevTotal !== null ? prevTotal - myTotal : null;
+
+  // Stärkste Medaille — Gold hat Priorität bei Gleichstand
+  let bestEmoji = '';
+  let bestCount = 0;
+  if (myRow.gold_count >= myRow.silver_count && myRow.gold_count >= myRow.bronze_count) {
+    bestEmoji = '🥇'; bestCount = myRow.gold_count;
+  } else if (myRow.silver_count >= myRow.bronze_count) {
+    bestEmoji = '🥈'; bestCount = myRow.silver_count;
+  } else {
+    bestEmoji = '🥉'; bestCount = myRow.bronze_count;
+  }
+  const strongestLabel = bestCount > 0 ? `${bestEmoji} ${bestCount}×` : 'Noch keine';
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-0.5">
@@ -36,24 +43,17 @@ function PersonalStats({ rows }: { rows: PodiumRow[] }) {
         <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">#{myRank}</p>
       </div>
 
-      {/* Medaillen */}
+      {/* Medaillen gesamt */}
       <div className="shrink-0 min-w-[88px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Medaillen</p>
         <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">{myTotal}</p>
       </div>
 
-      {/* Abstand / Führung */}
-      {myRank === 1 ? (
-        <div className="shrink-0 min-w-[88px] rounded-xl border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-center">
-          <p className="text-[9px] font-semibold uppercase tracking-widest text-amber-500">Du führst</p>
-          <p className="mt-0.5 text-[17px]">🏆</p>
-        </div>
-      ) : gap !== null ? (
-        <div className="shrink-0 min-w-[100px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
-          <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Bis nächster Rang</p>
-          <p className="mt-0.5 text-[17px] font-extrabold text-brand-300">{gap}</p>
-        </div>
-      ) : null}
+      {/* Stärkste Medaille */}
+      <div className="shrink-0 min-w-[110px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Stärkste Medaille</p>
+        <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">{strongestLabel}</p>
+      </div>
     </div>
   );
 }
@@ -186,13 +186,21 @@ export default function Achievements() {
       )}
 
       {/* ── Infobox ───────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-2.5 space-y-0.5">
-        <p className="text-xs text-slate-400">
-          🏅 Die globalen Top 3 erhalten täglich Gold, Silber und Bronze.
-        </p>
-        <p className="text-xs text-slate-500">
-          📅 Medaillenvergabe seit dem{' '}
-          <span className="font-semibold text-slate-300">6. Juli 2026</span>.
+      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-2.5 text-center">
+        <div className="flex items-center justify-center gap-5">
+          <span className="flex items-baseline gap-1 text-[11px] text-slate-400">
+            <span className="text-base leading-none">🥇</span> Platz 1
+          </span>
+          <span className="flex items-baseline gap-1 text-[11px] text-slate-400">
+            <span className="text-base leading-none">🥈</span> Platz 2
+          </span>
+          <span className="flex items-baseline gap-1 text-[11px] text-slate-400">
+            <span className="text-base leading-none">🥉</span> Platz 3
+          </span>
+        </div>
+        <p className="mt-1 text-[10px] text-slate-500">
+          Tägliche Vergabe · seit{' '}
+          <span className="font-semibold text-slate-400">6. Juli 2026</span>
         </p>
       </div>
 
