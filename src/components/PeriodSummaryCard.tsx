@@ -40,7 +40,7 @@ function getMondayOfISOWeek(week: number, year: number): Date {
 function toDateStr(d: Date): string {
   return d.toISOString().split('T')[0];
 }
-// Berlin-aware date string — use for week/day comparisons to avoid UTC offset bugs
+
 function toBerlinDateStr(d: Date): string {
   return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
 }
@@ -52,6 +52,7 @@ function ChevronLeft() {
     </svg>
   );
 }
+
 function ChevronRight() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -60,37 +61,53 @@ function ChevronRight() {
   );
 }
 
-// ─── Component ──────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────
+type PeriodTab = 'week' | 'month' | 'year' | 'custom';
+
+interface PeriodStats {
+  total: number;
+  trainingDays: number;
+  avgPerDay: number;
+  bestDay: { date: string; amount: number } | null;
+}
+
+const TABS: { key: PeriodTab; label: string }[] = [
+  { key: 'week',   label: 'Woche'  },
+  { key: 'month',  label: 'Monat'  },
+  { key: 'year',   label: 'Jahr'   },
+  { key: 'custom', label: 'Eigener' },
+];
+
 interface Props {
   exercise: Exercise | null;
 }
 
-type PeriodTab = 'month' | 'week' | 'custom';
-
+// ─── Component ──────────────────────────────────────────────────────
 export function PeriodSummaryCard({ exercise }: Props) {
   const { user } = useAuth();
   const now = new Date();
   const todayStr = toBerlinDateStr(now);
 
-  const [periodTab, setPeriodTab] = useState<PeriodTab>('month');
-  const [pYear, setPYear] = useState(now.getFullYear());
-  const [pMonth, setPMonth] = useState(now.getMonth());
-  const [pWeek, setPWeek] = useState(() => getISOWeek(now));
+  const [periodTab, setPeriodTab] = useState<PeriodTab>('week');
+  const [pYear, setPYear]         = useState(now.getFullYear());
+  const [pMonth, setPMonth]       = useState(now.getMonth());
+  const [pWeek, setPWeek]         = useState(() => getISOWeek(now));
   const [pWeekYear, setPWeekYear] = useState(() => getISOWeekYear(now));
   const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
-  const [periodTotal, setPeriodTotal] = useState<number | null>(null);
+  const [customTo, setCustomTo]     = useState('');
+  const [periodStats, setPeriodStats] = useState<PeriodStats | null>(null);
   const [periodLoading, setPeriodLoading] = useState(false);
 
+  const maxYear  = now.getFullYear();
   const maxMonth = now.getMonth();
-  const maxYear = now.getFullYear();
 
+  // ── Navigation ──────────────────────────────────────────────────
   function prevMonth() {
     if (pMonth === 0) { setPYear((y) => y - 1); setPMonth(11); }
     else setPMonth((m) => m - 1);
   }
   function nextMonth() {
-    if (pYear > maxYear || (pYear === maxYear && pMonth >= maxMonth)) return;
+    if (pYear >= maxYear && pMonth >= maxMonth) return;
     if (pMonth === 11) { setPYear((y) => y + 1); setPMonth(0); }
     else setPMonth((m) => m + 1);
   }
@@ -101,95 +118,121 @@ export function PeriodSummaryCard({ exercise }: Props) {
   function nextWeek() {
     const nextW = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
     const nextY = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
-    const nextMonday = getMondayOfISOWeek(nextW, nextY);
-    if (toBerlinDateStr(nextMonday) > todayStr) return;
+    if (toBerlinDateStr(getMondayOfISOWeek(nextW, nextY)) > todayStr) return;
     if (pWeek === getWeeksInYear(pWeekYear)) { setPWeekYear((y) => y + 1); setPWeek(1); }
     else setPWeek((w) => w + 1);
   }
+  function prevYear() { if (pYear > 2020) setPYear((y) => y - 1); }
+  function nextYear() { if (pYear < maxYear) setPYear((y) => y + 1); }
 
+  // ── Data fetching ───────────────────────────────────────────────
   useEffect(() => {
     if (!exercise?.id || !user) return;
+
     let start: string, end: string;
 
     if (periodTab === 'month') {
       const firstDay = `${pYear}-${String(pMonth + 1).padStart(2, '0')}-01`;
       const last = new Date(pYear, pMonth + 1, 0);
       start = berlinToUTC(firstDay);
-      end = berlinToUTC(toDateStr(last), true);
+      end   = berlinToUTC(toDateStr(last), true);
     } else if (periodTab === 'week') {
       const monday = getMondayOfISOWeek(pWeek, pWeekYear);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       start = berlinToUTC(toBerlinDateStr(monday));
-      end = berlinToUTC(toBerlinDateStr(sunday), true);
+      end   = berlinToUTC(toBerlinDateStr(sunday), true);
+    } else if (periodTab === 'year') {
+      start = berlinToUTC(`${pYear}-01-01`);
+      end   = pYear < maxYear ? berlinToUTC(`${pYear}-12-31`, true) : berlinToUTC(todayStr, true);
     } else {
-      if (!customFrom || !customTo || customFrom > customTo) return;
+      if (!customFrom || !customTo || customFrom > customTo) {
+        setPeriodStats(null);
+        setPeriodLoading(false);
+        return;
+      }
       start = berlinToUTC(customFrom);
-      end = berlinToUTC(customTo, true);
+      end   = berlinToUTC(customTo, true);
     }
 
     setPeriodLoading(true);
     void (async () => {
       const { data } = await supabase
         .from('workout_entries')
-        .select('amount')
+        .select('amount, performed_at')
         .eq('user_id', user.id)
         .eq('exercise_id', exercise.id)
         .gte('performed_at', start)
         .lte('performed_at', end);
-      setPeriodTotal((data ?? []).reduce((s, r) => s + r.amount, 0));
+
+      // Aggregate by Berlin date
+      const byDate = new Map<string, number>();
+      for (const row of data ?? []) {
+        const dateStr = new Date(row.performed_at as string).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+        byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + (row.amount as number));
+      }
+
+      const total        = Array.from(byDate.values()).reduce((s, v) => s + v, 0);
+      const trainingDays = byDate.size;
+      const avgPerDay    = trainingDays > 0 ? Math.round(total / trainingDays) : 0;
+      const bestEntry    = Array.from(byDate.entries()).reduce<[string, number] | null>(
+        (best, entry) => (!best || entry[1] > best[1] ? entry : best), null
+      );
+      const bestDay = bestEntry ? { date: bestEntry[0], amount: bestEntry[1] } : null;
+
+      setPeriodStats({ total, trainingDays, avgPerDay, bestDay });
       setPeriodLoading(false);
     })();
   }, [periodTab, pYear, pMonth, pWeek, pWeekYear, customFrom, customTo, exercise?.id, user]);
 
+  // ── Labels ──────────────────────────────────────────────────────
+  const activeTabIdx = Math.max(0, TABS.findIndex((t) => t.key === periodTab));
+
   const monthLabel = new Date(pYear, pMonth, 1).toLocaleDateString('de-DE', {
     month: 'long', year: 'numeric',
   });
+
   const weekMonday = getMondayOfISOWeek(pWeek, pWeekYear);
   const weekSunday = new Date(weekMonday);
   weekSunday.setDate(weekMonday.getDate() + 6);
-  const weekLabel = `KW ${pWeek} · ${weekMonday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} – ${weekSunday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+  const weekLabel = `KW ${pWeek} · ${weekMonday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} – ${weekSunday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`;
+
   const exercisePlural = exercise?.name
     ? exercise.name.endsWith('s') ? exercise.name : exercise.name + 's'
     : '';
 
-  // Card-Import wieder einbauen
+  // ── Render ──────────────────────────────────────────────────────
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-800/70 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Zeitraum · {exercise?.name}</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        Zeitraum · {exercise?.name}
+      </p>
 
-      {/* Tabs */}
-      <div className="flex w-full rounded-xl bg-ink-950/60 p-1">
-        {(['month', 'week', 'custom'] as const).map((t) => (
+      {/* Apple Segmented Control — 4 Tabs */}
+      <div className="relative flex h-[40px] items-center rounded-xl border border-ink-700/60 bg-ink-950/60 p-1">
+        <div
+          className="pointer-events-none absolute inset-y-1 rounded-[8px] bg-brand-600 shadow-sm transition-all duration-200 ease-out"
+          style={{
+            width: 'calc((100% - 8px) / 4)',
+            left: `calc(4px + ${activeTabIdx} * (100% - 8px) / 4)`,
+          }}
+        />
+        {TABS.map((t) => (
           <button
-            key={t}
-            onClick={() => setPeriodTab(t)}
-            className={`flex-1 rounded-lg py-1 text-xs font-semibold transition-colors ${
-              periodTab === t ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+            key={t.key}
+            onClick={() => setPeriodTab(t.key)}
+            className={`relative z-10 flex-1 text-[12px] font-semibold transition-colors duration-150 ${
+              periodTab === t.key ? 'text-white' : 'text-slate-400'
             }`}
           >
-            {t === 'month' ? 'Monat' : t === 'week' ? 'KW' : 'Zeitraum'}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Monat-Navigation */}
-      {periodTab === 'month' && (
-        <div className="mt-2 flex items-center justify-between">
-          <button onClick={prevMonth} className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition">
-            <ChevronLeft />
-          </button>
-          <span className="text-sm font-semibold text-slate-200">{monthLabel}</span>
-          <button onClick={nextMonth} disabled={pYear === maxYear && pMonth >= maxMonth}
-            className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25">
-            <ChevronRight />
-          </button>
-        </div>
-      )}
-
-      {/* KW-Navigation */}
+      {/* Period navigation */}
       {periodTab === 'week' && (
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2.5 flex items-center justify-between">
           <button onClick={prevWeek} className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition">
             <ChevronLeft />
           </button>
@@ -197,44 +240,109 @@ export function PeriodSummaryCard({ exercise }: Props) {
           <button
             onClick={nextWeek}
             disabled={(() => {
-              const nextW = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
-              const nextY = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
-              return toBerlinDateStr(getMondayOfISOWeek(nextW, nextY)) > todayStr;
+              const nw = pWeek === getWeeksInYear(pWeekYear) ? 1 : pWeek + 1;
+              const ny = pWeek === getWeeksInYear(pWeekYear) ? pWeekYear + 1 : pWeekYear;
+              return toBerlinDateStr(getMondayOfISOWeek(nw, ny)) > todayStr;
             })()}
+            className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25"
+          >
+            <ChevronRight />
+          </button>
+        </div>
+      )}
+
+      {periodTab === 'month' && (
+        <div className="mt-2.5 flex items-center justify-between">
+          <button onClick={prevMonth} className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition">
+            <ChevronLeft />
+          </button>
+          <span className="text-sm font-semibold text-slate-200">{monthLabel}</span>
+          <button
+            onClick={nextMonth}
+            disabled={pYear === maxYear && pMonth >= maxMonth}
+            className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25"
+          >
+            <ChevronRight />
+          </button>
+        </div>
+      )}
+
+      {periodTab === 'year' && (
+        <div className="mt-2.5 flex items-center justify-between">
+          <button onClick={prevYear} disabled={pYear <= 2020}
+            className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25">
+            <ChevronLeft />
+          </button>
+          <span className="text-sm font-semibold text-slate-200">{pYear}</span>
+          <button onClick={nextYear} disabled={pYear >= maxYear}
             className="rounded-full p-1 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition disabled:opacity-25">
             <ChevronRight />
           </button>
         </div>
       )}
 
-      {/* Zeitraum-Picker */}
       {periodTab === 'custom' && (
-        <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs text-slate-400">Von</label>
-            <input type="date" value={customFrom} max={customTo || todayStr}
+            <input
+              type="date"
+              value={customFrom}
+              max={customTo || todayStr}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="w-full rounded-xl border border-ink-600 bg-ink-800 px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              className="w-full rounded-xl border border-ink-600 bg-ink-800 px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs text-slate-400">Bis</label>
-            <input type="date" value={customTo} min={customFrom} max={todayStr}
+            <input
+              type="date"
+              value={customTo}
+              min={customFrom}
+              max={todayStr}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="w-full rounded-xl border border-ink-600 bg-ink-800 px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              className="w-full rounded-xl border border-ink-600 bg-ink-800 px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            />
           </div>
         </div>
       )}
 
-      {/* Ergebnis */}
-      <div className="mt-3 rounded-xl bg-ink-900 py-3 text-center">
+      {/* Stats */}
+      <div className="mt-3 rounded-xl bg-ink-900/80 py-3 text-center">
         {periodLoading ? (
           <p className="text-sm text-slate-500">Lade …</p>
-        ) : periodTotal === null ? (
+        ) : periodStats === null ? (
           <p className="text-sm text-slate-500">Zeitraum wählen</p>
         ) : (
           <>
-            <p className="text-4xl font-extrabold text-brand-300">{periodTotal.toLocaleString('de-DE')}</p>
-            <p className="mt-0.5 text-xs text-slate-500">{exercisePlural} in diesem Zeitraum</p>
+            <p className="text-4xl font-extrabold text-brand-300">
+              {periodStats.total.toLocaleString('de-DE')}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {exercisePlural} in diesem Zeitraum
+            </p>
+            {periodStats.total > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-1 border-t border-ink-700/60 pt-3">
+                <div className="text-center">
+                  <p className="text-[17px] font-extrabold leading-none text-slate-100">
+                    {periodStats.avgPerDay.toLocaleString('de-DE')}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">Ø / Tag</p>
+                </div>
+                <div className="border-x border-ink-700/60 text-center">
+                  <p className="text-[17px] font-extrabold leading-none text-slate-100">
+                    {periodStats.bestDay?.amount.toLocaleString('de-DE') ?? '–'}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">Bester Tag</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[17px] font-extrabold leading-none text-slate-100">
+                    {periodStats.trainingDays}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">Trainingstage</p>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

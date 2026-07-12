@@ -170,7 +170,7 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
                 relative flex aspect-square flex-col items-start justify-between rounded-lg p-1 transition-all
                 ${isRestDay ? 'bg-sky-900/60' : CELL_BG[level]}
                 ${isToday ? 'ring-2 ring-brand-400 ring-offset-1 ring-offset-ink-900' : ''}
-                ${isSelected ? 'scale-110 shadow-lg shadow-brand-900/50' : 'hover:scale-105'}
+                ${isSelected ? 'ring-2 ring-brand-400/70 ring-offset-1 ring-offset-ink-950 scale-105 shadow-md shadow-brand-900/40' : 'hover:scale-105'}
               `}
             >
               {/* Datum – oben links */}
@@ -191,17 +191,17 @@ export function MonthCalendar({ data, restDays, selectedYear, selectedMonth, can
       </div>
 
       {/* Legende */}
-      <div className="mt-3 flex items-center justify-end gap-1.5">
-        <span className="text-[10px] text-slate-600">Weniger</span>
+      <div className="mt-2.5 flex items-center justify-end gap-1">
+        <span className="text-[9px] text-slate-700">Weniger</span>
         {([0, 1, 2, 3] as const).map((l) => (
-          <div key={l} className={`h-3 w-3 rounded-sm ${CELL_BG[l]}`} />
+          <div key={l} className={`h-2.5 w-2.5 rounded-sm ${CELL_BG[l]}`} />
         ))}
-        <span className="text-[10px] text-slate-600">Mehr</span>
+        <span className="text-[9px] text-slate-700">Mehr</span>
       </div>
 
       {/* Detailinfo */}
       {selected && (
-        <div ref={detailRef} className="mt-3 rounded-xl border border-ink-700 bg-ink-800/60 px-4 py-3">
+        <div ref={detailRef} className="animate-pop-in mt-3 rounded-xl border border-brand-500/20 bg-ink-800/60 px-4 py-3">
           {/* Kopfzeile */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-slate-300">
