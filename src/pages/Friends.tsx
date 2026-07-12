@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFriends, type FriendProfile, type Friend } from '@/hooks/useFriends';
 import { useToast } from '@/context/ToastContext';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
@@ -253,19 +253,8 @@ export default function Friends() {
   const { exercise: activeExercise, enrolledExercises, switchExercise } = useExercise();
   const { rows: leaderRows } = useLeaderboard(activeExercise?.id);
   const { profile: myProfile } = useProfile();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    function onClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [dropdownOpen]);
+
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FriendProfile | null>(null);
@@ -395,60 +384,6 @@ export default function Friends() {
 
   return (
     <div className="space-y-6 pb-4">
-
-      {/* ── Übungsauswahl Dropdown ────────────────────────────────── */}
-      {enrolledExercises.length > 1 && (
-        <div ref={dropdownRef} className="relative">
-          <button
-            onClick={() => setDropdownOpen(v => !v)}
-            className="flex w-full items-center gap-2 rounded-2xl border border-ink-700 bg-ink-800 px-4 py-2.5 transition hover:bg-ink-700"
-          >
-            <img
-              src={EXERCISE_ICONS[activeExercise?.slug ?? ''] ?? ''}
-              alt={activeExercise?.name ?? ''}
-              className="h-6 w-6 object-contain"
-            />
-            <span className="flex-1 text-left text-sm font-semibold text-slate-100">
-              {activeExercise?.name ?? ''}
-            </span>
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className={`h-4 w-4 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-            </svg>
-          </button>
-          {dropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-ink-700 bg-ink-800 shadow-xl">
-              {enrolledExercises.map((ex) => {
-                const isActive = ex.id === activeExercise?.id;
-                return (
-                  <button
-                    key={ex.id}
-                    onClick={() => { switchExercise(ex); setDropdownOpen(false); }}
-                    className={`flex w-full items-center gap-3 px-4 py-3 transition ${
-                      isActive ? 'bg-brand-600/20 text-brand-300' : 'text-slate-300 hover:bg-ink-700'
-                    }`}
-                  >
-                    <img
-                      src={EXERCISE_ICONS[ex.slug] ?? ''}
-                      alt={ex.name}
-                      className="h-6 w-6 object-contain"
-                    />
-                    <span className="text-sm font-semibold">{ex.name}</span>
-                    {isActive && (
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-4 w-4">
-                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── Stats + Aktive Freunde ─────────────────────────────────── */}
       <StatsCard

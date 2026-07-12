@@ -65,9 +65,11 @@ export function AppLayout() {
         {/* Titel + Exercise-Chip absolut zentriert */}
         <div className="pointer-events-none absolute inset-x-0 flex items-center justify-center gap-2">
           <span className="whitespace-nowrap text-base font-bold tracking-tight">{title}</span>
-          <div className="pointer-events-auto shrink-0">
-            <ExerciseChip />
-          </div>
+          {pathname !== '/' && (
+            <div className="pointer-events-auto shrink-0">
+              <ExerciseChip />
+            </div>
+          )}
         </div>
         {/* Glocke + Settings rechts */}
         <div className="ml-auto flex items-center">
