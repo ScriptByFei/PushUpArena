@@ -369,7 +369,7 @@ const PLAT_CFG = [
   { bg: 'rgba(194,118,58,0.18)',  h: 8 },
 ];
 
-function Podium({ entries }: { entries: TopThreeEntry[] }) {
+function Podium({ entries, userRank }: { entries: TopThreeEntry[]; userRank?: number | null }) {
   const sorted = [...entries].sort((a, b) => a.rank - b.rank || b.pushups - a.pushups);
   const [first, second, third] = sorted;
   const display = [second, first, third];
@@ -379,11 +379,20 @@ function Podium({ entries }: { entries: TopThreeEntry[] }) {
       {display.map((entry, i) => {
         const cfg = PODIUM_CFG[i];
         const plat = PLAT_CFG[i];
+        const isUser = entry && userRank != null && entry.rank === userRank;
         return (
           <div key={i} className="flex flex-col items-center" style={{ marginTop: cfg.mt }}>
             {entry ? (
               <>
-                <div className="relative rounded-full" style={{ outline: cfg.ring, boxShadow: cfg.glow }}>
+                <div
+                  className="relative rounded-full"
+                  style={{
+                    outline: isUser ? '2.5px solid rgba(167,139,250,0.9)' : cfg.ring,
+                    boxShadow: isUser
+                      ? `${cfg.glow}, 0 0 18px 4px rgba(167,139,250,0.45)`
+                      : cfg.glow,
+                  }}
+                >
                   <Avatar url={entry.avatar} name={entry.name} size={cfg.size} />
                   <div
                     className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
@@ -392,10 +401,13 @@ function Podium({ entries }: { entries: TopThreeEntry[] }) {
                     {cfg.label}
                   </div>
                 </div>
-                <p className="mt-2 max-w-[72px] truncate text-center text-xs font-semibold text-slate-300">
+                <p className={`mt-2 max-w-[72px] truncate text-center text-xs font-semibold ${isUser ? 'text-brand-300' : 'text-slate-300'}`}>
                   {entry.name}
                 </p>
                 <p className={`text-sm font-extrabold ${cfg.scoreColor}`}>{entry.pushups}</p>
+                {isUser && (
+                  <p className="text-[9px] font-semibold text-brand-400 mt-0.5">Du</p>
+                )}
               </>
             ) : (
               <div className="rounded-full bg-ink-800" style={{ width: cfg.size, height: cfg.size }} />
@@ -620,64 +632,55 @@ export function DailyRecapModal({
               </div>
             ) : (
               <>
-                {/* ── 1. Tagesleistung ──────────────────────────── */}
-                <div className="rounded-2xl border border-brand-500/35 bg-ink-900 p-3.5">
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-brand-400">
-                    💪 Deine Leistung
-                  </p>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <p className="text-4xl font-extrabold leading-none text-white">
-                        {recap.yesterday_pushups}
-                      </p>
-                      <p className="mt-0.5 text-sm text-slate-400">Push-ups</p>
-                      <div className="mt-2">
-                        <TrendLine positive={delta >= 0 || !hasDelta} />
-                      </div>
-                    </div>
-                    {recap.yesterday_rank != null && (
-                      <div className="flex shrink-0 flex-col items-center">
-                        <div className="flex h-[62px] w-[62px] flex-col items-center justify-center rounded-full border-2 border-brand-500 bg-brand-600/10">
-                          <span className="text-xl font-extrabold text-brand-400">
-                            #{recap.yesterday_rank}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-center text-[10px] leading-tight text-slate-500">
-                          Platzierung<br />von allen
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {hasDelta && (
-                    <div className="mt-2">
-                      <p className={`flex items-center gap-1 text-sm font-semibold ${
-                        delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}>
-                        <span>{delta >= 0 ? '↑' : '↓'}</span>
-                        <span>{Math.abs(delta)} {delta >= 0 ? 'mehr' : 'weniger'} als gestern</span>
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Gestern: {recap.prev_day_pushups} Push-ups
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── 2. Medaillenvergabe ────────────────────────── */}
-                {recap.yesterday_medal ? (
-                  <MedalAwardCard medal={recap.yesterday_medal} counts={medalCounts} />
-                ) : (
-                  <NoMedalCard bronzeGap={bronzeGap} />
-                )}
-
-                {/* ── 3. Top 3 ──────────────────────────────────── */}
+                {/* ── 1. Top 3 ──────────────────────────────────── */}
                 {top3.length > 0 && (
                   <div className="rounded-2xl border border-ink-700 bg-ink-900 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
                       🏆 Top 3 dieses Tages
                     </p>
-                    <Podium entries={top3} />
+                    <Podium entries={top3} userRank={recap.yesterday_rank} />
                   </div>
+                )}
+
+                {/* ── 2. Deine Leistung ─────────────────────────── */}
+                <div className="rounded-2xl border border-brand-500/35 bg-ink-900 p-3.5">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-brand-400">
+                    💪 Deine Leistung
+                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-4xl font-extrabold leading-none text-white">
+                        {recap.yesterday_pushups}
+                      </p>
+                      <p className="mt-0.5 text-sm text-slate-400">Push-ups</p>
+                      {recap.yesterday_rank != null && (
+                        <p className="mt-1 text-xs font-semibold text-brand-300">
+                          Platz {recap.yesterday_rank} weltweit
+                        </p>
+                      )}
+                    </div>
+                    <TrendLine positive={delta >= 0 || !hasDelta} />
+                  </div>
+                  {hasDelta && (
+                    <div className="mt-2.5 border-t border-ink-700 pt-2.5">
+                      <p className={`flex items-center gap-1 text-sm font-semibold ${
+                        delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}>
+                        <span>{delta >= 0 ? '↑' : '↓'}</span>
+                        <span>{Math.abs(delta)} {delta >= 0 ? 'mehr' : 'weniger'} als vorgestern</span>
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Vorheriger Tag: {recap.prev_day_pushups} Push-ups
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── 3. Medaillenvergabe ────────────────────────── */}
+                {recap.yesterday_medal ? (
+                  <MedalAwardCard medal={recap.yesterday_medal} counts={medalCounts} />
+                ) : (
+                  <NoMedalCard bronzeGap={bronzeGap} />
                 )}
               </>
             )}
