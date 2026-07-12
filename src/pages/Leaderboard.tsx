@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useGlobalLeaderboard } from '@/hooks/useGlobalLeaderboard';
@@ -147,6 +147,71 @@ function TodaySetsSheet({ row, exerciseId, onClose }: TodaySetsSheetProps) {
   );
 }
 
+// ── Kompakt-Dropdown ─────────────────────────────────────────────────────────
+interface FilterOption<T> { key: T; label: string; icon: string; }
+
+function FilterDropdown<T extends string>({
+  value, options, onChange, className = '',
+}: {
+  value: T;
+  options: FilterOption<T>[];
+  onChange: (val: T) => void;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.key === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-[44px] w-full items-center gap-2 rounded-xl border border-ink-700 bg-ink-800/70 px-3 transition hover:bg-ink-700 active:scale-[0.98]"
+      >
+        <span className="text-base leading-none">{selected.icon}</span>
+        <span className="flex-1 truncate text-left text-[13px] font-semibold text-slate-100">
+          {selected.label}
+        </span>
+        <svg viewBox="0 0 20 20" fill="currentColor"
+          className={`h-3.5 w-3.5 shrink-0 text-slate-400/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="animate-pop-in absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-ink-700 bg-ink-800 shadow-xl">
+          {options.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => { onChange(opt.key); setOpen(false); }}
+              className={`flex w-full items-center gap-3 px-4 py-3 transition ${
+                opt.key === value ? 'bg-brand-600/20 text-brand-300' : 'text-slate-300 hover:bg-ink-700'
+              }`}
+            >
+              <span className="text-base leading-none">{opt.icon}</span>
+              <span className="text-sm font-semibold">{opt.label}</span>
+              {opt.key === value && (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-4 w-4">
+                  <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Hauptseite ────────────────────────────────────────────────────────────────
 export default function Leaderboard() {
   const { exercise: activeExercise, loading: exLoading } = useExercise();
@@ -194,85 +259,49 @@ export default function Leaderboard() {
     <div className="space-y-3">
 
       {/* ── Filter-Leiste ──────────────────────────────────── */}
-      <div className="space-y-2">
+      <div className="flex items-center gap-2">
 
-        {/* Freunde / Global — Apple Segmented Control */}
-        <div className="relative flex h-[40px] items-center rounded-xl border border-ink-700 bg-ink-800 p-1">
-          {/* Sliding pill */}
-          <div
-            className="pointer-events-none absolute inset-y-1 rounded-[8px] bg-brand-600 shadow-sm transition-all duration-200 ease-out"
-            style={{
-              width: 'calc(50% - 4px)',
-              left: viewMode === 'friends' ? '4px' : 'calc(50%)',
-            }}
+        {/* Freunde / Global */}
+        <FilterDropdown
+          value={viewMode}
+          options={[
+            { key: 'friends' as ViewMode, label: 'Freunde', icon: '👥' },
+            { key: 'global'  as ViewMode, label: 'Global',  icon: '🌍' },
+          ]}
+          onChange={(v) => setViewMode(v)}
+          className="flex-[2]"
+        />
+
+        {/* Heute / Gesamt — nur bei Freunde-Modus wählbar */}
+        {!isGlobal ? (
+          <FilterDropdown
+            value={sortKey}
+            options={[
+              { key: 'today_amount' as const, label: 'Heute',  icon: '📅' },
+              { key: 'total_amount' as const, label: 'Gesamt', icon: '📊' },
+            ]}
+            onChange={(v) => setSortKey(v)}
+            className="flex-[1.5]"
           />
-          <button
-            onClick={() => setViewMode('friends')}
-            className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors duration-150 ${
-              viewMode === 'friends' ? 'text-white' : 'text-slate-400'
-            }`}
-          >
-            <span className="text-sm leading-none">👥</span>
-            Freunde
-          </button>
-          <button
-            onClick={() => setViewMode('global')}
-            className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors duration-150 ${
-              viewMode === 'global' ? 'text-white' : 'text-slate-400'
-            }`}
-          >
-            <span className="text-sm leading-none">🌍</span>
-            Global
-          </button>
-        </div>
-
-        {/* Zeitraum-Filter */}
-        <div className="flex items-center gap-2">
-
-          {/* Freunde: Heute / Gesamt – volle Breite */}
-          {!isGlobal && (
-            <div className="relative flex h-[40px] flex-1 items-center rounded-xl border border-ink-700 bg-ink-800 p-1">
-              <div
-                className="pointer-events-none absolute inset-y-1 rounded-[8px] bg-brand-600 transition-all duration-200 ease-out"
-                style={{
-                  width: 'calc(50% - 4px)',
-                  left: sortKey === 'today_amount' ? '4px' : 'calc(50%)',
-                }}
-              />
-              {TABS.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setSortKey(t.key)}
-                  className={`relative z-10 flex-1 text-[13px] font-semibold transition-colors duration-150 ${
-                    sortKey === t.key ? 'text-white' : 'text-slate-400'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+        ) : (
+          <div className="flex flex-[1.5] items-center gap-1.5">
+            <div className="flex h-[44px] flex-1 items-center gap-2 rounded-xl border border-ink-700 bg-ink-800/70 px-3">
+              <span className="text-base leading-none">📅</span>
+              <span className="text-[13px] font-semibold text-slate-400">Heute</span>
             </div>
-          )}
-
-          {/* Global: Heute-Badge + Regelinfo */}
-          {isGlobal && (
-            <div className="flex shrink-0 items-center gap-1.5">
-              <span className="flex h-[40px] items-center rounded-xl border border-brand-500/30 bg-brand-600/15 px-3 text-[13px] font-semibold text-brand-300">
-                Heute
-              </span>
-              <button
-                onClick={() => setRulesOpen(true)}
-                aria-label="Spielregeln"
-                className="flex h-[40px] w-[40px] items-center justify-center rounded-xl border border-ink-700 bg-ink-800 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
+            <button
+              onClick={() => setRulesOpen(true)}
+              aria-label="Spielregeln"
+              className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl border border-ink-700 bg-ink-800/70 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </button>
+          </div>
+        )}
 
       </div>
 
