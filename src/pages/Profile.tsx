@@ -51,12 +51,12 @@ function StatCell({ icon, label, value, highlight, accent }: StatCellProps) {
 
   return (
     <div
-      className={`flex flex-col rounded-xl border bg-ink-800/60 px-2.5 pt-2 pb-2.5 ${borderClass}`}
+      className={`flex h-[76px] flex-col items-center justify-center rounded-xl border bg-ink-800/60 px-2 text-center ${borderClass}`}
       style={glowStyle}
     >
-      <span className="text-[13px] leading-none mb-1.5">{icon}</span>
-      <span className={`text-[17px] font-extrabold leading-tight ${valueColor}`}>{value}</span>
-      <span className="mt-0.5 text-[10px] leading-tight text-slate-500">{label}</span>
+      <span className="text-[13px] leading-none">{icon}</span>
+      <span className={`mt-1.5 text-[17px] font-extrabold leading-none ${valueColor}`}>{value}</span>
+      <span className="mt-1 text-[10px] leading-tight text-slate-500">{label}</span>
     </div>
   );
 }
@@ -125,9 +125,6 @@ export default function Profile() {
     ? medalCounts.gold + medalCounts.silver + medalCounts.bronze
     : null;
 
-  const medalLabel = medalCounts
-    ? `🥇${medalCounts.gold} 🥈${medalCounts.silver} 🥉${medalCounts.bronze}`
-    : '–';
 
   return (
     <div className="space-y-3">
@@ -203,26 +200,26 @@ export default function Profile() {
             boxShadow: '0 0 32px rgba(99,102,241,0.08)',
           }}
         >
-          <div className="flex items-center justify-around">
-            <div className="text-center">
+          <div className="flex items-stretch">
+            <div className="flex flex-1 flex-col items-center justify-center py-1 text-center">
               <p className="text-2xl font-extrabold text-orange-400 leading-none">
                 {stats.currentStreak}
               </p>
-              <p className="mt-1 text-[11px] text-slate-400">🔥 Streak</p>
+              <p className="mt-1.5 text-[11px] text-slate-400">🔥 Streak</p>
             </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="text-center">
+            <div className="w-px self-stretch bg-white/10" />
+            <div className="flex flex-1 flex-col items-center justify-center py-1 text-center">
               <p className="text-2xl font-extrabold text-brand-300 leading-none">
                 {stats.totalAmount.toLocaleString('de-DE')}
               </p>
-              <p className="mt-1 text-[11px] text-slate-400">💪 Gesamt</p>
+              <p className="mt-1.5 text-[11px] text-slate-400">💪 Gesamt</p>
             </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="text-center">
+            <div className="w-px self-stretch bg-white/10" />
+            <div className="flex flex-1 flex-col items-center justify-center py-1 text-center">
               <p className="text-2xl font-extrabold text-amber-400 leading-none">
                 {totalMedals ?? '–'}
               </p>
-              <p className="mt-1 text-[11px] text-slate-400">🏅 Medaillen</p>
+              <p className="mt-1.5 text-[11px] text-slate-400">🏅 Medaillen</p>
             </div>
           </div>
         </div>
@@ -267,9 +264,24 @@ export default function Profile() {
           {/* Erfolge */}
           {medalCounts && (
             <div className="space-y-2">
-              <SectionLabel>Erfolge</SectionLabel>
-              <div className="grid grid-cols-1 gap-2">
-                <StatCell icon="🏅" label="Medaillen" value={medalLabel} highlight="medal" />
+              <SectionLabel>Medaillen</SectionLabel>
+              <div
+                className="flex rounded-xl border border-brand-500/25 bg-ink-800/60"
+                style={{ boxShadow: '0 0 0 1px rgba(99,102,241,0.15), 0 0 14px rgba(99,102,241,0.08)' }}
+              >
+                {([
+                  { emoji: '🥇', count: medalCounts.gold,   color: 'text-amber-400' },
+                  { emoji: '🥈', count: medalCounts.silver, color: 'text-slate-300' },
+                  { emoji: '🥉', count: medalCounts.bronze, color: 'text-orange-400' },
+                ] as const).map(({ emoji, count, color }, i) => (
+                  <>
+                    {i > 0 && <div key={`sep-${i}`} className="w-px self-stretch bg-white/10" />}
+                    <div key={emoji} className="flex flex-1 flex-col items-center justify-center py-3 text-center">
+                      <span className="text-xl leading-none">{emoji}</span>
+                      <span className={`mt-1.5 text-lg font-extrabold leading-none ${color}`}>{count}</span>
+                    </div>
+                  </>
+                ))}
               </div>
             </div>
           )}
