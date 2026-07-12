@@ -445,7 +445,7 @@ export function DailyRecapModal({
     }
   }, [recap.recap_date]);
 
-  function navigate(idx: number) {
+  function goToIdx(idx: number) {
     if (navLoading || idx === currentDateIdx) return;
     pendingDir.current = idx > currentDateIdx ? 'left' : 'right';
     onDateSelect?.(idx);
@@ -464,11 +464,9 @@ export function DailyRecapModal({
     touchStartX.current = null;
     if (Math.abs(delta) < 48) return;
     if (delta < 0 && currentDateIdx > 0) {
-      // Swipe links → neuer Tag (kleinerer idx)
-      navigate(currentDateIdx - 1);
+      goToIdx(currentDateIdx - 1);
     } else if (delta > 0 && currentDateIdx < availableDates.length - 1) {
-      // Swipe rechts → älterer Tag (größerer idx)
-      navigate(currentDateIdx + 1);
+      goToIdx(currentDateIdx + 1);
     }
   }
 
@@ -579,7 +577,7 @@ export function DailyRecapModal({
         <DateStrip
           dates={availableDates}
           currentIdx={currentDateIdx}
-          onSelect={navigate}
+          onSelect={goToIdx}
           disabled={navLoading}
         />
       </div>
