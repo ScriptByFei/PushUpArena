@@ -50,7 +50,7 @@ export function QuickAdd({
                 type="button"
                 disabled={submitting}
                 onClick={() => log(n)}
-                className={`rounded-xl py-4 text-lg font-semibold transition active:scale-95 disabled:opacity-60 ${
+                className={`rounded-xl py-2.5 text-sm font-semibold transition active:scale-95 disabled:opacity-60 ${
                   isActive
                     ? 'bg-brand-600 text-white shadow-glow ring-2 ring-brand-400'
                     : 'bg-ink-700 text-slate-100 hover:bg-ink-600'
@@ -61,24 +61,24 @@ export function QuickAdd({
             );
           })}
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-2 flex items-stretch gap-2">
           {/* Icon – tappable wenn mehrere Übungen */}
           <button
             type="button"
             onClick={() => canSwitch && setShowSwitcher(true)}
-            className={`relative h-full w-full rounded-xl overflow-hidden ${canSwitch ? 'active:scale-95 transition' : ''}`}
+            className={`relative w-10 shrink-0 rounded-xl overflow-hidden ${canSwitch ? 'active:scale-95 transition' : ''}`}
             aria-label={canSwitch ? 'Übung wechseln' : exercise?.name}
           >
             <img src={iconSrc} alt={exercise?.name ?? 'Übung'} className="h-full w-full object-cover" />
             {canSwitch && (
-              <div className="absolute bottom-1 right-1 rounded-full bg-black/50 p-0.5">
+              <div className="absolute bottom-1 right-1 rounded-full bg-brand-600 p-0.5">
                 <svg viewBox="0 0 16 16" fill="white" className="h-2.5 w-2.5">
                   <path d="M5 8l3 3 3-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
                 </svg>
               </div>
             )}
           </button>
-          {/* form mit contents: Kinder nehmen direkt am Grid teil */}
+          {/* form mit contents: Kinder nehmen direkt am Flex-Container teil */}
           <form
             className="contents"
             onSubmit={(e) => {
@@ -94,9 +94,16 @@ export function QuickAdd({
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
               placeholder="Eigene Anzahl"
-              className="col-span-2 text-center"
+              className="min-w-0 flex-1 text-center"
             />
-            <Button type="submit" size="lg" loading={submitting && active === null} disabled={!custom}>
+            <Button
+              type="submit"
+              size="lg"
+              loading={submitting && active === null}
+              disabled={!custom}
+              style={{ background: 'linear-gradient(to bottom, #818cf8, #4f46e5)', boxShadow: '0 2px 8px rgba(79,70,229,0.35)' }}
+              className="shrink-0 min-w-[4.5rem]"
+            >
               Los
             </Button>
           </form>

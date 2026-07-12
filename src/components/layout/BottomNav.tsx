@@ -7,8 +7,8 @@ import { FABSheet } from '@/components/FABSheet';
 // Badge-Slot: number = Zahl anzeigen, true = nur Punkt
 function GlobalStatsFab({ badge }: { badge?: number | boolean }) {
   return (
-    <NavLink to="/global-stats" aria-label="Globale Statistik" className="relative mb-[1px] flex items-center justify-center transition active:scale-95">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <NavLink to="/global-stats" aria-label="Globale Statistik" className="relative flex items-center justify-center transition active:scale-95">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Globus (Hintergrund) */}
         <g opacity="0.65" stroke="white" fill="none">
           <circle cx="12" cy="11" r="9" strokeWidth="1.2"/>
@@ -79,28 +79,30 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* GlobalStats + FAB + Erfolge — zusammen zentriert, über der Nav-Leiste */}
-      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full flex items-end gap-2 pb-1">
-        {/* Globale Statistik */}
-        <GlobalStatsFab />
+      {/* GlobalStats + FAB + Erfolge — kohärente schwebende Leiste */}
+      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full pb-1.5">
+        <div className="flex items-center gap-2 rounded-2xl border border-ink-700/70 bg-ink-900/90 px-2.5 py-1.5 shadow-lg backdrop-blur-sm">
+          {/* Globale Statistik */}
+          <GlobalStatsFab />
 
-        {/* FAB */}
-        <button
-          aria-label="Eintragen"
-          onClick={() => setShowSheet(true)}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-glow ring-2 ring-ink-900 transition active:scale-95"
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
+          {/* FAB */}
+          <button
+            aria-label="Eintragen"
+            onClick={() => setShowSheet(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-glow ring-2 ring-ink-900 transition active:scale-95"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
 
-        {/* Erfolge-Trophy */}
-        <NavLink to="/achievements" aria-label="Erfolge">
-          {() => (
-            <span className="mb-[1px] flex items-center justify-center opacity-100 transition active:scale-95">
-              <img src="/medals.png" alt="Erfolge" style={{ width: 40, height: 40 }} className="object-contain" />
-            </span>
-          )}
-        </NavLink>
+          {/* Erfolge-Trophy */}
+          <NavLink to="/achievements" aria-label="Erfolge">
+            {() => (
+              <span className="flex items-center justify-center transition active:scale-95">
+                <img src="/medals.png" alt="Erfolge" style={{ width: 36, height: 36 }} className="object-contain" />
+              </span>
+            )}
+          </NavLink>
+        </div>
       </div>
 
       {/* 4 Nav-Items gleichmäßig verteilt */}

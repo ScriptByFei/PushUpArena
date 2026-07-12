@@ -37,10 +37,10 @@ function StatTile({
 }) {
   return (
     <div
-      className="rounded-2xl border border-ink-700 bg-ink-800/70 p-4 flex flex-col items-center text-center"
+      className="rounded-2xl border border-ink-700 bg-ink-800/70 p-3 flex flex-col items-center text-center"
       style={glowStyle}
     >
-      <div className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+      <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
         {icon}
         {label}
         {onInfoClick && (
@@ -53,7 +53,7 @@ function StatTile({
           </button>
         )}
       </div>
-      <div className={`mt-1.5 text-3xl font-extrabold leading-none ${accent ?? 'text-slate-100'}`}>{value}</div>
+      <div className={`mt-1.5 text-4xl font-extrabold leading-none ${accent ?? 'text-slate-100'}`}>{value}</div>
     </div>
   );
 }
@@ -140,9 +140,9 @@ export default function Dashboard() {
   const streak = statsLoading ? 0 : (stats.current_streak ?? 0);
   const streakGlow: CSSProperties =
     streak >= 30
-      ? { boxShadow: '0 0 18px 4px rgba(251,191,36,0.55), 0 0 32px 8px rgba(139,92,246,0.35)' }
+      ? { boxShadow: '0 0 18px 4px rgba(251,191,36,0.50), 0 0 32px 8px rgba(139,92,246,0.30)' }
       : streak >= 7
-        ? { boxShadow: '0 0 14px 3px rgba(251,146,60,0.5)' }
+        ? { boxShadow: '0 0 0 1px rgba(251,191,36,0.28), 0 0 12px 3px rgba(251,191,36,0.18)' }
         : {};
 
   const unit = exercise.unit === 'reps' ? 'Wdh.' : exercise.unit;
@@ -190,11 +190,11 @@ export default function Dashboard() {
       )}
 
       {/* Statistik-Kacheln */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <StatTile label="Heute" value={statsLoading ? '–' : stats.today_amount} accent="text-brand-300" />
         <StatTile
           label="Streak"
-          value={statsLoading ? '–' : <span>🔥<span className="ml-1 text-xl font-bold">{stats.current_streak}</span></span>}
+          value={statsLoading ? '–' : <span><span className="inline-block animate-pulse">🔥</span><span className="ml-1 text-xl font-bold">{stats.current_streak}</span></span>}
           accent="text-amber-300"
           glowStyle={streakGlow}
           onInfoClick={() => setStreakInfoOpen(true)}
@@ -248,7 +248,7 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="mt-3 space-y-4">
+          <div className="mt-3 space-y-5">
             {(goal?.daily_goal ?? 0) > 0 && (
               <ProgressBar value={stats.today_amount} max={goal!.daily_goal} label="Tagesziel" />
             )}
