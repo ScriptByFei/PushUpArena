@@ -15,7 +15,9 @@ interface UserPublicStats {
   best_streak: number;
   current_streak: number;
   days_member: number;
-  week_days: boolean[]; // Mo–So der aktuellen Woche
+  week_days: boolean[];      // Mo–So: trainiert?
+  week_day_amounts: number[]; // Mo–So: Wiederholungen
+  week_day_sessions: number[]; // Mo–So: Sätze
 }
 
 export interface UserInfoSheetProps {
@@ -42,6 +44,7 @@ export function UserInfoSheet({
   const [loading, setLoading] = useState(true);
   const [sets, setSets] = useState<number[] | null>(null);
   const [setsLoading, setSetsLoading] = useState(false);
+  const [activeWeekDay, setActiveWeekDay] = useState<number | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -136,19 +139,94 @@ export function UserInfoSheet({
             </div>
 
             {/* ── Aktuelle Woche Mo–So ─────────────────────────────── */}
-            <div className="rounded-2xl border border-ink-700 bg-ink-800 px-3 py-3">
-              <div className="flex justify-between gap-1">
-                {stats.week_days.map((active, i) => (
-                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div
+              className="rounded-2xl border border-ink-700 bg-ink-800 px-3 py-3"
+              onClick={() => setActiveWeekDay(null)}
+            >
+              {/* Tooltip */}
+              <div className="relative mb-2" style={{ minHeight: 44 }}>
+                {activeWeekDay !== null && (() => {
+                  const amt  = (stats.week_day_amounts  ?? [])[activeWeekDay] ?? 0;
+                  const sess = (stats.week_day_sessions ?? [])[activeWeekDay] ?? 0;
+                  const n    = stats.week_days.length;
+                  const tipStyle: React.CSSProperties =
+                    activeWeekDay === 0
+                      ? { left: 0 }
+                      : activeWeekDay === n - 1
+                        ? { right: 0 }
+                        : { left: `${((activeWeekDay + 0.5) / n) * 100}%`, transform: 'translateX(-50%)' };
+                  return (
                     <div
-                      className={`h-6 w-full rounded-md ${
-                        active ? 'bg-brand-500' : 'bg-ink-700'
-                      }`}
-                    />
-                    <span className="text-[9px] text-slate-600">{WEEK_LABELS[i]}</span>
-                  </div>
-                ))}
+                      className="animate-pop-in pointer-events-none absolute top-0 z-20 whitespace-nowrap rounded-xl border border-ink-600/80 bg-ink-900 px-2.5 py-1.5 shadow-xl"
+                      style={tipStyle}
+                    >
+                      <p className="text-center text-[10px] font-semibold text-slate-300">
+                        {WEEK_LABELS[activeWeekDay]}
+                      </p>
+                      {amt > 0 ? (
+                        <>
+                          <p className="mt-0.5 text-center text-[13px] font-extrabold leading-tight text-brand-300">
+                            {amt} Wdh.
+                          </p>
+                          {sess > 0 && (
+                            <p className="text-center text-[10px] text-slate-500">
+                              {sess} {sess === 1 ? 'Satz' : 'Sätze'}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="mt-0.5 text-center text-[11px] text-slate-500">Kein Training</p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
+
+              {/* Tageskacheln */}
+              <div
+                className="flex justify-between gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {stats.week_days.map((active, i) => {
+                  const isActive = activeWeekDay === i;
+                  const amt = (stats.week_day_amounts ?? [])[i] ?? 0;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={`${WEEK_LABELS[i]}: ${amt > 0 ? `${amt} Wiederholungen` : 'kein Training'}`}
+                      className="flex flex-1 flex-col items-center gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveWeekDay(isActive ? null : i);
+                      }}
+                    >
+                      <div
+                        className="h-6 w-full rounded-md transition-all duration-150"
+                        style={{
+                          backgroundColor: active
+                            ? isActive ? '#a78bfa' : '#7c3aed'
+                            : '#1e293b',
+                          boxShadow: isActive && active
+                            ? '0 0 8px 2px rgba(167,139,250,0.5)'
+                            : undefined,
+                          outline: isActive && active
+                            ? '1.5px solid rgba(196,181,253,0.8)'
+                            : undefined,
+                        }}
+                      />
+                      <span
+                        className={`text-[9px] ${
+                          isActive ? 'font-semibold text-slate-300' : 'text-slate-600'
+                        }`}
+                      >
+                        {WEEK_LABELS[i]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
               <p className="mt-1.5 text-center text-[11px] text-slate-500">
                 {stats.week_days.filter(Boolean).length} von 7 Tagen diese Woche
               </p>
