@@ -44,8 +44,6 @@ export default function GlobalStats() {
 
   const milestones = [
     { icon: '🏆', label: 'Gesamte Wiederholungen', value: totalReps.toLocaleString('de-DE'), sub: 'Alle Übungen zusammen' },
-    { icon: '🔥', label: 'Aktive Members',          value: stats.active_members.toLocaleString('de-DE'), sub: 'In den letzten 7 Tagen' },
-    { icon: '👥', label: 'Community Größe',         value: stats.total_members.toLocaleString('de-DE'), sub: 'PushUpArena Members' },
   ];
 
   return (
