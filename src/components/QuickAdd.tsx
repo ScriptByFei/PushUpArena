@@ -9,11 +9,14 @@ import type { Exercise } from '@/lib/database.types';
 export function QuickAdd({
   exerciseId,
   unit = 'Wdh.',
+  prevDailyTotal = 0,
   onLogged,
   onExerciseSwitch,
 }: {
   exerciseId?: string;
   unit?: string;
+  /** Tagesstand VOR diesem Eintrag – für Meilenstein-Check */
+  prevDailyTotal?: number;
   onLogged?: (info: { amount: number; entryId: string }) => void;
   onExerciseSwitch?: (ex: Exercise) => void;
 }) {
@@ -30,7 +33,7 @@ export function QuickAdd({
   async function log(amount: number) {
     if (amount <= 0) return;
     setActive(amount);
-    const { error, entry } = await submit({ amount });
+    const { error, entry } = await submit({ amount, prevDailyTotal });
     setActive(null);
     if (!error && entry) {
       setCustom('');

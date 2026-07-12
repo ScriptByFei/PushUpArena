@@ -211,7 +211,7 @@ export default function Dashboard() {
           </Link>
         </div>
         <p className="mb-3 mt-0.5 text-xs text-slate-400">{exercise.name}</p>
-        <QuickAdd exerciseId={exercise.id} unit={unit} onLogged={onLogged} />
+        <QuickAdd exerciseId={exercise.id} unit={unit} prevDailyTotal={statsLoading ? 0 : (stats.today_amount ?? 0)} onLogged={onLogged} />
       </Card>
 
       {/* Rückgängig-Banner */}
