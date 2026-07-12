@@ -96,7 +96,7 @@ function LeaderboardRow({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const formula = `${row.medal_points} Punkte = ${row.gold_count}×10 + ${row.silver_count}×5 + ${row.bronze_count}×2 + ${row.hundred_plus_days}×1`;
+  const formula = `${row.medal_points} Punkte = ${row.gold_count}×6 + ${row.silver_count}×4 + ${row.bronze_count}×2 + ${row.hundred_plus_days}×1`;
 
   return (
     <li className={`divide-y divide-ink-700/30 ${row.is_me ? 'bg-brand-600/10 ring-1 ring-inset ring-brand-500/20' : ''}`}>
@@ -268,7 +268,7 @@ export default function Achievements() {
                 Gesamtwertung seit Beginn der Medaillenvergabe
               </p>
               <p className="mt-0.5 text-[10px] text-slate-600">
-                🥇 10 · 🥈 5 · 🥉 2 · 💪100+ 1
+                🥇 6 · 🥈 4 · 🥉 2 · 💪100+ 1
               </p>
             </div>
           </div>

@@ -14,6 +14,7 @@ export interface PodiumRow {
   half_bronze: number;
   hundred_plus_days: number;
   medal_points: number;
+  total_reps: number;
   is_me: boolean;
   is_friend: boolean;
 }
