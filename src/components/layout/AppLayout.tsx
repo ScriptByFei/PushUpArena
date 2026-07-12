@@ -5,6 +5,7 @@ import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { DailyRecapModal } from '@/components/DailyRecapModal';
 import { useDailyRecap } from '@/hooks/useDailyRecap';
+import { ExerciseChip } from '@/components/ExerciseChip';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -61,10 +62,13 @@ export function AppLayout() {
         >
           <img src="/recap-icon.png" alt="" className="h-14 w-14 object-contain rounded-sm" />
         </button>
-        {/* Titel absolut zentriert */}
-        <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight">
-          {title}
-        </span>
+        {/* Titel + Exercise-Chip absolut zentriert */}
+        <div className="pointer-events-none absolute inset-x-0 flex items-center justify-center gap-2">
+          <span className="whitespace-nowrap text-base font-bold tracking-tight">{title}</span>
+          <div className="pointer-events-auto shrink-0">
+            <ExerciseChip />
+          </div>
+        </div>
         {/* Glocke + Settings rechts */}
         <div className="ml-auto flex items-center">
           <button

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
-import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import type { DayData } from '@/hooks/useProfileStats';
 import { Card, CardTitle } from '@/components/ui/Card';
@@ -63,8 +62,6 @@ export default function Activity() {
 
   return (
     <div className="space-y-3">
-      <ExerciseDropdown />
-
       {/* Zeitraum-Zusammenfassung */}
       <PeriodSummaryCard exercise={exercise} />
 

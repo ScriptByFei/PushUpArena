@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { useExercise } from '@/context/ExerciseContext';
-import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useToast } from '@/context/ToastContext';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Input';
@@ -128,8 +127,6 @@ export default function Profile() {
 
   return (
     <div className="space-y-3">
-      <ExerciseDropdown />
-
       {/* ── Profil-Karte ─────────────────────────────────────────── */}
       <div className="rounded-2xl border border-ink-700 bg-ink-800/60 px-4 py-3">
         <div className="flex items-center gap-3">

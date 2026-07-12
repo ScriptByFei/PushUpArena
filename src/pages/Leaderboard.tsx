@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useExercise } from '@/context/ExerciseContext';
-import { ExerciseDropdown } from '@/components/ExerciseDropdown';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useGlobalLeaderboard } from '@/hooks/useGlobalLeaderboard';
 import { Avatar } from '@/components/ui/Avatar';
@@ -227,15 +226,12 @@ export default function Leaderboard() {
           </button>
         </div>
 
-        {/* Übung + Zeitraum-Filter */}
+        {/* Zeitraum-Filter */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0">
-            <ExerciseDropdown />
-          </div>
 
-          {/* Freunde: Heute / Gesamt mini segmented */}
+          {/* Freunde: Heute / Gesamt – volle Breite */}
           {!isGlobal && (
-            <div className="relative flex h-[40px] w-[112px] shrink-0 items-center rounded-xl border border-ink-700 bg-ink-800 p-1">
+            <div className="relative flex h-[40px] flex-1 items-center rounded-xl border border-ink-700 bg-ink-800 p-1">
               <div
                 className="pointer-events-none absolute inset-y-1 rounded-[8px] bg-brand-600 transition-all duration-200 ease-out"
                 style={{
