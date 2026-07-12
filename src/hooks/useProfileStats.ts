@@ -18,6 +18,7 @@ export interface ProfileStats {
   longestStreak: number;
   avgPerActiveDay: number;
   bestDay: DayData | null;
+  bestWeek: number;
   trainingDays: number;
   last7Days: number;
   last30Days: number;
@@ -34,6 +35,7 @@ const EMPTY: ProfileStats = {
   longestStreak: 0,
   avgPerActiveDay: 0,
   bestDay: null,
+  bestWeek: 0,
   trainingDays: 0,
   last7Days: 0,
   last30Days: 0,
@@ -41,6 +43,17 @@ const EMPTY: ProfileStats = {
   dailyData: [],
   last7DaysData: [],
 };
+
+/** ISO-Wochenschlüssel "YYYY-Www" für einen "YYYY-MM-DD"-String */
+function isoWeekKey(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const thu = new Date(date);
+  thu.setDate(date.getDate() - ((date.getDay() + 6) % 7) + 3);
+  const yearStart = new Date(thu.getFullYear(), 0, 1);
+  const week = Math.ceil(((thu.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${thu.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
 
 const TZ = 'Europe/Berlin';
 
@@ -120,6 +133,8 @@ export function useProfileStats(exerciseId?: string) {
     const cutoff7 = shiftDate(today, -6);
     const cutoff30 = shiftDate(today, -29);
 
+    const weekTotals = new Map<string, number>();
+
     for (const [dateStr, v] of byDay) {
       totalAmount += v.amount;
       trainingDays++;
@@ -128,7 +143,11 @@ export function useProfileStats(exerciseId?: string) {
       }
       if (dateStr >= cutoff7) last7Days += v.amount;
       if (dateStr >= cutoff30) last30Days += v.amount;
+      const wk = isoWeekKey(dateStr);
+      weekTotals.set(wk, (weekTotals.get(wk) ?? 0) + v.amount);
     }
+
+    const bestWeek = weekTotals.size > 0 ? Math.max(...weekTotals.values()) : 0;
 
     const avgPerActiveDay = trainingDays > 0 ? Math.round(totalAmount / trainingDays) : 0;
 
@@ -142,6 +161,7 @@ export function useProfileStats(exerciseId?: string) {
       longestStreak,
       avgPerActiveDay,
       bestDay: bestDay && (bestDay as DayData).amount > 0 ? bestDay : null,
+      bestWeek,
       trainingDays,
       last7Days,
       last30Days,
