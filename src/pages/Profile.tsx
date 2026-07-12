@@ -236,9 +236,9 @@ export default function Profile() {
           <div className="space-y-2">
             <SectionLabel>Training</SectionLabel>
             <div className="grid grid-cols-3 gap-2">
-              <StatCell icon="💪" label="Gesamt" value={stats.totalAmount.toLocaleString('de-DE')} />
               <StatCell icon="📈" label="Ø pro Tag" value={stats.avgPerActiveDay} />
               <StatCell icon="📅" label="Trainingstage" value={stats.trainingDays} />
+              <StatCell icon="📆" label="Letzte 30 Tage" value={stats.last30Days} />
             </div>
           </div>
 
@@ -249,15 +249,6 @@ export default function Profile() {
               <StatCell icon="🔥" label="Akt. Streak" value={`${stats.currentStreak}d`} highlight="orange" />
               <StatCell icon="👑" label="Längste Streak" value={`${stats.longestStreak}d`} highlight="gold" />
               <StatCell icon="🟢" label="Bester Tag" value={stats.bestDay ? stats.bestDay.amount : '–'} accent="text-emerald-400" />
-            </div>
-          </div>
-
-          {/* Aktivität */}
-          <div className="space-y-2">
-            <SectionLabel>Aktivität</SectionLabel>
-            <div className="grid grid-cols-2 gap-2">
-              <StatCell icon="📊" label="Letzte 7 Tage" value={stats.last7Days} />
-              <StatCell icon="📆" label="Letzte 30 Tage" value={stats.last30Days} />
             </div>
           </div>
 
