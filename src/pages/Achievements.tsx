@@ -35,24 +35,23 @@ function PersonalStats({ rows }: { rows: PodiumRow[] }) {
   }
   const strongestLabel = bestCount > 0 ? `${bestEmoji} ${bestCount}×` : 'Noch keine';
 
+  const chipCls = 'rounded-xl border border-ink-700 bg-ink-800/70 px-2 py-2 text-center';
+  const labelCls = 'whitespace-nowrap text-[9px] font-semibold uppercase tracking-widest text-slate-500';
+  const valueCls = 'mt-0.5 text-[17px] font-extrabold leading-tight text-slate-100';
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-0.5">
-      {/* Rang */}
-      <div className="shrink-0 min-w-[88px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Dein Rang</p>
-        <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">#{myRank}</p>
+    <div className="grid grid-cols-3 gap-2">
+      <div className={chipCls}>
+        <p className={labelCls}>Dein Rang</p>
+        <p className={valueCls}>#{myRank}</p>
       </div>
-
-      {/* Medaillen gesamt */}
-      <div className="shrink-0 min-w-[88px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Medaillen</p>
-        <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">{myTotal}</p>
+      <div className={chipCls}>
+        <p className={labelCls}>Medaillen</p>
+        <p className={valueCls}>{myTotal}</p>
       </div>
-
-      {/* Stärkste Medaille */}
-      <div className="shrink-0 min-w-[110px] rounded-xl border border-ink-700 bg-ink-800/70 px-3 py-2 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">Stärkste Medaille</p>
-        <p className="mt-0.5 text-[17px] font-extrabold text-slate-100">{strongestLabel}</p>
+      <div className={chipCls}>
+        <p className={labelCls}>Häufigste</p>
+        <p className={valueCls}>{strongestLabel}</p>
       </div>
     </div>
   );
@@ -186,20 +185,12 @@ export default function Achievements() {
       )}
 
       {/* ── Infobox ───────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-2.5 text-center">
-        <div className="flex items-center justify-center gap-5">
-          <span className="flex items-baseline gap-1 text-[11px] text-slate-400">
-            <span className="text-base leading-none">🥇</span> Platz 1
-          </span>
-          <span className="flex items-baseline gap-1 text-[11px] text-slate-400">
-            <span className="text-base leading-none">🥈</span> Platz 2
-          </span>
-          <span className="flex items-baseline gap-1 text-[11px] text-slate-400">
-            <span className="text-base leading-none">🥉</span> Platz 3
-          </span>
-        </div>
-        <p className="mt-1 text-[10px] text-slate-500">
-          Tägliche Vergabe · seit{' '}
+      <div className="rounded-2xl border border-ink-700 bg-ink-800/50 px-4 py-2 text-center">
+        <p className="text-xs font-medium text-slate-300">
+          🏅 Tägliche Medaillen für die globalen Top 3
+        </p>
+        <p className="mt-0.5 text-[10px] text-slate-500">
+          Vergabe seit dem{' '}
           <span className="font-semibold text-slate-400">6. Juli 2026</span>
         </p>
       </div>
