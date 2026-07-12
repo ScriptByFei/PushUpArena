@@ -192,63 +192,92 @@ export default function Leaderboard() {
   const myGlobalRank = isGlobal ? rows.findIndex((r) => r.is_me) + 1 : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
 
-      {/* Freunde / Global Toggle */}
-      <div className="flex rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
-        {(['friends', 'global'] as ViewMode[]).map((mode) => (
+      {/* ── Filter-Leiste ──────────────────────────────────── */}
+      <div className="space-y-2">
+
+        {/* Freunde / Global — Apple Segmented Control */}
+        <div className="relative flex h-[40px] items-center rounded-xl border border-ink-700 bg-ink-800 p-1">
+          {/* Sliding pill */}
+          <div
+            className="pointer-events-none absolute inset-y-1 rounded-[8px] bg-brand-600 shadow-sm transition-all duration-200 ease-out"
+            style={{
+              width: 'calc(50% - 4px)',
+              left: viewMode === 'friends' ? '4px' : 'calc(50%)',
+            }}
+          />
           <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={`flex-1 py-2.5 text-sm font-semibold transition ${
-              viewMode === mode ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-ink-700'
+            onClick={() => setViewMode('friends')}
+            className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors duration-150 ${
+              viewMode === 'friends' ? 'text-white' : 'text-slate-400'
             }`}
           >
-            {mode === 'friends' ? '👥 Freunde' : '🌍 Global'}
+            <span className="text-sm leading-none">👥</span>
+            Freunde
           </button>
-        ))}
-      </div>
-
-      {/* Übungsauswahl + Heute/Gesamt (nur bei Freunde) */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <ExerciseDropdown />
+          <button
+            onClick={() => setViewMode('global')}
+            className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors duration-150 ${
+              viewMode === 'global' ? 'text-white' : 'text-slate-400'
+            }`}
+          >
+            <span className="text-sm leading-none">🌍</span>
+            Global
+          </button>
         </div>
-        {!isGlobal && (
-          <div className="flex shrink-0 rounded-xl overflow-hidden border border-ink-700 bg-ink-800">
-            {TABS.map((t) => (
+
+        {/* Übung + Zeitraum-Filter */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <ExerciseDropdown />
+          </div>
+
+          {/* Freunde: Heute / Gesamt mini segmented */}
+          {!isGlobal && (
+            <div className="relative flex h-[40px] w-[112px] shrink-0 items-center rounded-xl border border-ink-700 bg-ink-800 p-1">
+              <div
+                className="pointer-events-none absolute inset-y-1 rounded-[8px] bg-brand-600 transition-all duration-200 ease-out"
+                style={{
+                  width: 'calc(50% - 4px)',
+                  left: sortKey === 'today_amount' ? '4px' : 'calc(50%)',
+                }}
+              />
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setSortKey(t.key)}
+                  className={`relative z-10 flex-1 text-[13px] font-semibold transition-colors duration-150 ${
+                    sortKey === t.key ? 'text-white' : 'text-slate-400'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Global: Heute-Badge + Regelinfo */}
+          {isGlobal && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="flex h-[40px] items-center rounded-xl border border-brand-500/30 bg-brand-600/15 px-3 text-[13px] font-semibold text-brand-300">
+                Heute
+              </span>
               <button
-                key={t.key}
-                onClick={() => setSortKey(t.key)}
-                className={`px-3 py-2.5 text-sm font-semibold transition ${
-                  sortKey === t.key
-                    ? 'bg-brand-600 text-white'
-                    : 'text-slate-400 hover:bg-ink-700'
-                }`}
+                onClick={() => setRulesOpen(true)}
+                aria-label="Spielregeln"
+                className="flex h-[40px] w-[40px] items-center justify-center rounded-xl border border-ink-700 bg-ink-800 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200"
               >
-                {t.label}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
               </button>
-            ))}
-          </div>
-        )}
-        {isGlobal && (
-          <div className="flex shrink-0 items-center gap-1">
-            <span className="rounded-xl border border-ink-700 bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white">
-              Heute
-            </span>
-            <button
-              onClick={() => setRulesOpen(true)}
-              aria-label="Spielregeln"
-              className="rounded-xl border border-ink-700 bg-ink-800 p-2.5 text-slate-400 hover:bg-ink-700 hover:text-slate-200 transition"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+
       </div>
 
 

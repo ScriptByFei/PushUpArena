@@ -21,12 +21,12 @@ export function ExerciseDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-2xl border border-ink-700 bg-ink-800 px-4 py-2.5 transition hover:bg-ink-700"
+        className="flex h-[40px] w-full items-center gap-2.5 rounded-xl border border-ink-700 bg-ink-800 px-3.5 transition hover:bg-ink-700"
       >
         <img
           src={EXERCISE_ICONS[activeExercise?.slug ?? ''] ?? ''}
           alt={activeExercise?.name ?? ''}
-          className="h-6 w-6 object-contain"
+          className="h-7 w-7 shrink-0 object-contain"
         />
         <span className="flex-1 text-left text-sm font-semibold text-slate-100">
           {activeExercise?.name ?? ''}
@@ -34,7 +34,7 @@ export function ExerciseDropdown() {
         <svg
           viewBox="0 0 20 20"
           fill="currentColor"
-          className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-3.5 w-3.5 shrink-0 text-slate-400/70 transition-transform ${open ? 'rotate-180' : ''}`}
         >
           <path
             fillRule="evenodd"
@@ -45,7 +45,7 @@ export function ExerciseDropdown() {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-ink-700 bg-ink-800 shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-ink-700 bg-ink-800 shadow-xl">
           {enrolledExercises.map((ex) => {
             const isActive = ex.id === activeExercise?.id;
             return (
