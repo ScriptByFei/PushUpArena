@@ -118,7 +118,7 @@ export function PodiumDisplay({ entries }: { entries: TopThreeEntry[] }) {
         }
         .pod-ring-wrap {
           border-radius: 9999px;
-          animation: podRingPulse 3.5s ease-in-out 0.8s infinite;
+          animation: podRingPulse 7s ease-in-out 0.8s infinite;
         }
 
         @media (prefers-reduced-motion: reduce) {

@@ -83,7 +83,7 @@ function PersonalStats({ rows }: { rows: PodiumRow[] }) {
         <p className={labelCls}>Punkte</p>
         <p
           className="mt-1 text-[26px] font-extrabold leading-tight text-white"
-          style={{ textShadow: '0 0 18px rgba(129,140,248,0.7)' }}
+          style={{ textShadow: '0 0 8px rgba(129,140,248,0.3)' }}
         >
           {animatedPoints}
         </p>
@@ -151,7 +151,7 @@ function LeaderboardRow({
       {/* Hauptzeile */}
       <button
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-150 active:bg-ink-700/30 active:scale-[0.99]"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all duration-150 active:bg-ink-700/30 active:scale-[0.99]"
         aria-expanded={expanded}
       >
         {/* Rang */}
@@ -245,12 +245,12 @@ export default function Achievements() {
   const canNext = sliderIdx < dates.length - 1 && !podiumLoading;
 
   return (
-    <div className="space-y-3.5 pb-4">
+    <div className="space-y-3.5 pb-8">
 
       {/* ── Tages-Podest ──────────────────────────────────────── */}
       {!datesLoading && dates.length > 0 && (
         <div
-          className="overflow-hidden rounded-2xl border border-white/[0.06] px-4 pb-4 pt-3.5 ach-slide-in"
+          className="overflow-hidden rounded-2xl border border-white/[0.06] px-4 pb-5 pt-3.5 ach-slide-in"
           style={{
             background: 'linear-gradient(160deg, rgba(24,26,40,0.97) 0%, rgba(18,20,32,0.99) 100%)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
@@ -265,8 +265,8 @@ export default function Achievements() {
               onClick={() => setSliderIdx((i) => Math.max(0, i - 1))}
               disabled={!canPrev}
               aria-label="Vorheriger Tag"
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition active:scale-90 ${
-                canPrev ? 'text-slate-300 hover:bg-ink-700' : 'cursor-default text-ink-600'
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-xl transition active:scale-90 ${
+                canPrev ? 'text-slate-200 hover:bg-ink-700' : 'cursor-default text-ink-700'
               }`}
             >‹</button>
             <span className="min-w-[180px] text-center text-[13px] font-semibold text-slate-200">
@@ -276,8 +276,8 @@ export default function Achievements() {
               onClick={() => setSliderIdx((i) => Math.min(dates.length - 1, i + 1))}
               disabled={!canNext}
               aria-label="Nächster Tag"
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition active:scale-90 ${
-                canNext ? 'text-slate-300 hover:bg-ink-700' : 'cursor-default text-ink-600'
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-xl transition active:scale-90 ${
+                canNext ? 'text-slate-200 hover:bg-ink-700' : 'cursor-default text-ink-700'
               }`}
             >›</button>
           </div>
@@ -304,7 +304,7 @@ export default function Achievements() {
           animationDelay: '30ms',
         }}
       >
-        <p className="text-[15px] font-bold text-slate-200">
+        <p className="text-[13px] font-bold text-slate-200">
           🏅 Tägliche Medaillen für die globalen Top 3
         </p>
         <p className="mt-0.5 text-[11px] text-slate-500">
@@ -314,7 +314,7 @@ export default function Achievements() {
       </div>
 
       {/* ── Persönliche Kurzstatistik ─────────────────────────── */}
-      {rows.length > 0 && <PersonalStats rows={rows} />}
+      {rows.length > 0 && <div className="-mt-1.5"><PersonalStats rows={rows} /></div>}
 
       {/* ── Medaillenrangliste ────────────────────────────────── */}
       {rows.length === 0 ? (
