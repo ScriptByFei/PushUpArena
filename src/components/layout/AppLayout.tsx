@@ -57,8 +57,9 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Recap-Button links */}
+      {/* 3-Zonen-Grid: [Icon] [Titel] [Chip+Glocke+Settings] */}
+      <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
+        {/* Zone 1 — Recap-Icon links */}
         <button
           onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
           aria-label="Tages-Recap"
@@ -67,21 +68,15 @@ export function AppLayout() {
           <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
         </button>
 
-        {/* Seitentitel — zentriert wenn kein Chip, sonst linksbündig */}
-        {centerTitle ? (
-          <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight text-slate-100">
-            {title}
-          </span>
-        ) : (
-          <span className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-100">
-            {title}
-          </span>
-        )}
+        {/* Zone 2 — Seitentitel, mittig in verfügbarer Fläche */}
+        <span className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-slate-100">
+          {title}
+        </span>
 
-        {/* Exercise-Chip + Glocke + Settings — rechtsbündig */}
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        {/* Zone 3 — Chip + Glocke + Settings rechts */}
+        <div className="flex shrink-0 items-center gap-1">
           {showChip && (
-            <div className="mr-1 max-w-[160px]">
+            <div className="mr-1 max-w-[140px]">
               <ExerciseChip />
             </div>
           )}
