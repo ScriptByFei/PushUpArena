@@ -66,7 +66,7 @@ export function QuickAdd({
           <button
             type="button"
             onClick={() => canSwitch && setShowSwitcher(true)}
-            className={`relative w-10 shrink-0 rounded-xl overflow-hidden ${canSwitch ? 'active:scale-95 transition' : ''}`}
+            className={`relative w-14 shrink-0 rounded-xl overflow-hidden ${canSwitch ? 'active:scale-95 transition' : ''}`}
             aria-label={canSwitch ? 'Übung wechseln' : exercise?.name}
           >
             <img src={iconSrc} alt={exercise?.name ?? 'Übung'} className="h-full w-full object-cover" />
