@@ -63,10 +63,16 @@ export function AppLayout() {
           <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
         </button>
 
-        {/* Seitentitel — linksbündig, füllt verfügbaren Platz */}
-        <span className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-100">
-          {title}
-        </span>
+        {/* Seitentitel — Dashboard: zentriert (absolut), sonst linksbündig */}
+        {pathname === '/' ? (
+          <span className="pointer-events-none absolute inset-x-0 text-center text-base font-bold tracking-tight text-slate-100">
+            {title}
+          </span>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-100">
+            {title}
+          </span>
+        )}
 
         {/* Exercise-Chip + Glocke + Settings — rechtsbündig */}
         <div className="flex shrink-0 items-center gap-1">
