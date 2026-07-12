@@ -79,7 +79,7 @@ export function AppLayout() {
         )}
 
         {/* Exercise-Chip + Glocke + Settings — rechtsbündig */}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {showChip && (
             <div className="mr-1 max-w-[160px]">
               <ExerciseChip />
