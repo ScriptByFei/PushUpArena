@@ -84,14 +84,28 @@ Deno.serve(async (req: Request) => {
       .single();
     const name = profile?.display_name || profile?.username || 'Jemand';
 
-    // ── Subscriptions aller anderen User holen ──────────────────────────────
+    // ── Freunde des Senders ermitteln ───────────────────────────────────────
+    const { data: friendships } = await admin
+      .from('friendships')
+      .select('friend_id')
+      .eq('user_id', user.id);
+
+    const friendIds = (friendships ?? []).map((f: { friend_id: string }) => f.friend_id);
+    console.log(`[milestone-broadcast] Sender has ${friendIds.length} friend(s)`);
+
+    if (friendIds.length === 0) {
+      console.log('[milestone-broadcast] No friends → sent: 0');
+      return json({ ok: true, sent: 0 });
+    }
+
+    // ── Subscriptions nur der Freunde holen ────────────────────────────────
     const { data: subs } = await admin
       .from('push_subscriptions')
       .select('user_id, subscription')
-      .neq('user_id', user.id);
+      .in('user_id', friendIds);
 
     if (!subs || subs.length === 0) {
-      console.log('[milestone-broadcast] No subscribers → sent: 0');
+      console.log('[milestone-broadcast] No friends with push subscription → sent: 0');
       return json({ ok: true, sent: 0 });
     }
 
