@@ -228,6 +228,22 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  // Midnight Berlin reset — clear and reload when the day rolls over.
+  // Falls back to locale-based calculation; safe if offset math is off by a
+  // few seconds since the RPC already filters to today on every call.
+  useEffect(() => {
+    const msUntilMidnight = (): number => {
+      const now = new Date();
+      const berlinStr = now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' });
+      const berlinNow = new Date(berlinStr);
+      const midnight = new Date(berlinNow);
+      midnight.setHours(24, 0, 5, 0); // 5s buffer past midnight
+      return Math.max(0, midnight.getTime() - berlinNow.getTime());
+    };
+    const timer = setTimeout(() => void refresh(), msUntilMidnight());
+    return () => clearTimeout(timer);
+  }, [refresh]);
+
   // Pull-to-refresh via touch
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
