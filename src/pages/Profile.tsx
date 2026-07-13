@@ -127,6 +127,16 @@ export default function Profile() {
 
   return (
     <div className="space-y-3">
+      {/* ── Avatar-Reset-Hinweis ──────────────────────────────────── */}
+      {!profile.avatar_url && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          <span className="mt-0.5 shrink-0 text-base">📸</span>
+          <span>
+            Profilbilder wurden zurückgesetzt. Tippe auf den Avatar um ein neues Bild hochzuladen.
+          </span>
+        </div>
+      )}
+
       {/* ── Profil-Karte ─────────────────────────────────────────── */}
       <div className="rounded-2xl border border-ink-700 bg-ink-800/60 px-4 py-3">
         <div className="flex items-center gap-3">
