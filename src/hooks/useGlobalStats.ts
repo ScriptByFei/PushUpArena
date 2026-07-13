@@ -13,6 +13,9 @@ export interface GlobalStats {
   loaded_at: Date;
 }
 
+const CACHE_KEY = 'global-stats-cache';
+const CACHE_TTL_MS = 5 * 60_000; // 5 minutes
+
 function berlinDateStr(d: Date): string {
   return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
 }
@@ -30,6 +33,21 @@ export function useGlobalStats() {
 
   useEffect(() => {
     async function load() {
+      // Check sessionStorage cache first (avoids redundant RPC on each mount)
+      try {
+        const raw = sessionStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const cached = JSON.parse(raw) as { data: GlobalStats; ts: number };
+          if (Date.now() - cached.ts < CACHE_TTL_MS) {
+            setStats({ ...cached.data, loaded_at: new Date(cached.data.loaded_at) });
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+
       setLoading(true);
 
       // Berlin date helpers
@@ -65,10 +83,16 @@ export function useGlobalStats() {
         new_this_week: number;
       };
 
-      setStats({
-        ...core,
-        loaded_at: new Date(),
-      });
+      const result: GlobalStats = { ...core, loaded_at: new Date() };
+      setStats(result);
+
+      // Cache for 5 minutes
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: result, ts: Date.now() }));
+      } catch {
+        // ignore quota errors
+      }
+
       setLoading(false);
     }
 

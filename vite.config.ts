@@ -67,7 +67,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,svg,png,webp,ico,woff2}'],
       },
       devOptions: {
         // Service Worker im Dev-Modus deaktiviert (sauberes HMR).

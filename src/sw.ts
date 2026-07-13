@@ -1,11 +1,36 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
 declare const self: ServiceWorkerGlobalScope;
 
 // Precache-Manifest wird von VitePWA zur Build-Zeit injiziert
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
+
+// ── Supabase Storage Runtime-Cache ────────────────────────────────────────────
+// Avatar- und Team-Logo-Dateien werden 30 Tage gecacht (max. 200 Einträge).
+// CacheFirst: einmal geladene Bilder werden sofort aus dem Cache bedient —
+// kein wiederholter CDN-Request, keine Cached-Egress-Kosten.
+registerRoute(
+  ({ url }) =>
+    url.hostname.endsWith('supabase.co') &&
+    url.pathname.startsWith('/storage/v1/object/public/'),
+  new CacheFirst({
+    cacheName: 'supabase-storage-v1',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Tage
+        maxEntries: 200,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
 
 // Sofort aktivieren: beim ersten Install und bei Updates via SKIP_WAITING-Message
 self.addEventListener('install', () => {

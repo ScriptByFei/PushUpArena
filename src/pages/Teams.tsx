@@ -23,19 +23,23 @@ async function uploadTeamLogo(
   if (file.size > MAX_BYTES) return { url: null, error: 'Max. 5 MB.' };
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
   const path = `${teamId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from('team-avatars').upload(path, file, { upsert: true });
+  const { error } = await supabase.storage.from('team-avatars').upload(path, file, { upsert: true, cacheControl: '31536000' });
   if (error) return { url: null, error: error.message };
   const { data } = supabase.storage.from('team-avatars').getPublicUrl(path);
   return { url: data.publicUrl, error: null };
 }
 
 function TeamLogo({ url, name, size = 48 }: { url: string | null; name: string; size?: number }) {
-  if (url) {
-    return (
-      <img src={url} alt={name} className="rounded-xl object-cover" style={{ width: size, height: size }} />
-    );
-  }
-  return (
+  const [src, setSrc] = useState<string | null>(url);
+  return src ? (
+    <img
+      src={src}
+      alt={name}
+      className="rounded-xl object-cover"
+      style={{ width: size, height: size }}
+      onError={() => setSrc(null)}
+    />
+  ) : (
     <div
       className="flex items-center justify-center rounded-xl bg-brand-700/40 text-brand-300"
       style={{ width: size, height: size }}

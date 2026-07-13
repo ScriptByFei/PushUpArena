@@ -86,7 +86,12 @@ export function AvatarUpload({ url, name, userId, onUploaded, size = 64 }: Props
     // 1. Upload compressed WebP
     const { error: uploadErr } = await supabase.storage
       .from('avatars')
-      .upload(path, uploadBlob, { upsert: false, contentType: 'image/webp' });
+      .upload(path, uploadBlob, {
+        upsert: false,
+        contentType: 'image/webp',
+        // 1-year CDN cache — URL contains timestamp so cache-bust is automatic on each upload
+        cacheControl: '31536000',
+      });
 
     if (uploadErr) {
       toast.error('Upload fehlgeschlagen: ' + uploadErr.message);
