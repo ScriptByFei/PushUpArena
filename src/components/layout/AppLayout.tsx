@@ -62,21 +62,25 @@ export function AppLayout() {
       {/* 3-Zonen-Grid: [Feed+Recap] [Titel] [Chip+Glocke+Settings] */}
       <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center gap-0 border-b border-ink-800 bg-ink-950/80 px-2.5 py-1.5 pt-[max(6px,env(safe-area-inset-top))] backdrop-blur">
 
-        {/* Zone 1 — Feed + Recap als zusammengehöriges Icon-Paar */}
-        <div className="flex shrink-0 items-center">
+        {/* Zone 1 — Feed + Recap als zusammengehöriges Icon-Paar.
+             Beide Buttons: 48×48 px feste Fläche, zentriert via grid.
+             Feed-Icon 42 px, Recap-Icon 40 px → gleicher wahrgenommener Kreisdurchmesser. */}
+        <div className="flex shrink-0 items-center gap-3">
           <button
             onClick={() => setFeedOpen(true)}
             aria-label="Arena-Feed"
-            className="shrink-0 rounded-lg p-1 transition hover:bg-ink-800 active:bg-ink-700"
+            className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
+            style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
           >
-            <img src="/arena-feed-icon.png" alt="" className="h-[42px] w-[42px] object-contain" />
+            <img src="/arena-feed-icon.png" alt="" style={{ width: 42, height: 42, display: 'block', objectFit: 'contain' }} />
           </button>
           <button
             onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
             aria-label="Tages-Recap"
-            className="shrink-0 rounded-lg p-1 transition hover:bg-ink-800 active:bg-ink-700"
+            className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
+            style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
           >
-            <img src="/recap-icon.png" alt="" className="h-9 w-9 object-contain" />
+            <img src="/recap-icon.png" alt="" style={{ width: 40, height: 40, display: 'block', objectFit: 'contain' }} />
           </button>
         </div>
 
