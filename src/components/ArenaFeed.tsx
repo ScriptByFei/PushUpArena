@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFeed, type FeedEvent, type FeedFilter } from '@/hooks/useFeed';
+import { groupAccentClass, getChip } from '@/lib/feedRegistry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,50 +48,9 @@ function groupEvents(events: FeedEvent[], newIds: Set<string>): EventGroup[] {
   return order.map(k => map.get(k)!);
 }
 
-// ─── Medal accent (left border) ───────────────────────────────────────────────
-
-const MEDAL_RANK: Record<string, number> = { medal_gold: 3, medal_silver: 2, medal_bronze: 1 };
-
-function groupAccent(items: FeedEvent[]): string {
-  const best = items.reduce((a, b) =>
-    (MEDAL_RANK[b.event_type] ?? 0) > (MEDAL_RANK[a.event_type] ?? 0) ? b : a,
-  );
-  switch (best.event_type) {
-    case 'medal_gold':   return 'border-l-[3px] border-amber-400/80';
-    case 'medal_silver': return 'border-l-[3px] border-slate-400/60';
-    case 'medal_bronze': return 'border-l-[3px] border-orange-600/60';
-    default:             return 'border-l-[3px] border-transparent';
-  }
-}
-
-// ─── Short event chip ─────────────────────────────────────────────────────────
-
-function chipFor(ev: FeedEvent): { icon: string; label: string } {
-  const ex = ev.exercise_name ?? 'PushUp';
-  const reps = ev.metadata.reps as number | undefined;
-
-  switch (ev.event_type) {
-    case 'medal_gold':      return { icon: '🥇', label: `Gold · ${ex}` };
-    case 'medal_silver':    return { icon: '🥈', label: `Silber · ${ex}` };
-    case 'medal_bronze':    return { icon: '🥉', label: `Bronze · ${ex}` };
-    case 'milestone_100':   return { icon: '💯', label: `100 ${ex}` };
-    case 'milestone_250':   return { icon: '🔥', label: `250 ${ex}` };
-    case 'milestone_500':   return { icon: '🚀', label: `500 ${ex}` };
-    case 'milestone_1000':  return { icon: '🤯', label: `1.000 ${ex}` };
-    case 'streak_7':        return { icon: '🔥', label: '7-Tage-Streak' };
-    case 'streak_14':       return { icon: '💪', label: '14-Tage-Streak' };
-    case 'streak_30':       return { icon: '🏅', label: '30-Tage-Streak' };
-    case 'streak_50':       return { icon: '⚡', label: '50-Tage-Streak' };
-    case 'streak_100':      return { icon: '🔱', label: '100-Tage-Streak' };
-    case 'personal_record': return { icon: '🏆', label: reps != null ? `Rekord · ${reps} Wdh.` : `Neuer Rekord · ${ex}` };
-    case 'top10':           return { icon: '👀', label: `Top 10 · ${ex}` };
-    case 'place1':          return { icon: '🥇', label: `Platz 1 · ${ex}` };
-    case 'daily_goal':      return { icon: '✅', label: `Tagesziel · ${ex}` };
-    case 'weekly_goal':     return { icon: '🎯', label: `Wochenziel · ${ex}` };
-    case 'achievement':     return { icon: '🏅', label: 'Erfolg' };
-    default:                return { icon: '⚡', label: 'Aktiv' };
-  }
-}
+// ─── Accent + chip delegated to feedRegistry ─────────────────────────────────
+// groupAccentClass() and getChip() are imported from @/lib/feedRegistry.
+// To add a new event type, only edit feedRegistry.ts — no changes needed here.
 
 // ─── Compact time ─────────────────────────────────────────────────────────────
 
@@ -171,7 +131,7 @@ function GroupCard({
   onOpenProfile: (userId: string) => void;
 }) {
   const name = group.display_name || group.username || 'Unbekannt';
-  const accent = groupAccent(group.items);
+  const accent = groupAccentClass(group.items);
 
   return (
     <div
@@ -204,7 +164,7 @@ function GroupCard({
       {/* Events list */}
       <div className="space-y-2 px-3 pb-2.5">
         {group.items.map(ev => {
-          const { icon, label } = chipFor(ev);
+          const { icon, label } = getChip(ev);
           return (
             <div key={ev.id}>
               <div className="flex items-center gap-1.5">
