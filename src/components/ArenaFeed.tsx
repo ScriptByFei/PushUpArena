@@ -82,53 +82,13 @@ function Avatar({ url, name }: { url: string | null; name: string }) {
   );
 }
 
-// ─── Reaction chips ───────────────────────────────────────────────────────────
-
-const EMOJIS = ['💪', '🔥', '👏', '❤️'];
-
-function ReactionRow({
-  eventId,
-  reactions,
-  onToggle,
-}: {
-  eventId: string;
-  reactions: FeedEvent['reactions'];
-  onToggle: (id: string, emoji: string) => void;
-}) {
-  return (
-    <div className="mt-1.5 flex gap-1">
-      {EMOJIS.map(emoji => {
-        const r = reactions[emoji] ?? { count: 0, reacted: false };
-        return (
-          <button
-            key={emoji}
-            onClick={() => onToggle(eventId, emoji)}
-            className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all active:scale-90 ${
-              r.reacted
-                ? 'bg-brand-500/20 text-brand-200 ring-1 ring-brand-400/40'
-                : 'bg-ink-800 text-slate-500 hover:bg-ink-700 hover:text-slate-300'
-            }`}
-          >
-            <span className="leading-none">{emoji}</span>
-            {r.count > 0 && (
-              <span className="ml-0.5 tabular-nums leading-none">{r.count}</span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Group card ───────────────────────────────────────────────────────────────
 
 function GroupCard({
   group,
-  onToggle,
   onOpenProfile,
 }: {
   group: EventGroup;
-  onToggle: (id: string, emoji: string) => void;
   onOpenProfile: (group: EventGroup) => void;
 }) {
   const name = group.display_name || group.username || 'Unbekannt';
@@ -139,8 +99,8 @@ function GroupCard({
       className={`overflow-hidden rounded-xl border border-ink-700 bg-ink-900 ${accent}`}
       style={group.isNew ? { animation: 'feedEnter 0.35s ease-out' } : undefined}
     >
-      {/* Header row */}
-      <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-1.5">
+      {/* Header: avatar + name (truncated) + timestamp — all on one line */}
+      <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
         <button
           onClick={() => onOpenProfile(group)}
           className="shrink-0 rounded-full transition hover:opacity-75 active:opacity-60"
@@ -148,31 +108,33 @@ function GroupCard({
         >
           <Avatar url={group.avatar_url} name={name} />
         </button>
+
+        {/* Name — truncates before timestamp, never overlaps */}
         <button
           onClick={() => onOpenProfile(group)}
           className="min-w-0 flex-1 text-left"
         >
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[13px] font-bold leading-none text-slate-100">{name}</span>
-            {group.username && (
-              <span className="text-[11px] leading-none text-slate-500">@{group.username}</span>
-            )}
-          </div>
+          <span className="block truncate text-[13px] font-bold leading-none text-slate-100">
+            {name}
+          </span>
         </button>
-        <span className="shrink-0 text-[11px] text-slate-600">{compactTime(group.latest_at)}</span>
+
+        {/* Timestamp — always visible, never pushed off screen */}
+        <span className="shrink-0 pl-2 text-[11px] leading-none text-slate-600">
+          {compactTime(group.latest_at)}
+        </span>
       </div>
 
-      {/* Events list */}
-      <div className="space-y-2 px-3 pb-2.5">
+      {/* Event chips — compact, no reactions */}
+      <div className="space-y-1 px-3 pb-2">
         {group.items.map(ev => {
           const { icon, label } = getChip(ev);
           return (
-            <div key={ev.id}>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[15px] leading-none">{icon}</span>
-                <span className="text-[13px] font-semibold leading-snug text-slate-200">{label}</span>
-              </div>
-              <ReactionRow eventId={ev.id} reactions={ev.reactions} onToggle={onToggle} />
+            <div key={ev.id} className="flex items-center gap-1.5">
+              <span className="text-[14px] leading-none">{icon}</span>
+              <span className="min-w-0 truncate text-[12px] font-semibold leading-snug text-slate-200">
+                {label}
+              </span>
             </div>
           );
         })}
@@ -185,14 +147,15 @@ function GroupCard({
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse rounded-xl border border-ink-700 bg-ink-900 p-3">
-      <div className="flex items-center gap-2.5">
+    <div className="animate-pulse rounded-xl border border-ink-700 bg-ink-900 px-3 py-2">
+      <div className="flex items-center gap-2">
         <div className="h-8 w-8 shrink-0 rounded-full bg-ink-700" />
-        <div className="flex-1 space-y-1.5">
-          <div className="h-2.5 w-1/3 rounded-full bg-ink-700" />
-          <div className="h-2.5 w-1/2 rounded-full bg-ink-700" />
+        <div className="min-w-0 flex-1">
+          <div className="h-2.5 w-2/5 rounded-full bg-ink-700" />
         </div>
+        <div className="h-2 w-8 shrink-0 rounded-full bg-ink-700" />
       </div>
+      <div className="mt-1.5 ml-10 h-2.5 w-3/5 rounded-full bg-ink-700" />
     </div>
   );
 }
@@ -237,7 +200,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const [infoSheet, setInfoSheet] = useState<InfoSheetState | null>(null);
   const {
     events, loading, refreshing, hasMore, newEventIds,
-    refresh, loadMore, toggleReaction,
+    refresh, loadMore,
   } = useFeed(filter);
 
   const groups = groupEvents(events, newEventIds);
@@ -275,7 +238,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   };
 
   // Open the shared UserInfoSheet — same component used in Friends and Leaderboard.
-  // Pick the exercise_id from the first event that has one; fall back to the active exercise.
+  // Uses user_id (stable), not @handle, so safe against username changes.
   const handleOpenProfile = (group: EventGroup) => {
     const exerciseId =
       group.items.find(i => i.exercise_id)?.exercise_id ?? activeExercise?.id;
@@ -350,8 +313,8 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
           onTouchEnd={handleTouchEnd}
         >
           {loading && groups.length === 0 ? (
-            <div className="space-y-2">
-              {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
+            <div className="space-y-1.5">
+              {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : groups.length === 0 ? (
             /* Empty state */
@@ -367,12 +330,11 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {groups.map(group => (
                 <GroupCard
                   key={group.key}
                   group={group}
-                  onToggle={toggleReaction}
                   onOpenProfile={handleOpenProfile}
                 />
               ))}
