@@ -65,7 +65,7 @@ export function AppLayout() {
         {/* Zone 1 — Feed + Recap als zusammengehöriges Icon-Paar.
              Beide Buttons: 48×48 px feste Fläche, zentriert via grid.
              Feed-Icon 42 px, Recap-Icon 40 px → gleicher wahrgenommener Kreisdurchmesser. */}
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             onClick={() => setFeedOpen(true)}
             aria-label="Arena-Feed"
