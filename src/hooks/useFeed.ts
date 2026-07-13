@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
+// Central list of exercise names allowed in the feed (mirrors the RPC's feed_slugs CTE).
+// Add more names here to enable additional exercises in the feed.
+export const FEED_EXERCISE_NAMES: string[] = ['PushUp'];
+
 export type FeedFilter = 'global' | 'friends';
 
 export interface FeedReactions {
@@ -44,7 +48,11 @@ export function useFeed(filter: FeedFilter) {
           p_limit: PAGE_SIZE,
         });
         if (error) throw error;
-        const rows = (data as FeedEvent[]) ?? [];
+        // Client-side safety filter: exclude events from exercises not in FEED_EXERCISE_NAMES.
+        // The RPC already filters server-side; this catches any stale/unexpected data.
+        const rows = ((data as FeedEvent[]) ?? []).filter(
+          (ev) => ev.exercise_id === null || FEED_EXERCISE_NAMES.includes(ev.exercise_name ?? ''),
+        );
         if (replace) {
           setEvents(rows);
         } else {
@@ -156,7 +164,10 @@ export function useFeed(filter: FeedFilter) {
           if (!data) return;
           setEvents((prev) => {
             const existingIds = new Set(prev.map((e) => e.id));
-            const newItems = (data as FeedEvent[]).filter((e) => !existingIds.has(e.id));
+            const newItems = (data as FeedEvent[]).filter(
+              (e) => !existingIds.has(e.id) &&
+                (e.exercise_id === null || FEED_EXERCISE_NAMES.includes(e.exercise_name ?? '')),
+            );
             return newItems.length > 0 ? [...newItems, ...prev] : prev;
           });
         },
