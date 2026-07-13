@@ -11,9 +11,9 @@ import { useAuth } from '@/context/AuthContext';
 import type { Exercise } from '@/lib/database.types';
 
 export const EXERCISE_ICONS: Record<string, string> = {
-  pushups: '/pushup-icon.png',
-  pullups: '/pullup-icon.png',
-  dips:    '/dips-icon.png',
+  pushups: '/pushup-icon.webp',
+  pullups: '/pullup-icon.webp',
+  dips:    '/dips-icon.webp',
 };
 
 const STORAGE_KEY = 'pua_active_exercise_slug';

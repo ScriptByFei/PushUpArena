@@ -55,13 +55,13 @@ const CUSTOM_MEDAL_SLUGS = ['pushups'];
 
 function MedalIcon({ medal, size = 28, useCustom = true }: { medal: string; size?: number; useCustom?: boolean }) {
   if (useCustom && medal === '🥇') {
-    return <img src="/medal-gold.png" alt="🥇" style={{ width: size, height: size }} className="object-contain" />;
+    return <img src="/medal-gold.webp" alt="🥇" style={{ width: size, height: size }} className="object-contain" />;
   }
   if (useCustom && medal === '🥈') {
-    return <img src="/medal-silver.png" alt="🥈" style={{ width: size, height: size }} className="object-contain" />;
+    return <img src="/medal-silver.webp" alt="🥈" style={{ width: size, height: size }} className="object-contain" />;
   }
   if (useCustom && medal === '🥉') {
-    return <img src="/medal-bronze.png" alt="🥉" style={{ width: size, height: size }} className="object-contain" />;
+    return <img src="/medal-bronze.webp" alt="🥉" style={{ width: size, height: size }} className="object-contain" />;
   }
   return <span style={{ fontSize: size }} className="leading-none">{medal}</span>;
 }

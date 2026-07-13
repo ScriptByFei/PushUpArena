@@ -204,9 +204,9 @@ const MEDAL_CFG = {
 
 function medalImage(medal: DailyRecap['yesterday_medal']): string | null {
   switch (medal) {
-    case 'gold':   return '/trophy-gold.png';
-    case 'silver': return '/trophy-silver.png';
-    case 'bronze': return '/trophy-bronze.png';
+    case 'gold':   return '/trophy-gold.webp';
+    case 'silver': return '/trophy-silver.webp';
+    case 'bronze': return '/trophy-bronze.webp';
     default:       return null;
   }
 }
@@ -260,7 +260,7 @@ function MedalAwardCard({
       <div className="relative flex justify-center">
         <div className="medal-image-reveal">
           <img
-            src={img ?? '/trophy-gold.png'}
+            src={img ?? '/trophy-gold.webp'}
             alt={medal}
             className="h-20 w-20 object-contain"
             style={{ filter: `drop-shadow(0 0 16px ${cfg.glowColor})` }}

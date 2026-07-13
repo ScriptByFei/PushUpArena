@@ -17,7 +17,7 @@ export function AuthLayout({
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <img
-            src="/logo.png"
+            src="/logo.webp"
             alt="PushupArena"
             className="mb-2 h-32 w-32 object-contain drop-shadow-[0_6px_24px_rgba(251,146,60,0.28)]"
           />

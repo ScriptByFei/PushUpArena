@@ -1,4 +1,4 @@
-const DEFAULT_AVATAR = '/default-avatar.png';
+const DEFAULT_AVATAR = '/default-avatar.webp';
 
 interface AvatarProps {
   url?: string | null;

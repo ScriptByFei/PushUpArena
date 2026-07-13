@@ -13,7 +13,7 @@ export function useRestDays(exerciseId?: string) {
     setLoading(true);
     const { data } = await supabase
       .from('rest_days')
-      .select('*')
+      .select('id, exercise_id, user_id, rest_date')
       .eq('exercise_id', exerciseId)
       .eq('user_id', user.id)
       .order('rest_date', { ascending: false });

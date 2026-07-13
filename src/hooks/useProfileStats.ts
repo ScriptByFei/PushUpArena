@@ -84,7 +84,7 @@ export function useProfileStats(exerciseId?: string) {
     setError(null);
 
     const today = berlinDateStr(new Date()); // "2026-07-02"
-    const since = shiftDate(today, -364);
+    const since = shiftDate(today, -200); // 182 days for heatmap + buffer for streak calculation
 
     const { data, error: err } = await supabase
       .from('workout_entries')

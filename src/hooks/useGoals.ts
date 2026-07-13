@@ -15,7 +15,7 @@ export function useGoals(exerciseId?: string) {
     setError(null);
     const { data, error: err } = await supabase
       .from('user_goals')
-      .select('*')
+      .select('id, user_id, exercise_id, daily_goal, weekly_goal, updated_at')
       .eq('user_id', user.id)
       .eq('exercise_id', exerciseId)
       .maybeSingle();

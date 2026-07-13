@@ -19,11 +19,15 @@ export function useWorkouts(exerciseId?: string) {
     if (!user || !exerciseId) return;
     setLoading(true);
     setError(null);
+    // Limit to last 90 days — older entries are rarely edited and keep the query small.
+    const since = new Date();
+    since.setDate(since.getDate() - 90);
     const { data, error: err } = await supabase
       .from('workout_entries')
-      .select('*')
+      .select('id, user_id, exercise_id, amount, note, performed_at')
       .eq('user_id', user.id)
       .eq('exercise_id', exerciseId)
+      .gte('performed_at', since.toISOString())
       .order('performed_at', { ascending: false });
     if (err) setError(err.message);
     else setEntries(data ?? []);

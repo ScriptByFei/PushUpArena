@@ -17,7 +17,7 @@ export function useProfile() {
     setError(null);
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, username, display_name, avatar_url, bio, is_searchable, created_at, quick_amounts')
       .eq('id', user.id)
       .maybeSingle();
     if (err) setError(err.message);
