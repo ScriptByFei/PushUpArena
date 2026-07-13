@@ -7,6 +7,7 @@ import { DailyRecapModal } from '@/components/DailyRecapModal';
 import { useDailyRecap } from '@/hooks/useDailyRecap';
 import { ExerciseChip } from '@/components/ExerciseChip';
 import { useExercise } from '@/context/ExerciseContext';
+import { ArenaFeed } from '@/components/ArenaFeed';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -35,6 +36,7 @@ export function AppLayout() {
   const centerTitle = !showChip;
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(false);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -59,14 +61,23 @@ export function AppLayout() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
       {/* 3-Zonen-Grid: [Icon] [Titel] [Chip+Glocke+Settings] */}
       <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Zone 1 — Recap-Icon links */}
-        <button
-          onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
-          aria-label="Tages-Recap"
-          className={`shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
-        >
-          <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
-        </button>
+        {/* Zone 1 — Feed-Icon + Recap-Icon links */}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={() => setFeedOpen(true)}
+            aria-label="Arena-Feed"
+            className="shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800"
+          >
+            <img src="/arena-feed-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
+          </button>
+          <button
+            onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
+            aria-label="Tages-Recap"
+            className={`shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
+          >
+            <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
+          </button>
+        </div>
 
         {/* Zone 2 — Seitentitel, mittig in verfügbarer Fläche */}
         <span className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-slate-100">
@@ -114,6 +125,9 @@ export function AppLayout() {
       </main>
 
       <BottomNav />
+
+      {/* Arena Feed */}
+      {feedOpen && <ArenaFeed onClose={() => setFeedOpen(false)} />}
 
       {/* Daily Recap Modal — auto-show oder manuell */}
       {(recapOpen || recapManualOpen) && recap && (
