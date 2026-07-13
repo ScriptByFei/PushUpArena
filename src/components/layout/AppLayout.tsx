@@ -65,14 +65,14 @@ export function AppLayout() {
         {/* Zone 1 — Feed + Recap als zusammengehöriges Icon-Paar.
              Beide Buttons: 48×48 px feste Fläche, zentriert via grid.
              Feed-Icon 42 px, Recap-Icon 40 px → gleicher wahrgenommener Kreisdurchmesser. */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-0.5">
           <button
             onClick={() => setFeedOpen(true)}
             aria-label="Arena-Feed"
             className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
             style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
           >
-            <img src="/arena-feed-icon.png" alt="" style={{ width: 42, height: 42, display: 'block', objectFit: 'contain' }} />
+            <img src="/arena-feed-icon.png" alt="" style={{ width: 46, height: 46, display: 'block', objectFit: 'contain' }} />
           </button>
           <button
             onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
@@ -80,7 +80,7 @@ export function AppLayout() {
             className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
             style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
           >
-            <img src="/recap-icon.png" alt="" style={{ width: 40, height: 40, display: 'block', objectFit: 'contain' }} />
+            <img src="/recap-icon.png" alt="" style={{ width: 44, height: 44, display: 'block', objectFit: 'contain' }} />
           </button>
         </div>
 
