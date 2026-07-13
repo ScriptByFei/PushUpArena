@@ -65,6 +65,7 @@ export function useFriends() {
         .select(PROFILE_FIELDS)
         .neq('id', user.id)
         .order('username')
+        .limit(50)                // cap discover list — prevents unbounded egress as user count grows
         .returns<FriendProfile[]>(),
     ]);
 

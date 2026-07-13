@@ -13,13 +13,45 @@ interface Props {
   size?: number;
 }
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// Max raw file size allowed before processing
+const MAX_RAW_BYTES = 20 * 1024 * 1024; // 20 MB — canvas will compress it down
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
 
 function storagePath(avatarUrl: string): string | null {
   const marker = '/object/public/avatars/';
   const idx = avatarUrl.indexOf(marker);
   return idx === -1 ? null : avatarUrl.slice(idx + marker.length);
+}
+
+/**
+ * Resize and compress an image to max 400×400 px WebP using the Canvas API.
+ * Reduces a typical 2–5 MB phone photo to ≈40–80 KB before upload,
+ * dramatically cutting Supabase Storage egress.
+ */
+function resizeToWebP(file: File, maxPx = 400, quality = 0.82): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not available')); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => { blob ? resolve(blob) : reject(new Error('Canvas toBlob returned null')); },
+        'image/webp',
+        quality,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')); };
+    img.src = objectUrl;
+  });
 }
 
 export function AvatarUpload({ url, name, userId, onUploaded, size = 64 }: Props) {
@@ -28,24 +60,33 @@ export function AvatarUpload({ url, name, userId, onUploaded, size = 64 }: Props
   const toast = useToast();
 
   async function handleFile(file: File) {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error('Nur JPG, PNG, WebP oder GIF erlaubt.');
+    if (!ALLOWED_TYPES.includes(file.type) && !file.type.startsWith('image/')) {
+      toast.error('Nur Bilddateien (JPG, PNG, WebP …) erlaubt.');
       return;
     }
-    if (file.size > MAX_BYTES) {
-      toast.error('Bild darf maximal 5 MB groß sein.');
+    if (file.size > MAX_RAW_BYTES) {
+      toast.error('Bild darf maximal 20 MB groß sein.');
       return;
     }
 
     setUploading(true);
 
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const path = `${userId}/${Date.now()}.${ext}`;
+    // Resize + convert to WebP before upload — reduces storage & egress by ~95%
+    let uploadBlob: Blob;
+    try {
+      uploadBlob = await resizeToWebP(file);
+    } catch {
+      toast.error('Bild konnte nicht verarbeitet werden.');
+      setUploading(false);
+      return;
+    }
 
-    // 1. Upload
+    const path = `${userId}/${Date.now()}.webp`;
+
+    // 1. Upload compressed WebP
     const { error: uploadErr } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: false });
+      .upload(path, uploadBlob, { upsert: false, contentType: 'image/webp' });
 
     if (uploadErr) {
       toast.error('Upload fehlgeschlagen: ' + uploadErr.message);

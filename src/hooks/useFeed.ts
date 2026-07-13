@@ -142,42 +142,56 @@ export function useFeed(filter: FeedFilter) {
     [user],
   );
 
-  // Realtime: prepend new events + animate
+  // Realtime: prepend new events + animate.
+  // Debounced 3 s so rapid bursts (multiple INSERTs in quick succession) only
+  // trigger a single RPC fetch instead of one per row.
+  const realtimeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!user) return;
+
+    const fetchNewEvents = async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).rpc('get_feed_events', {
+        p_filter: filter,
+        p_cursor: null,
+        p_limit: 5,
+      });
+      if (!data) return;
+      setEvents(prev => {
+        const existingIds = new Set(prev.map(e => e.id));
+        const newItems = applyFilter(data as FeedEvent[]).filter(e => !existingIds.has(e.id));
+        if (newItems.length === 0) return prev;
+
+        // Mark as new for animation
+        const ids = new Set(newItems.map(e => e.id));
+        setNewEventIds(s => new Set([...s, ...ids]));
+        setTimeout(() => setNewEventIds(s => {
+          const next = new Set(s);
+          ids.forEach(id => next.delete(id));
+          return next;
+        }), 900);
+
+        return [...newItems, ...prev];
+      });
+    };
+
     const channel = supabase
       .channel('feed_events_realtime')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'feed_events' },
-        async () => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data } = await (supabase as any).rpc('get_feed_events', {
-            p_filter: filter,
-            p_cursor: null,
-            p_limit: 5,
-          });
-          if (!data) return;
-          setEvents(prev => {
-            const existingIds = new Set(prev.map(e => e.id));
-            const newItems = applyFilter(data as FeedEvent[]).filter(e => !existingIds.has(e.id));
-            if (newItems.length === 0) return prev;
-
-            // Mark as new for animation
-            const ids = new Set(newItems.map(e => e.id));
-            setNewEventIds(s => new Set([...s, ...ids]));
-            setTimeout(() => setNewEventIds(s => {
-              const next = new Set(s);
-              ids.forEach(id => next.delete(id));
-              return next;
-            }), 900);
-
-            return [...newItems, ...prev];
-          });
+        () => {
+          if (realtimeDebounce.current) clearTimeout(realtimeDebounce.current);
+          realtimeDebounce.current = setTimeout(() => { void fetchNewEvents(); }, 3_000);
         },
       )
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+
+    return () => {
+      if (realtimeDebounce.current) clearTimeout(realtimeDebounce.current);
+      void supabase.removeChannel(channel);
+    };
   }, [user, filter]);
 
   return {

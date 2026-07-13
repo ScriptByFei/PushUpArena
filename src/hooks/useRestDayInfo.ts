@@ -2,7 +2,7 @@
  * useRestDayInfo – liefert Ruhetag-Status für die aktuelle Woche.
  * Wird auf dem Dashboard für die Hinweis-Banner genutzt.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { getWeekKey, getDayType, shiftDate } from '@/lib/streakUtils';
@@ -27,9 +27,12 @@ const EMPTY: RestDayStatus = {
   loading: true,
 };
 
+const VISIBILITY_REFETCH_MS = 5 * 60_000; // only re-fetch once per 5 min on tab-focus
+
 export function useRestDayInfo(exerciseId?: string): RestDayStatus {
   const { user } = useAuth();
   const [status, setStatus] = useState<RestDayStatus>(EMPTY);
+  const lastLoadedAt = useRef<number>(0);
 
   const load = useCallback(async () => {
     if (!exerciseId || !user) return;
@@ -69,13 +72,22 @@ export function useRestDayInfo(exerciseId?: string): RestDayStatus {
     const consecutiveRestToday = isRestDayToday ? (isRestDayYesterday ? 2 : 1) : 0;
 
     setStatus({ restDaysThisWeek, isRestDayToday, consecutiveRestToday, loading: false });
+    lastLoadedAt.current = Date.now();
   }, [exerciseId, user]);
 
   useEffect(() => { void load(); }, [load]);
 
-  // Refresh when tab becomes visible (user returns from Track page)
+  // Refresh when tab becomes visible, but at most once every 5 minutes.
+  // PWA users switch apps constantly — without the throttle this fires on every unlock.
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') void load(); };
+    const onVisible = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        Date.now() - lastLoadedAt.current > VISIBILITY_REFETCH_MS
+      ) {
+        void load();
+      }
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
