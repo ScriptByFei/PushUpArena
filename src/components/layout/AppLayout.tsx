@@ -69,7 +69,7 @@ export function AppLayout() {
             aria-label="Arena-Feed"
             className="shrink-0 rounded-lg p-1 transition hover:bg-ink-800 active:bg-ink-700"
           >
-            <img src="/arena-feed-icon.png" alt="" className="h-9 w-9 object-contain" />
+            <img src="/arena-feed-icon.png" alt="" className="h-[30px] w-[30px] object-contain" />
           </button>
           <button
             onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
