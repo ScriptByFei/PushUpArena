@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useFeed, type FeedEvent, type FeedFilter } from '@/hooks/useFeed';
 import { groupAccentClass, getChip } from '@/lib/feedRegistry';
+import { UserInfoSheet } from '@/components/UserInfoSheet';
+import { useExercise } from '@/context/ExerciseContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ function GroupCard({
 }: {
   group: EventGroup;
   onToggle: (id: string, emoji: string) => void;
-  onOpenProfile: (userId: string) => void;
+  onOpenProfile: (group: EventGroup) => void;
 }) {
   const name = group.display_name || group.username || 'Unbekannt';
   const accent = groupAccentClass(group.items);
@@ -141,14 +142,14 @@ function GroupCard({
       {/* Header row */}
       <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-1.5">
         <button
-          onClick={() => onOpenProfile(group.user_id)}
+          onClick={() => onOpenProfile(group)}
           className="shrink-0 rounded-full transition hover:opacity-75 active:opacity-60"
           aria-label={`Profil von ${name}`}
         >
           <Avatar url={group.avatar_url} name={name} />
         </button>
         <button
-          onClick={() => onOpenProfile(group.user_id)}
+          onClick={() => onOpenProfile(group)}
           className="min-w-0 flex-1 text-left"
         >
           <div className="flex items-baseline gap-1.5">
@@ -223,9 +224,17 @@ function FilterPill({
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
+interface InfoSheetState {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  exerciseId: string;
+}
+
 export function ArenaFeed({ onClose }: { onClose: () => void }) {
-  const navigate = useNavigate();
+  const { exercise: activeExercise } = useExercise();
   const [filter, setFilter] = useState<FeedFilter>('global');
+  const [infoSheet, setInfoSheet] = useState<InfoSheetState | null>(null);
   const {
     events, loading, refreshing, hasMore, newEventIds,
     refresh, loadMore, toggleReaction,
@@ -265,9 +274,18 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
     if (dy > 60 && (listRef.current?.scrollTop ?? 0) <= 0 && !refreshing) void refresh();
   };
 
-  const handleOpenProfile = (userId: string) => {
-    onClose();
-    navigate(`/profile/${userId}`);
+  // Open the shared UserInfoSheet — same component used in Friends and Leaderboard.
+  // Pick the exercise_id from the first event that has one; fall back to the active exercise.
+  const handleOpenProfile = (group: EventGroup) => {
+    const exerciseId =
+      group.items.find(i => i.exercise_id)?.exercise_id ?? activeExercise?.id;
+    if (!exerciseId) return;
+    setInfoSheet({
+      userId: group.user_id,
+      displayName: group.display_name || group.username || 'Unbekannt',
+      avatarUrl: group.avatar_url,
+      exerciseId,
+    });
   };
 
   return (
@@ -372,6 +390,17 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
+
+      {/* Profile sheet — same component used in Friends + Leaderboard */}
+      {infoSheet && (
+        <UserInfoSheet
+          userId={infoSheet.userId}
+          displayName={infoSheet.displayName}
+          avatarUrl={infoSheet.avatarUrl}
+          exerciseId={infoSheet.exerciseId}
+          onClose={() => setInfoSheet(null)}
+        />
+      )}
     </>
   );
 }
