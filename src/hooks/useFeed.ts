@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
 // Central list of exercise names allowed in the feed (mirrors the RPC's feed_slugs CTE).
-// Add more names here to enable additional exercises in the feed.
+// To enable more exercises in the feed, add their names here.
 export const FEED_EXERCISE_NAMES: string[] = ['PushUp'];
 
 export type FeedFilter = 'global' | 'friends';
@@ -29,12 +29,19 @@ export interface FeedEvent {
 
 const PAGE_SIZE = 20;
 
+function applyFilter(rows: FeedEvent[]): FeedEvent[] {
+  return rows.filter(
+    ev => ev.exercise_id === null || FEED_EXERCISE_NAMES.includes(ev.exercise_name ?? ''),
+  );
+}
+
 export function useFeed(filter: FeedFilter) {
   const { user } = useAuth();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [newEventIds, setNewEventIds] = useState<Set<string>>(new Set());
   const cursorRef = useRef<string | null>(null);
 
   const fetchPage = useCallback(
@@ -48,15 +55,11 @@ export function useFeed(filter: FeedFilter) {
           p_limit: PAGE_SIZE,
         });
         if (error) throw error;
-        // Client-side safety filter: exclude events from exercises not in FEED_EXERCISE_NAMES.
-        // The RPC already filters server-side; this catches any stale/unexpected data.
-        const rows = ((data as FeedEvent[]) ?? []).filter(
-          (ev) => ev.exercise_id === null || FEED_EXERCISE_NAMES.includes(ev.exercise_name ?? ''),
-        );
+        const rows = applyFilter((data as FeedEvent[]) ?? []);
         if (replace) {
           setEvents(rows);
         } else {
-          setEvents((prev) => [...prev, ...rows]);
+          setEvents(prev => [...prev, ...rows]);
         }
         if (rows.length > 0) {
           cursorRef.current = rows[rows.length - 1].created_at;
@@ -69,7 +72,7 @@ export function useFeed(filter: FeedFilter) {
     [user, filter],
   );
 
-  // Initial load
+  // Initial load / filter change
   useEffect(() => {
     cursorRef.current = null;
     setEvents([]);
@@ -78,7 +81,6 @@ export function useFeed(filter: FeedFilter) {
     fetchPage(null, true).finally(() => setLoading(false));
   }, [fetchPage]);
 
-  // Pull-to-refresh
   const refresh = useCallback(async () => {
     setRefreshing(true);
     cursorRef.current = null;
@@ -86,32 +88,40 @@ export function useFeed(filter: FeedFilter) {
     setRefreshing(false);
   }, [fetchPage]);
 
-  // Infinite scroll — load next page
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
     await fetchPage(cursorRef.current, false);
   }, [fetchPage, hasMore, loading]);
 
-  // Optimistic reaction toggle
+  // One-reaction-at-a-time toggle with optimistic update + revert
   const toggleReaction = useCallback(
     async (eventId: string, emoji: string) => {
       if (!user) return;
 
-      // Optimistic update
-      setEvents((prev) =>
-        prev.map((ev) => {
+      let snapshot: FeedEvent | undefined;
+
+      setEvents(prev =>
+        prev.map(ev => {
           if (ev.id !== eventId) return ev;
-          const current = ev.reactions[emoji] ?? { count: 0, reacted: false };
-          return {
-            ...ev,
-            reactions: {
-              ...ev.reactions,
-              [emoji]: {
-                count: current.reacted ? current.count - 1 : current.count + 1,
-                reacted: !current.reacted,
-              },
-            },
-          };
+          snapshot = ev;
+
+          // Which emoji is currently active?
+          const activeEmoji = Object.entries(ev.reactions).find(([, r]) => r.reacted)?.[0];
+          const next = { ...ev.reactions };
+
+          // Remove the active reaction
+          if (activeEmoji) {
+            const cur = next[activeEmoji] ?? { count: 0, reacted: false };
+            next[activeEmoji] = { count: Math.max(0, cur.count - 1), reacted: false };
+          }
+
+          // Add new reaction only if it differs from what was active (toggle-off vs switch)
+          if (activeEmoji !== emoji) {
+            const cur = next[emoji] ?? { count: 0, reacted: false };
+            next[emoji] = { count: cur.count + 1, reacted: true };
+          }
+
+          return { ...ev, reactions: next };
         }),
       );
 
@@ -122,30 +132,17 @@ export function useFeed(filter: FeedFilter) {
           p_reaction: emoji,
         });
       } catch (e) {
-        // Revert on error
         console.error('toggleReaction error', e);
-        setEvents((prev) =>
-          prev.map((ev) => {
-            if (ev.id !== eventId) return ev;
-            const current = ev.reactions[emoji] ?? { count: 0, reacted: false };
-            return {
-              ...ev,
-              reactions: {
-                ...ev.reactions,
-                [emoji]: {
-                  count: current.reacted ? current.count - 1 : current.count + 1,
-                  reacted: !current.reacted,
-                },
-              },
-            };
-          }),
-        );
+        if (snapshot) {
+          const snap = snapshot;
+          setEvents(prev => prev.map(ev => (ev.id === eventId ? snap : ev)));
+        }
       }
     },
     [user],
   );
 
-  // Realtime: prepend new events
+  // Realtime: prepend new events + animate
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -154,7 +151,6 @@ export function useFeed(filter: FeedFilter) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'feed_events' },
         async () => {
-          // Refetch first page and merge new items at top
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data } = await (supabase as any).rpc('get_feed_events', {
             p_filter: filter,
@@ -162,13 +158,21 @@ export function useFeed(filter: FeedFilter) {
             p_limit: 5,
           });
           if (!data) return;
-          setEvents((prev) => {
-            const existingIds = new Set(prev.map((e) => e.id));
-            const newItems = (data as FeedEvent[]).filter(
-              (e) => !existingIds.has(e.id) &&
-                (e.exercise_id === null || FEED_EXERCISE_NAMES.includes(e.exercise_name ?? '')),
-            );
-            return newItems.length > 0 ? [...newItems, ...prev] : prev;
+          setEvents(prev => {
+            const existingIds = new Set(prev.map(e => e.id));
+            const newItems = applyFilter(data as FeedEvent[]).filter(e => !existingIds.has(e.id));
+            if (newItems.length === 0) return prev;
+
+            // Mark as new for animation
+            const ids = new Set(newItems.map(e => e.id));
+            setNewEventIds(s => new Set([...s, ...ids]));
+            setTimeout(() => setNewEventIds(s => {
+              const next = new Set(s);
+              ids.forEach(id => next.delete(id));
+              return next;
+            }), 900);
+
+            return [...newItems, ...prev];
           });
         },
       )
@@ -181,6 +185,7 @@ export function useFeed(filter: FeedFilter) {
     loading,
     refreshing,
     hasMore,
+    newEventIds,
     refresh,
     loadMore,
     toggleReaction,
