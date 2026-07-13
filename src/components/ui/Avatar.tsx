@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const DEFAULT_AVATAR = '/default-avatar.webp';
 
@@ -12,6 +12,12 @@ interface AvatarProps {
 export function Avatar({ url, name, size = 44, className = '' }: AvatarProps) {
   const [src, setSrc] = useState(url || DEFAULT_AVATAR);
   const dimension = { width: size, height: size };
+
+  // Sync when the url prop changes (e.g. after data loads or user uploads new avatar)
+  useEffect(() => {
+    setSrc(url || DEFAULT_AVATAR);
+  }, [url]);
+
   return (
     <img
       src={src}
