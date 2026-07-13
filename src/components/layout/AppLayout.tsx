@@ -59,35 +59,39 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      {/* 3-Zonen-Grid: [Icon] [Titel] [Chip+Glocke+Settings] */}
-      <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center border-b border-ink-800 bg-ink-950/80 px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur">
-        {/* Zone 1 — Feed-Icon + Recap-Icon links */}
-        <div className="flex shrink-0 items-center gap-0.5">
+      {/* 3-Zonen-Grid: [Feed+Recap] [Titel] [Chip+Glocke+Settings] */}
+      <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center gap-0 border-b border-ink-800 bg-ink-950/80 px-2.5 py-1.5 pt-[max(6px,env(safe-area-inset-top))] backdrop-blur">
+
+        {/* Zone 1 — Feed + Recap als zusammengehöriges Icon-Paar */}
+        <div className="flex shrink-0 items-center">
           <button
             onClick={() => setFeedOpen(true)}
             aria-label="Arena-Feed"
-            className="shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800"
+            className="shrink-0 rounded-lg p-1 transition hover:bg-ink-800 active:bg-ink-700"
           >
-            <img src="/arena-feed-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
+            <img src="/arena-feed-icon.png" alt="" className="h-9 w-9 object-contain" />
           </button>
           <button
             onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
             aria-label="Tages-Recap"
-            className={`shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800 ${pushActive ? 'text-brand-400' : 'text-slate-500'}`}
+            className="shrink-0 rounded-lg p-1 transition hover:bg-ink-800 active:bg-ink-700"
           >
-            <img src="/recap-icon.png" alt="" className="h-11 w-11 object-contain rounded-sm" />
+            <img src="/recap-icon.png" alt="" className="h-9 w-9 object-contain" />
           </button>
         </div>
 
-        {/* Zone 2 — Seitentitel, mittig in verfügbarer Fläche */}
-        <span className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-slate-100">
+        {/* Zone 2 — Seitentitel: nie abschneiden, Schrift skaliert bei Platzmangel */}
+        <span
+          className="min-w-0 px-1 text-center font-bold tracking-tight text-slate-100 whitespace-nowrap"
+          style={{ fontSize: 'clamp(11px, 3.8vw, 15px)' }}
+        >
           {title}
         </span>
 
         {/* Zone 3 — Chip + Glocke + Settings rechts */}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5">
           {showChip && (
-            <div className="mr-1 max-w-[140px]">
+            <div className="mr-0.5 max-w-[110px] min-w-0">
               <ExerciseChip />
             </div>
           )}
