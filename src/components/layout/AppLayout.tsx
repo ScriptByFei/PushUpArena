@@ -72,7 +72,7 @@ export function AppLayout() {
             className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
             style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
           >
-            <img src="/arena-feed-icon.webp" alt="" style={{ width: 48, height: 48, display: 'block', objectFit: 'contain' }} />
+            <img src="/arena-feed-icon.webp" alt="" style={{ width: 50, height: 50, display: 'block', objectFit: 'contain' }} />
           </button>
           <button
             onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
