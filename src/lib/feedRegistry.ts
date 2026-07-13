@@ -82,10 +82,12 @@ export const FEED_EVENT_REGISTRY: Record<string, EventDefinition> = {
     accent: 'brand',
     category: 'training',
   },
-  milestone_100:  { icon: '💯', label: ev => `100 ${ev.exercise_name ?? 'PushUps'} heute`,  accent: 'brand',  category: 'training' },
-  milestone_250:  { icon: '🔥', label: ev => `250 ${ev.exercise_name ?? 'PushUps'} heute`,  accent: 'orange', category: 'training' },
-  milestone_500:  { icon: '🚀', label: ev => `500 ${ev.exercise_name ?? 'PushUps'} heute`,  accent: 'orange', category: 'training' },
-  milestone_1000: { icon: '🤯', label: ev => `1.000 ${ev.exercise_name ?? 'PushUps'} heute`, accent: 'pink',   category: 'training' },
+  // The RPC populates metadata.today_total with the live day total so the label
+  // always shows the actual rep count, not the hardcoded threshold value.
+  milestone_100:  { icon: '💯', label: ev => `${fmtDe(ev.metadata?.today_total ?? 100)} ${ev.exercise_name ?? 'PushUps'} heute`,  accent: 'brand',  category: 'training' },
+  milestone_250:  { icon: '🔥', label: ev => `${fmtDe(ev.metadata?.today_total ?? 250)} ${ev.exercise_name ?? 'PushUps'} heute`,  accent: 'orange', category: 'training' },
+  milestone_500:  { icon: '🚀', label: ev => `${fmtDe(ev.metadata?.today_total ?? 500)} ${ev.exercise_name ?? 'PushUps'} heute`,  accent: 'orange', category: 'training' },
+  milestone_1000: { icon: '🤯', label: ev => `${fmtDe(ev.metadata?.today_total ?? 1000)} ${ev.exercise_name ?? 'PushUps'} heute`, accent: 'pink',   category: 'training' },
   daily_goal:     { icon: '✅', label: ev => `Tagesziel · ${ev.exercise_name ?? 'PushUp'}`,  accent: 'green',  category: 'training' },
   weekly_goal:    { icon: '🎯', label: ev => `Wochenziel · ${ev.exercise_name ?? 'PushUp'}`, accent: 'green',  category: 'training' },
 
