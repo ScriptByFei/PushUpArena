@@ -3,6 +3,7 @@ import { useFeed, type FeedEvent, type FeedFilter } from '@/hooks/useFeed';
 import { groupAccentClass, getChip } from '@/lib/feedRegistry';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
 import { useExercise } from '@/context/ExerciseContext';
+import { Avatar } from '@/components/ui/Avatar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,23 +66,6 @@ function compactTime(iso: string): string {
   return `${Math.floor(h / 24)} Tg.`;
 }
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-function Avatar({ url, name }: { url: string | null; name: string }) {
-  const initials = name
-    .split(' ')
-    .slice(0, 2)
-    .map(w => w[0]?.toUpperCase() ?? '')
-    .join('');
-  return url ? (
-    <img src={url} alt={name} className="h-8 w-8 shrink-0 rounded-full object-cover" />
-  ) : (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
-      {initials || '?'}
-    </div>
-  );
-}
-
 // ─── Group card ───────────────────────────────────────────────────────────────
 
 function GroupCard({
@@ -106,7 +90,7 @@ function GroupCard({
           className="shrink-0 rounded-full transition hover:opacity-75 active:opacity-60"
           aria-label={`Profil von ${name}`}
         >
-          <Avatar url={group.avatar_url} name={name} />
+          <Avatar url={group.avatar_url} name={name} size={32} />
         </button>
 
         {/* Name — truncates before timestamp, never overlaps */}
