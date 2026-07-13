@@ -45,6 +45,13 @@ export interface EventDefinition {
   category: EventCategory;
 }
 
+/** German thousand-separator formatting, e.g. 1247 → "1.247" */
+function fmtDe(value: unknown): string {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!isFinite(n)) return '?';
+  return Math.round(n).toLocaleString('de-DE');
+}
+
 export const FEED_EVENT_REGISTRY: Record<string, EventDefinition> = {
   // ── Medaillen ──────────────────────────────────────────────────────────────
   medal_gold:   { icon: '🥇', label: ev => `Gold · ${ev.exercise_name ?? 'PushUp'}`,   accent: 'gold',   category: 'medal' },
@@ -91,10 +98,12 @@ export const FEED_EVENT_REGISTRY: Record<string, EventDefinition> = {
   streak_365: { icon: '💎', label: () => '365-Tage-Streak', accent: 'gold',   category: 'streak' },
 
   // ── Gesamtmeilensteine ─────────────────────────────────────────────────────
-  total_1000:  { icon: '🎯', label: ev => `1.000 ${ev.exercise_name ?? 'PushUps'} gesamt`,   accent: 'teal', category: 'milestone' },
-  total_5000:  { icon: '🌟', label: ev => `5.000 ${ev.exercise_name ?? 'PushUps'} gesamt`,   accent: 'teal', category: 'milestone' },
-  total_10000: { icon: '💎', label: ev => `10.000 ${ev.exercise_name ?? 'PushUps'} gesamt`,  accent: 'pink', category: 'milestone' },
-  total_25000: { icon: '👑', label: ev => `25.000 ${ev.exercise_name ?? 'PushUps'} gesamt`,  accent: 'gold', category: 'milestone' },
+  // The RPC populates metadata.total with the live current total so the label
+  // always reflects the actual rep count, not just the milestone threshold.
+  total_1000:  { icon: '🎯', label: ev => `${fmtDe(ev.metadata?.total)} ${ev.exercise_name ?? 'PushUps'} gesamt`,   accent: 'teal', category: 'milestone' },
+  total_5000:  { icon: '🌟', label: ev => `${fmtDe(ev.metadata?.total)} ${ev.exercise_name ?? 'PushUps'} gesamt`,   accent: 'teal', category: 'milestone' },
+  total_10000: { icon: '💎', label: ev => `${fmtDe(ev.metadata?.total)} ${ev.exercise_name ?? 'PushUps'} gesamt`,   accent: 'pink', category: 'milestone' },
+  total_25000: { icon: '👑', label: ev => `${fmtDe(ev.metadata?.total)} ${ev.exercise_name ?? 'PushUps'} gesamt`,   accent: 'gold', category: 'milestone' },
 
   // ── Social ─────────────────────────────────────────────────────────────────
   new_friend: { icon: '👋', label: () => 'Neuer Freund', accent: 'green', category: 'social' },
