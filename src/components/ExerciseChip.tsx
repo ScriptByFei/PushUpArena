@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useExercise, EXERCISE_ICONS } from '@/context/ExerciseContext';
 
-export function ExerciseChip() {
+export function ExerciseChip({ compact = false }: { compact?: boolean }) {
   const { enrolledExercises, exercise, switchExercise } = useExercise();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -21,7 +21,7 @@ export function ExerciseChip() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex h-[30px] items-center gap-1.5 rounded-full px-2 transition active:scale-95"
+        className={`flex h-[30px] items-center rounded-full transition active:scale-95 ${compact ? 'gap-1 px-1.5' : 'gap-1.5 px-2'}`}
         style={{
           background: 'linear-gradient(to bottom, #818cf8, #4f46e5)',
           boxShadow: '0 2px 8px rgba(79,70,229,0.40)',
@@ -32,9 +32,11 @@ export function ExerciseChip() {
           alt=""
           className="h-4 w-4 shrink-0 object-contain"
         />
-        <span className="max-w-[100px] truncate text-[11px] font-semibold text-white">
-          {exercise.name}
-        </span>
+        {!compact && (
+          <span className="max-w-[100px] truncate text-[11px] font-semibold text-white">
+            {exercise.name}
+          </span>
+        )}
         <svg
           viewBox="0 0 20 20"
           fill="currentColor"

@@ -89,10 +89,17 @@ export function AppLayout() {
             </button>
           </div>
 
-          {/* Zone C — Titel: absolut zentriert, niemals überlappend mit den Icon-Zonen */}
-          <span className="pointer-events-none absolute left-[96px] right-[96px] text-center text-[15px] font-bold tracking-tight text-slate-100 whitespace-nowrap overflow-hidden">
-            {title}
-          </span>
+          {/* Zone C — Titel + optionaler Chip als zentrierte Einheit */}
+          <div className="pointer-events-none absolute left-[96px] right-[96px] flex items-center justify-center gap-2">
+            <span className="text-[15px] font-bold tracking-tight text-slate-100 whitespace-nowrap">
+              {title}
+            </span>
+            {showChip && (
+              <div className="pointer-events-auto shrink-0">
+                <ExerciseChip compact />
+              </div>
+            )}
+          </div>
 
           {/* Zone R — Glocke + Settings: je 48×48 px → exakt gleich breit wie Zone L */}
           <div className="ml-auto flex shrink-0 items-center pr-0">
@@ -124,12 +131,6 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Chip-Zeile — nur wenn mehrere Übungen aktiv, damit der Titel nie verdrängt wird */}
-        {showChip && (
-          <div className="flex justify-center pb-1.5">
-            <ExerciseChip />
-          </div>
-        )}
       </header>
 
       <main className="flex-1 px-4 pb-32 pt-3">
