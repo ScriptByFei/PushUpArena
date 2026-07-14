@@ -20,30 +20,35 @@ export function ExerciseChip({ compact = false }: { compact?: boolean }) {
   return (
     <div ref={ref} className="relative">
       {compact ? (
-        /* ── Compact (Header): minimalistisch, kein Hintergrund ── */
+        /* ── Compact (Header): gleiche Designsprache wie Glocke/Einstellungen ── */
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex h-[48px] items-center gap-1.5 rounded-lg px-2 transition hover:bg-ink-800/40 active:scale-95"
+          aria-label={`Übung wechseln: ${exercise.name}`}
+          className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
+          style={{ width: 48, height: 48 }}
         >
-          <img
-            src={EXERCISE_ICONS[exercise.slug] ?? ''}
-            alt=""
-            className="h-5 w-5 shrink-0 object-contain"
-          />
-          <span className="max-w-[88px] truncate text-[13px] font-semibold text-slate-200">
-            {exercise.name}
-          </span>
-          <svg
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className={`h-2.5 w-2.5 shrink-0 text-slate-500/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-              clipRule="evenodd"
-            />
-          </svg>
+          {/* Icon in dezenter Kreisfläche + winziger Pfeil */}
+          <div className="relative">
+            <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-ink-700/60 bg-ink-800/60">
+              <img
+                src={EXERCISE_ICONS[exercise.slug] ?? ''}
+                alt=""
+                className="h-[20px] w-[20px] shrink-0 object-contain"
+              />
+            </div>
+            {/* Winziger Pfeil unten rechts */}
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`absolute -bottom-0.5 -right-1 h-[10px] w-[10px] text-slate-400/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
         </button>
       ) : (
         /* ── Standard (nicht im Header) ── */
