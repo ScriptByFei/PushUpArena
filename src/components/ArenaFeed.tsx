@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFeed, type FeedEvent, type FeedFilter } from '@/hooks/useFeed';
-import { groupAccentClass, getChip } from '@/lib/feedRegistry';
+import { groupAccentClass, getChip, getEventPriority } from '@/lib/feedRegistry';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
 import { useExercise } from '@/context/ExerciseContext';
 import { Avatar } from '@/components/ui/Avatar';
@@ -47,12 +47,13 @@ function groupEvents(events: FeedEvent[], newIds: Set<string>): EventGroup[] {
     if (ev.created_at > g.latest_at) g.latest_at = ev.created_at;
   }
 
+  // Sort chips within each group by priority (highest first)
+  for (const g of map.values()) {
+    g.items.sort((a, b) => getEventPriority(b.event_type) - getEventPriority(a.event_type));
+  }
+
   return order.map(k => map.get(k)!);
 }
-
-// ─── Accent + chip delegated to feedRegistry ─────────────────────────────────
-// groupAccentClass() and getChip() are imported from @/lib/feedRegistry.
-// To add a new event type, only edit feedRegistry.ts — no changes needed here.
 
 // ─── Compact time ─────────────────────────────────────────────────────────────
 
@@ -80,43 +81,41 @@ function GroupCard({
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-ink-700 bg-ink-900 ${accent}`}
+      className={`overflow-hidden rounded-2xl border border-ink-700/80 bg-ink-900 transition-transform active:scale-[0.985] ${accent}`}
       style={group.isNew ? { animation: 'feedEnter 0.35s ease-out' } : undefined}
     >
-      {/* Header: avatar + name (truncated) + timestamp — all on one line */}
-      <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
+      {/* Header: avatar + name + timestamp */}
+      <div className="flex items-center gap-3 px-4 pt-3.5 pb-2">
         <button
           onClick={() => onOpenProfile(group)}
           className="shrink-0 rounded-full transition hover:opacity-75 active:opacity-60"
           aria-label={`Profil von ${name}`}
         >
-          <Avatar url={group.avatar_url} name={name} size={32} />
+          <Avatar url={group.avatar_url} name={name} size={36} />
         </button>
 
-        {/* Name — truncates before timestamp, never overlaps */}
         <button
           onClick={() => onOpenProfile(group)}
           className="min-w-0 flex-1 text-left"
         >
-          <span className="block truncate text-[13px] font-bold leading-none text-slate-100">
+          <span className="block truncate text-[15px] font-extrabold leading-tight text-slate-100 tracking-tight">
             {name}
           </span>
         </button>
 
-        {/* Timestamp — always visible, never pushed off screen */}
-        <span className="shrink-0 pl-2 text-[11px] leading-none text-slate-600">
+        <span className="shrink-0 pl-2 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
           {compactTime(group.latest_at)}
         </span>
       </div>
 
-      {/* Event chips — compact, no reactions */}
-      <div className="space-y-1 px-3 pb-2">
+      {/* Event chips — sorted by priority, spaced out */}
+      <div className="space-y-2 px-4 pb-3.5">
         {group.items.map(ev => {
           const { icon, label } = getChip(ev);
           return (
-            <div key={ev.id} className="flex items-center gap-1.5">
-              <span className="text-[14px] leading-none">{icon}</span>
-              <span className="min-w-0 truncate text-[12px] font-semibold leading-snug text-slate-200">
+            <div key={ev.id} className="flex items-center gap-2">
+              <span className="text-[17px] leading-none">{icon}</span>
+              <span className="min-w-0 truncate text-[13px] font-semibold leading-snug text-slate-200">
                 {label}
               </span>
             </div>
@@ -131,15 +130,15 @@ function GroupCard({
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse rounded-xl border border-ink-700 bg-ink-900 px-3 py-2">
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 shrink-0 rounded-full bg-ink-700" />
+    <div className="animate-pulse rounded-2xl border border-ink-700/80 bg-ink-900 px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 shrink-0 rounded-full bg-ink-700" />
         <div className="min-w-0 flex-1">
-          <div className="h-2.5 w-2/5 rounded-full bg-ink-700" />
+          <div className="h-3 w-2/5 rounded-full bg-ink-700" />
         </div>
         <div className="h-2 w-8 shrink-0 rounded-full bg-ink-700" />
       </div>
-      <div className="mt-1.5 ml-10 h-2.5 w-3/5 rounded-full bg-ink-700" />
+      <div className="mt-2.5 ml-12 h-3 w-3/5 rounded-full bg-ink-700" />
     </div>
   );
 }
@@ -212,16 +211,14 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Midnight Berlin reset — clear and reload when the day rolls over.
-  // Falls back to locale-based calculation; safe if offset math is off by a
-  // few seconds since the RPC already filters to today on every call.
+  // Midnight Berlin reset
   useEffect(() => {
     const msUntilMidnight = (): number => {
       const now = new Date();
       const berlinStr = now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' });
       const berlinNow = new Date(berlinStr);
       const midnight = new Date(berlinNow);
-      midnight.setHours(24, 0, 5, 0); // 5s buffer past midnight
+      midnight.setHours(24, 0, 5, 0);
       return Math.max(0, midnight.getTime() - berlinNow.getTime());
     };
     const timer = setTimeout(() => void refresh(), msUntilMidnight());
@@ -237,8 +234,6 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
     if (dy > 60 && (listRef.current?.scrollTop ?? 0) <= 0 && !refreshing) void refresh();
   };
 
-  // Open the shared UserInfoSheet — same component used in Friends and Leaderboard.
-  // Uses user_id (stable), not @handle, so safe against username changes.
   const handleOpenProfile = (group: EventGroup) => {
     const exerciseId =
       group.items.find(i => i.exercise_id)?.exercise_id ?? activeExercise?.id;
@@ -256,7 +251,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
       {/* Feed-enter animation */}
       <style>{`
         @keyframes feedEnter {
-          from { opacity: 0; transform: translateY(-6px); }
+          from { opacity: 0; transform: translateY(-8px); }
           to   { opacity: 1; transform: translateY(0);    }
         }
       `}</style>
@@ -308,16 +303,15 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
         {/* Feed list */}
         <div
           ref={listRef}
-          className="flex-1 overflow-y-auto px-3 py-2"
+          className="flex-1 overflow-y-auto px-3 py-3"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
           {loading && groups.length === 0 ? (
-            <div className="space-y-1.5">
-              {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+            <div className="space-y-2">
+              {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : groups.length === 0 ? (
-            /* Empty state */
             <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-ink-800 text-3xl">
                 🏋️
@@ -330,7 +324,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
               </p>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {groups.map(group => (
                 <GroupCard
                   key={group.key}
@@ -353,7 +347,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Profile sheet — same component used in Friends + Leaderboard */}
+      {/* Profile sheet */}
       {infoSheet && (
         <UserInfoSheet
           userId={infoSheet.userId}
