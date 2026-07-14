@@ -42,6 +42,7 @@ export function useFeed(filter: FeedFilter) {
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [newEventIds, setNewEventIds] = useState<Set<string>>(new Set());
+  const [liveActivity, setLiveActivity] = useState<Record<string, { addedReps: number; ts: string }>>({});
   const cursorRef = useRef<string | null>(null);
 
   const fetchPage = useCallback(
@@ -83,6 +84,7 @@ export function useFeed(filter: FeedFilter) {
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
+    setLiveActivity({});  // clear live deltas so delta badges reset after pull-to-refresh
     cursorRef.current = null;
     await fetchPage(null, true);
     setRefreshing(false);
@@ -194,12 +196,37 @@ export function useFeed(filter: FeedFilter) {
     };
   }, [user, filter]);
 
+  // Realtime: live workout entries → accumulate rep deltas per user for live badge display.
+  // Fires whenever anyone logs a workout (table is now in supabase_realtime publication).
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('workout_entries_live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'workout_entries' },
+        (payload) => {
+          const entry = payload.new as { user_id: string; amount: number };
+          setLiveActivity(prev => ({
+            ...prev,
+            [entry.user_id]: {
+              addedReps: (prev[entry.user_id]?.addedReps ?? 0) + (Number(entry.amount) || 0),
+              ts: new Date().toISOString(),
+            },
+          }));
+        },
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [user]);
+
   return {
     events,
     loading,
     refreshing,
     hasMore,
     newEventIds,
+    liveActivity,
     refresh,
     loadMore,
     toggleReaction,

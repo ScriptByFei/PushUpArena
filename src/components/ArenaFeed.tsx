@@ -21,7 +21,9 @@ interface EventGroup {
 
 // ─── Group events by user × day ──────────────────────────────────────────────
 
-function groupEvents(events: FeedEvent[], newIds: Set<string>): EventGroup[] {
+type LiveActivity = Record<string, { addedReps: number; ts: string }>;
+
+function groupEvents(events: FeedEvent[], newIds: Set<string>, live: LiveActivity): EventGroup[] {
   const map = new Map<string, EventGroup>();
   const order: string[] = [];
 
@@ -52,7 +54,14 @@ function groupEvents(events: FeedEvent[], newIds: Set<string>): EventGroup[] {
     g.items.sort((a, b) => getEventPriority(b.event_type) - getEventPriority(a.event_type));
   }
 
-  return order.map(k => map.get(k)!);
+  // Sort groups: most recently active (live or latest_at) first
+  return order
+    .map(k => map.get(k)!)
+    .sort((a, b) => {
+      const aKey = (live[a.user_id]?.ts ?? '') > a.latest_at ? live[a.user_id].ts : a.latest_at;
+      const bKey = (live[b.user_id]?.ts ?? '') > b.latest_at ? live[b.user_id].ts : b.latest_at;
+      return bKey.localeCompare(aKey);
+    });
 }
 
 // ─── Compact time ─────────────────────────────────────────────────────────────
@@ -77,11 +86,47 @@ function compactTime(iso: string): string {
 
 function GroupCard({
   group,
+  liveReps,
   onOpenProfile,
 }: {
   group: EventGroup;
+  liveReps?: { addedReps: number; ts: string };
   onOpenProfile: (group: EventGroup) => void;
 }) {
+  // Flash border animation when new live reps arrive
+  const [flashing, setFlashing] = useState(false);
+  const prevTsRef = useRef<string | undefined>(liveReps?.ts);
+  useEffect(() => {
+    if (liveReps?.ts && liveReps.ts !== prevTsRef.current) {
+      prevTsRef.current = liveReps.ts;
+      setFlashing(true);
+      const t = setTimeout(() => setFlashing(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [liveReps?.ts]);
+
+  // Count-up animation for the delta badge
+  const prevRepsRef = useRef(0);
+  const [displayedReps, setDisplayedReps] = useState(0);
+  useEffect(() => {
+    if (liveReps?.addedReps == null) return;
+    const from = prevRepsRef.current;
+    const to = liveReps.addedReps;
+    prevRepsRef.current = to;
+    if (from === to) return;
+    const start = performance.now();
+    const dur = 500;
+    let rafId: number;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      const ease = 1 - (1 - t) ** 3;
+      setDisplayedReps(Math.round(from + (to - from) * ease));
+      if (t < 1) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [liveReps?.addedReps]);
+
   const name = group.display_name || group.username || 'Unbekannt';
   const accent = groupAccentClass(group.items);
 
@@ -89,10 +134,21 @@ function GroupCard({
   const [headline, ...secondary] = group.items;
   const { icon: hIcon, label: hLabel } = getChip(headline);
 
+  // Use live timestamp for recency display if more recent
+  const displayTime = liveReps?.ts && liveReps.ts > group.latest_at
+    ? liveReps.ts
+    : group.latest_at;
+
   return (
     <div
       className={`overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900 transition-transform active:scale-[0.985] ${accent}`}
-      style={group.isNew ? { animation: 'feedEnter 0.35s ease-out' } : undefined}
+      style={
+        group.isNew
+          ? { animation: 'feedEnter 0.35s ease-out' }
+          : flashing
+          ? { animation: 'liveFlash 0.9s ease-out' }
+          : undefined
+      }
     >
       <button
         className="w-full text-left"
@@ -113,7 +169,7 @@ function GroupCard({
                 {name}
               </span>
               <span className="shrink-0 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
-                {compactTime(group.latest_at)}
+                {compactTime(displayTime)}
               </span>
             </div>
 
@@ -141,6 +197,19 @@ function GroupCard({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Live delta badge — appears when new reps are logged since card was shown */}
+            {liveReps && displayedReps > 0 && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[11px] font-bold text-brand-400">
+                  +{displayedReps}
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-slate-600">
+                  <span className="inline-block h-1 w-1 rounded-full bg-green-400 animate-pulse" />
+                  gerade eben
+                </span>
               </div>
             )}
           </div>
@@ -208,11 +277,11 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const [filter, setFilter] = useState<FeedFilter>('global');
   const [infoSheet, setInfoSheet] = useState<InfoSheetState | null>(null);
   const {
-    events, loading, refreshing, hasMore, newEventIds,
+    events, loading, refreshing, hasMore, newEventIds, liveActivity,
     refresh, loadMore,
   } = useFeed(filter);
 
-  const groups = groupEvents(events, newEventIds);
+  const groups = groupEvents(events, newEventIds, liveActivity);
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
@@ -278,6 +347,11 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
         @keyframes feedEnter {
           from { opacity: 0; transform: translateY(-8px); }
           to   { opacity: 1; transform: translateY(0);    }
+        }
+        @keyframes liveFlash {
+          0%   { box-shadow: 0 0 0 0px rgba(99,102,241,0); }
+          35%  { box-shadow: 0 0 0 3px rgba(99,102,241,0.45); }
+          100% { box-shadow: 0 0 0 0px rgba(99,102,241,0); }
         }
       `}</style>
 
@@ -353,6 +427,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
                 <GroupCard
                   key={group.key}
                   group={group}
+                  liveReps={liveActivity[group.user_id]}
                   onOpenProfile={handleOpenProfile}
                 />
               ))}
