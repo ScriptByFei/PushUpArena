@@ -9,12 +9,14 @@ interface Props {
 const WEEKDAY_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const WEEKDAY_LONG  = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
 
-const TIP_H = 56; // Reserved px at the top for the tooltip
-const BAR_H = 80; // Max bar height
-const LBL_H = 20; // Weekday label area
+const TIP_H = 56;  // Reserved px at the top for the tooltip
+const BAR_H = 80;  // Max bar height
+const LBL_H = 20;  // Weekday label area
+const BADGE_W = 58; // px from right where line stops (badge width + gap)
 
 export function WeeklyBarChart({ data, dailyGoal }: Props) {
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [activeIdx,  setActiveIdx]  = useState<number | null>(null);
+  const [activeLine, setActiveLine] = useState<'avg' | 'goal' | null>(null);
 
   const max = Math.max(...data.map((d) => d.amount), dailyGoal ?? 0, 1);
   const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
@@ -25,9 +27,9 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
       ? Math.round(activeDays.reduce((s, d) => s + d.amount, 0) / activeDays.length)
       : null;
 
-  // ── Active day info for tooltip ─────────────────────────────────────────────
-  const activeDay   = activeIdx !== null ? data[activeIdx] : null;
-  const actUtcDay   = activeDay ? new Date(activeDay.date + 'T00:00:00Z').getUTCDay() : 0;
+  // ── Active day info for bar tooltip ─────────────────────────────────────────
+  const activeDay    = activeIdx !== null ? data[activeIdx] : null;
+  const actUtcDay    = activeDay ? new Date(activeDay.date + 'T00:00:00Z').getUTCDay() : 0;
   const actFormatted = activeDay
     ? new Date(activeDay.date + 'T00:00:00Z').toLocaleDateString('de-DE', {
         day: 'numeric', month: 'short', timeZone: 'UTC',
@@ -35,8 +37,7 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
     : '';
   const actIsFuture = activeDay ? activeDay.date > todayStr : false;
 
-  // Tooltip horizontal position: center on active bar, clamp at edges
-  const tooltipStyle: React.CSSProperties | null =
+  const barTooltipStyle: React.CSSProperties | null =
     activeIdx === null
       ? null
       : activeIdx === 0
@@ -45,17 +46,36 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
           ? { right: 0 }
           : { left: `${((activeIdx + 0.5) / data.length) * 100}%`, transform: 'translateX(-50%)' };
 
+  // ── Reference line y-positions ───────────────────────────────────────────────
+  const avgY  = avg  !== null             ? TIP_H + BAR_H - Math.round((avg        / max) * BAR_H) : null;
+  const goalY = dailyGoal && dailyGoal > 0 ? TIP_H + BAR_H - Math.round((dailyGoal / max) * BAR_H) : null;
+
+  // ── Interaction helpers ──────────────────────────────────────────────────────
+  function clearAll() { setActiveIdx(null); setActiveLine(null); }
+
+  function tapBar(idx: number, isFuture: boolean) {
+    setActiveLine(null);
+    if (!isFuture) setActiveIdx(prev => prev === idx ? null : idx);
+  }
+
+  function tapLine(line: 'avg' | 'goal', e: React.MouseEvent) {
+    e.stopPropagation();
+    setActiveIdx(null);
+    setActiveLine(prev => prev === line ? null : line);
+  }
+
   return (
     <div
       className="relative select-none"
       style={{ height: TIP_H + BAR_H + LBL_H }}
-      onClick={() => setActiveIdx(null)}
+      onClick={clearAll}
     >
-      {/* ── Tooltip ─────────────────────────────────────────────────────── */}
-      {activeDay && !actIsFuture && tooltipStyle && (
+
+      {/* ── Bar tooltip ───────────────────────────────────────────────────── */}
+      {activeDay && !actIsFuture && barTooltipStyle && (
         <div
           className="animate-pop-in pointer-events-none absolute top-0 z-30 whitespace-nowrap rounded-xl border border-ink-600/80 bg-ink-900 px-2.5 py-1.5 shadow-xl"
-          style={tooltipStyle}
+          style={barTooltipStyle}
         >
           <p className="text-center text-[10px] font-semibold text-slate-300">
             {WEEKDAY_LONG[actUtcDay]}
@@ -78,24 +98,75 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
         </div>
       )}
 
-      {/* ── Ziellinie (gestrichelt, lila) ───────────────────────────────── */}
-      {dailyGoal && dailyGoal > 0 && (
+      {/* ── Avg reference line tooltip ────────────────────────────────────── */}
+      {activeLine === 'avg' && avg !== null && (
         <div
-          className="pointer-events-none absolute inset-x-0"
-          style={{ top: TIP_H + BAR_H - Math.round((dailyGoal / max) * BAR_H) }}
+          className="animate-pop-in pointer-events-none absolute top-0 z-30 whitespace-nowrap rounded-xl border border-ink-600/80 bg-ink-900 px-2.5 py-1.5 shadow-xl"
+          style={{ left: '50%', transform: 'translateX(-50%)' }}
         >
-          <div style={{ borderTop: '1.5px dashed rgba(167,139,250,0.55)' }} />
+          <p className="text-center text-[10px] font-semibold text-brand-300">Ø {avg} Wdh.</p>
+          <p className="text-center text-[10px] text-slate-500">Durchschnitt pro Trainingstag</p>
         </div>
       )}
 
-      {/* ── Durchschnittslinie (solid, subtil) ──────────────────────────── */}
-      {avg !== null && (
+      {/* ── Goal reference line tooltip ───────────────────────────────────── */}
+      {activeLine === 'goal' && dailyGoal && dailyGoal > 0 && (
         <div
-          className="pointer-events-none absolute inset-x-0 flex items-center"
-          style={{ top: TIP_H + BAR_H - Math.round((avg / max) * BAR_H) }}
+          className="animate-pop-in pointer-events-none absolute top-0 z-30 whitespace-nowrap rounded-xl border border-ink-600/80 bg-ink-900 px-2.5 py-1.5 shadow-xl"
+          style={{ left: '50%', transform: 'translateX(-50%)' }}
         >
-          <div style={{ borderTop: '1px solid rgba(148,163,184,0.35)', flex: 1 }} />
-          <span className="ml-1 shrink-0 text-[9px] font-semibold text-slate-500">Ø{avg}</span>
+          <p className="text-center text-[10px] font-semibold text-amber-300">🎯 {dailyGoal} Wdh.</p>
+          <p className="text-center text-[10px] text-slate-500">Tagesziel</p>
+        </div>
+      )}
+
+      {/* ── Tagesziel-Linie: solid, gold/amber ───────────────────────────── */}
+      {goalY !== null && (
+        <div className="absolute inset-x-0" style={{ top: goalY - 1 }}>
+          {/* Line stops before badge */}
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              top: 0,
+              left: 0,
+              right: BADGE_W,
+              borderTop: '1.5px solid rgba(251,191,36,0.72)',
+            }}
+          />
+          {/* Badge floats above line */}
+          <button
+            type="button"
+            className="absolute -top-[13px] right-0 flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-[3px] text-[10px] font-bold text-amber-300 transition active:bg-amber-500/25"
+            style={{ backdropFilter: 'blur(6px)' }}
+            onClick={(e) => tapLine('goal', e)}
+          >
+            🎯 {dailyGoal}
+          </button>
+        </div>
+      )}
+
+      {/* ── Durchschnittslinie: 2px dashed, helles Violett ───────────────── */}
+      {avgY !== null && avg !== null && (
+        <div className="absolute inset-x-0" style={{ top: avgY - 1 }}>
+          {/* Line stops before badge */}
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              top: 0,
+              left: 0,
+              right: BADGE_W,
+              borderTop: '2px dashed rgba(139,92,246,0.88)',
+            }}
+          />
+          {/* Badge floats above line */}
+          <button
+            type="button"
+            className="absolute -top-[13px] right-0 flex items-center gap-0.5 rounded-full border border-brand-500/35 bg-brand-500/20 px-1.5 py-[3px] text-[10px] font-bold text-brand-300 transition active:bg-brand-500/30"
+            style={{ backdropFilter: 'blur(6px)' }}
+            onClick={(e) => tapLine('avg', e)}
+          >
+            Ø {avg}
+          </button>
         </div>
       )}
 
@@ -111,28 +182,33 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
           const isToday  = day.date === todayStr;
           const isFuture = day.date > todayStr;
           const isActive = activeIdx === idx;
+          const aboveAvg = avg !== null && day.amount > 0 && day.amount >= avg;
+          const belowAvg = avg !== null && day.amount > 0 && day.amount < avg;
 
           // ── Bar color ──
           let barBg = '#7c3aed';
           if (isFuture || day.amount === 0) barBg = '#1e293b';
           else if (isToday) barBg = '#a78bfa';
-          if (isActive && day.amount > 0) barBg = '#c4b5fd'; // brighter when selected
+          if (isActive && day.amount > 0) barBg = '#c4b5fd';
 
-          // ── Bar shadow / outline ──
-          const barShadow =
-            isActive && day.amount > 0
-              ? '0 0 10px 3px rgba(167,139,250,0.55)'
-              : isToday && day.amount > 0
-                ? '0 0 10px 2px rgba(167,139,250,0.45)'
-                : undefined;
-          const barOutline =
-            isActive && day.amount > 0
-              ? '1.5px solid rgba(196,181,253,0.85)'
-              : isToday && day.amount > 0
-                ? '1.5px solid rgba(167,139,250,0.6)'
-                : undefined;
+          // ── Opacity: below avg = etwas gedimmt ──
+          const barOpacity =
+            !isFuture && !isActive && !isToday && belowAvg ? 0.52 : 1;
 
-          // ── Aria label ──
+          // ── Shadow / outline ──
+          let barShadow: string | undefined;
+          let barOutline: string | undefined;
+          if (isActive && day.amount > 0) {
+            barShadow  = '0 0 10px 3px rgba(167,139,250,0.55)';
+            barOutline = '1.5px solid rgba(196,181,253,0.85)';
+          } else if (isToday && day.amount > 0) {
+            barShadow  = '0 0 10px 2px rgba(167,139,250,0.45)';
+            barOutline = '1.5px solid rgba(167,139,250,0.6)';
+          } else if (aboveAvg && !isFuture) {
+            // Über dem Durchschnitt: dezenter Glow
+            barShadow = '0 0 7px 2px rgba(124,58,237,0.38)';
+          }
+
           const ariaLabel =
             day.amount > 0
               ? `${WEEKDAY_LONG[utcDay]}, ${day.amount} Wiederholungen${
@@ -151,10 +227,7 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
               className="relative flex flex-1 flex-col items-center justify-end"
               style={{ height: BAR_H + LBL_H, cursor: isFuture ? 'default' : 'pointer' }}
               aria-label={ariaLabel}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isFuture) setActiveIdx(isActive ? null : idx);
-              }}
+              onClick={(e) => { e.stopPropagation(); tapBar(idx, isFuture); }}
             >
               {/* Balken */}
               <div
@@ -165,6 +238,7 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
                   backgroundColor: barBg,
                   boxShadow: barShadow,
                   outline: barOutline,
+                  opacity: barOpacity,
                 }}
               />
 
