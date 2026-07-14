@@ -253,9 +253,9 @@ export default function Profile() {
           <div className="space-y-2">
             <SectionLabel>Rekorde</SectionLabel>
             <div className="grid grid-cols-3 gap-2">
-              <StatCell icon="📅" label="Beste Woche" value={stats.bestWeek.toLocaleString('de-DE')} accent="text-violet-400" />
-              <StatCell icon="👑" label="Längste Streak" value={`${stats.longestStreak}d`} highlight="gold" />
               <StatCell icon="🟢" label="Bester Tag" value={stats.bestDay ? stats.bestDay.amount : '–'} accent="text-emerald-400" />
+              <StatCell icon="👑" label="Längste Streak" value={`${stats.longestStreak}d`} highlight="gold" />
+              <StatCell icon="📅" label="Beste Woche" value={stats.bestWeek.toLocaleString('de-DE')} accent="text-violet-400" />
             </div>
           </div>
 
