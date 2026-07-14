@@ -59,73 +59,77 @@ export function AppLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      {/* 3-Zonen-Grid: [Feed+Recap] [Titel] [Chip+Glocke+Settings] */}
-      <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center gap-0 border-b border-ink-800 bg-ink-950/80 px-2.5 py-1.5 pt-[max(6px,env(safe-area-inset-top))] backdrop-blur">
+      {/* Header:
+           Zeile 1: [Feed+Recap] ── [Titel absolut zentriert] ── [Glocke+Settings]
+           Zeile 2 (optional): [ExerciseChip zentriert] — nur wenn mehrere Übungen */}
+      <header
+        className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/80 backdrop-blur"
+        style={{ paddingTop: 'max(4px, env(safe-area-inset-top))' }}
+      >
+        {/* Hauptzeile — symmetrisch: linke und rechte Zone je 96 px */}
+        <div className="relative flex items-center" style={{ height: 48 }}>
 
-        {/* Zone 1 — Feed + Recap als zusammengehöriges Icon-Paar.
-             Beide Buttons: 48×48 px feste Fläche, zentriert via grid.
-             Feed-Icon 42 px, Recap-Icon 40 px → gleicher wahrgenommener Kreisdurchmesser. */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            onClick={() => setFeedOpen(true)}
-            aria-label="Arena-Feed"
-            className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-            style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
-          >
-            <img src="/arena-feed-icon.webp" alt="" style={{ width: 52, height: 52, display: 'block', objectFit: 'contain' }} />
-          </button>
-          <button
-            onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
-            aria-label="Tages-Recap"
-            className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-            style={{ width: 48, height: 48, padding: 0, flex: '0 0 48px' }}
-          >
-            <img src="/recap-icon.webp" alt="" style={{ width: 44, height: 44, display: 'block', objectFit: 'contain' }} />
-          </button>
-        </div>
+          {/* Zone L — Feed + Recap: je 48×48 px */}
+          <div className="flex shrink-0 items-center pl-0">
+            <button
+              onClick={() => setFeedOpen(true)}
+              aria-label="Arena-Feed"
+              className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
+              style={{ width: 48, height: 48 }}
+            >
+              <img src="/arena-feed-icon.webp" alt="" style={{ width: 52, height: 52, display: 'block', objectFit: 'contain' }} />
+            </button>
+            <button
+              onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
+              aria-label="Tages-Recap"
+              className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
+              style={{ width: 48, height: 48 }}
+            >
+              <img src="/recap-icon.webp" alt="" style={{ width: 44, height: 44, display: 'block', objectFit: 'contain' }} />
+            </button>
+          </div>
 
-        {/* Zone 2 — Seitentitel: nie abschneiden, Schrift skaliert bei Platzmangel */}
-        <span
-          className="min-w-0 px-1 text-center font-bold tracking-tight text-slate-100 whitespace-nowrap"
-          style={{ fontSize: 'clamp(11px, 3.8vw, 15px)' }}
-        >
-          {title}
-        </span>
+          {/* Zone C — Titel: absolut zentriert, niemals überlappend mit den Icon-Zonen */}
+          <span className="pointer-events-none absolute left-[96px] right-[96px] text-center text-[15px] font-bold tracking-tight text-slate-100 whitespace-nowrap overflow-hidden">
+            {title}
+          </span>
 
-        {/* Zone 3 — Chip + Glocke + Settings rechts */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          {showChip && (
-            <div className="mr-0.5 max-w-[110px] min-w-0">
-              <ExerciseChip />
-            </div>
-          )}
-          <button
-            onClick={() => {
-              if (pushActive) {
-                setBellConfirmOpen(true);
-              } else {
-                void togglePush();
+          {/* Zone R — Glocke + Settings: je 48×48 px → exakt gleich breit wie Zone L */}
+          <div className="ml-auto flex shrink-0 items-center pr-0">
+            <button
+              onClick={() => {
+                if (pushActive) setBellConfirmOpen(true);
+                else void togglePush();
+              }}
+              disabled={busy}
+              aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
+              className={`grid place-items-center rounded-lg transition hover:bg-ink-800 ${
+                pushActive ? 'text-brand-400' : 'text-slate-500'
+              }`}
+              style={{ width: 48, height: 48 }}
+            >
+              {pushActive
+                ? <BellIcon className="h-[18px] w-[18px]" />
+                : <BellOffIcon className="h-[18px] w-[18px]" />
               }
-            }}
-            disabled={busy}
-            aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
-            className={`shrink-0 rounded-lg p-1.5 transition hover:bg-ink-800 ${
-              pushActive ? 'text-brand-400' : 'text-slate-500'
-            }`}
-          >
-            {pushActive
-              ? <BellIcon className="h-[18px] w-[18px]" />
-              : <BellOffIcon className="h-[18px] w-[18px]" />
-            }
-          </button>
-          <Link
-            to="/settings"
-            aria-label="Einstellungen"
-            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-ink-800 hover:text-slate-200"
-          >
-            <SettingsIcon className="h-[18px] w-[18px]" />
-          </Link>
+            </button>
+            <Link
+              to="/settings"
+              aria-label="Einstellungen"
+              className="grid place-items-center rounded-lg text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
+              style={{ width: 48, height: 48 }}
+            >
+              <SettingsIcon className="h-[18px] w-[18px]" />
+            </Link>
+          </div>
         </div>
+
+        {/* Chip-Zeile — nur wenn mehrere Übungen aktiv, damit der Titel nie verdrängt wird */}
+        {showChip && (
+          <div className="flex justify-center pb-1.5">
+            <ExerciseChip />
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-4 pb-32 pt-3">
