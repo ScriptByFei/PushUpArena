@@ -67,7 +67,13 @@ function compactTime(iso: string): string {
   return `${Math.floor(h / 24)} Tg.`;
 }
 
-// ─── Group card ───────────────────────────────────────────────────────────────
+// ─── Group card (Story layout) ────────────────────────────────────────────────
+//
+// Structure:
+//   [Avatar]  [name · time]
+//             [HEADLINE ICON] [HEADLINE LABEL — big]
+//             [small icon]    [secondary label — muted]
+//             ...
 
 function GroupCard({
   group,
@@ -79,49 +85,67 @@ function GroupCard({
   const name = group.display_name || group.username || 'Unbekannt';
   const accent = groupAccentClass(group.items);
 
+  // Highest-priority event is the story headline; rest are secondary details
+  const [headline, ...secondary] = group.items;
+  const { icon: hIcon, label: hLabel } = getChip(headline);
+
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-ink-700/80 bg-ink-900 transition-transform active:scale-[0.985] ${accent}`}
+      className={`overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900 transition-transform active:scale-[0.985] ${accent}`}
       style={group.isNew ? { animation: 'feedEnter 0.35s ease-out' } : undefined}
     >
-      {/* Header: avatar + name + timestamp */}
-      <div className="flex items-center gap-3 px-4 pt-3.5 pb-2">
-        <button
-          onClick={() => onOpenProfile(group)}
-          className="shrink-0 rounded-full transition hover:opacity-75 active:opacity-60"
-          aria-label={`Profil von ${name}`}
-        >
-          <Avatar url={group.avatar_url} name={name} size={36} />
-        </button>
+      <button
+        className="w-full text-left"
+        onClick={() => onOpenProfile(group)}
+        aria-label={`Profil von ${name}`}
+      >
+        <div className="flex items-start gap-3 px-4 pt-3.5 pb-3.5">
+          {/* Avatar */}
+          <div className="shrink-0 pt-0.5">
+            <Avatar url={group.avatar_url} name={name} size={38} />
+          </div>
 
-        <button
-          onClick={() => onOpenProfile(group)}
-          className="min-w-0 flex-1 text-left"
-        >
-          <span className="block truncate text-[15px] font-extrabold leading-tight text-slate-100 tracking-tight">
-            {name}
-          </span>
-        </button>
-
-        <span className="shrink-0 pl-2 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
-          {compactTime(group.latest_at)}
-        </span>
-      </div>
-
-      {/* Event chips — sorted by priority, spaced out */}
-      <div className="space-y-2 px-4 pb-3.5">
-        {group.items.map(ev => {
-          const { icon, label } = getChip(ev);
-          return (
-            <div key={ev.id} className="flex items-center gap-2">
-              <span className="text-[17px] leading-none">{icon}</span>
-              <span className="min-w-0 truncate text-[13px] font-semibold leading-snug text-slate-200">
-                {label}
+          {/* Story content */}
+          <div className="min-w-0 flex-1">
+            {/* Name + time row */}
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate text-[13px] font-semibold leading-none text-slate-400">
+                {name}
+              </span>
+              <span className="shrink-0 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
+                {compactTime(group.latest_at)}
               </span>
             </div>
-          );
-        })}
-      </div>
+
+            {/* Headline event — the story */}
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-[20px] leading-none">{hIcon}</span>
+              <span className="min-w-0 truncate text-[15px] font-extrabold leading-snug tracking-tight text-slate-100">
+                {hLabel}
+              </span>
+            </div>
+
+            {/* Secondary events — supporting details */}
+            {secondary.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {secondary.map(ev => {
+                  const { icon, label } = getChip(ev);
+                  return (
+                    <div key={ev.id} className="flex items-center gap-2">
+                      <span className="w-5 shrink-0 text-center text-[14px] leading-none opacity-60">
+                        {icon}
+                      </span>
+                      <span className="min-w-0 truncate text-[12px] font-medium leading-snug text-slate-500">
+                        {label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
     </div>
   );
 }
@@ -130,15 +154,17 @@ function GroupCard({
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse rounded-2xl border border-ink-700/80 bg-ink-900 px-4 py-3.5">
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 shrink-0 rounded-full bg-ink-700" />
-        <div className="min-w-0 flex-1">
-          <div className="h-3 w-2/5 rounded-full bg-ink-700" />
+    <div className="animate-pulse rounded-2xl border border-ink-700/60 bg-ink-900 px-4 py-3.5">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 h-[38px] w-[38px] shrink-0 rounded-full bg-ink-700" />
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-baseline justify-between">
+            <div className="h-2.5 w-1/4 rounded-full bg-ink-700" />
+            <div className="h-2 w-8 rounded-full bg-ink-700" />
+          </div>
+          <div className="mt-2 h-4 w-3/5 rounded-full bg-ink-700" />
         </div>
-        <div className="h-2 w-8 shrink-0 rounded-full bg-ink-700" />
       </div>
-      <div className="mt-2.5 ml-12 h-3 w-3/5 rounded-full bg-ink-700" />
     </div>
   );
 }
@@ -205,13 +231,13 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
     return () => observer.disconnect();
   }, [hasMore, loading, loadMore]);
 
-  // Lock body scroll
+  // Lock body scroll while feed is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Midnight Berlin reset
+  // Auto-refresh at Berlin midnight
   useEffect(() => {
     const msUntilMidnight = (): number => {
       const now = new Date();
@@ -248,7 +274,6 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      {/* Feed-enter animation */}
       <style>{`
         @keyframes feedEnter {
           from { opacity: 0; transform: translateY(-8px); }
@@ -283,9 +308,8 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          {/* Filter */}
           <div className="mt-3 flex gap-2">
-            <FilterPill label="Global" active={filter === 'global'} onClick={() => setFilter('global')} />
+            <FilterPill label="Global"  active={filter === 'global'}  onClick={() => setFilter('global')}  />
             <FilterPill label="Freunde" active={filter === 'friends'} onClick={() => setFilter('friends')} />
           </div>
         </div>
@@ -340,14 +364,12 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
                 <p className="py-4 text-center text-xs text-slate-600">Das war alles 🎉</p>
               )}
 
-              {/* Bottom safe area */}
               <div style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Profile sheet */}
       {infoSheet && (
         <UserInfoSheet
           userId={infoSheet.userId}
