@@ -1,6 +1,6 @@
 /**
- * DailyRecapModal – Premium-Redesign
- * Medaillenvergabe als emotionaler Höhepunkt des Tages-Recaps.
+ * DailyRecapModal – Arena-Rückblick V3
+ * Reihenfolge: Medaille (Hero) → Top 3 → Deine Leistung → Heute freigeschaltet → Abschluss
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +25,6 @@ function DateStrip({
   const stripRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
 
-  // Display oldest → newest (left → right)
   const displayDates = useMemo(
     () => dates.map((d, i) => ({ ...d, originalIdx: i })).reverse(),
     [dates],
@@ -48,15 +47,12 @@ function DateStrip({
       className="flex gap-0.5 overflow-x-auto pb-1"
       style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
     >
-      {/* Leading spacer so first item can be scrolled to center */}
       <div className="shrink-0" style={{ minWidth: 'calc(50% - 26px)' }} />
-
       {displayDates.map(({ recap_date, originalIdx }, di) => {
         const isActive = di === currentDisplayIdx;
         const d = new Date(recap_date + 'T12:00:00');
         const weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '');
         const dayNum = d.getDate();
-
         return (
           <button
             key={recap_date}
@@ -75,8 +71,6 @@ function DateStrip({
           </button>
         );
       })}
-
-      {/* Trailing spacer */}
       <div className="shrink-0" style={{ minWidth: 'calc(50% - 26px)' }} />
     </div>
   );
@@ -116,7 +110,7 @@ function Confetti() {
   );
 }
 
-// ── Partikel (Silber / Bronze) ───────────────────────────────────────────────
+// ── Partikel ─────────────────────────────────────────────────────────────────
 
 const SPARKLE_POS = [
   { top: '8%',  right: '10%', size: 6,  delay: '0ms' },
@@ -158,13 +152,13 @@ const MEDAL_CFG = {
   gold: {
     border:        'rgba(245,158,11,0.6)',
     bg:            'rgba(245,158,11,0.08)',
-    glow:          '0 0 48px 12px rgba(245,158,11,0.25), 0 0 100px 24px rgba(245,158,11,0.10)',
-    glowColor:     'rgba(251,191,36,0.35)',
-    label:         '🥇 Medaille verliehen',
+    glow:          '0 0 56px 14px rgba(245,158,11,0.28), 0 0 110px 28px rgba(245,158,11,0.12)',
+    glowColor:     'rgba(251,191,36,0.40)',
+    label:         '🥇 Medaille verdient!',
     labelColor:    '#f59e0b',
-    title:         'Goldmedaille erhalten!',
-    subtitle:      'Du warst heute die Nummer 1 weltweit.',
-    motivation:    'Heute warst du unschlagbar.',
+    title:         'Goldmedaille verdient!',
+    subtitle:      'Niemand war heute stärker als du.',
+    motivation:    'Du hast die Arena heute dominiert.',
     countLabel:    'Goldmedaille',
     countLabelPl:  'Goldmedaillen',
     sparkleColor:  '#fbbf24',
@@ -173,12 +167,12 @@ const MEDAL_CFG = {
   silver: {
     border:        'rgba(148,163,184,0.55)',
     bg:            'rgba(148,163,184,0.07)',
-    glow:          '0 0 40px 10px rgba(148,163,184,0.20), 0 0 80px 20px rgba(148,163,184,0.08)',
-    glowColor:     'rgba(203,213,225,0.30)',
-    label:         '🥈 Medaille verliehen',
+    glow:          '0 0 40px 10px rgba(148,163,184,0.22), 0 0 80px 20px rgba(148,163,184,0.09)',
+    glowColor:     'rgba(203,213,225,0.32)',
+    label:         '🥈 Medaille verdient!',
     labelColor:    '#94a3b8',
-    title:         'Silbermedaille erhalten!',
-    subtitle:      'Du hast heute Platz 2 erreicht.',
+    title:         'Silbermedaille verdient!',
+    subtitle:      'Platz 2 weltweit – du warst fast der Beste.',
     motivation:    null,
     countLabel:    'Silbermedaille',
     countLabelPl:  'Silbermedaillen',
@@ -190,10 +184,10 @@ const MEDAL_CFG = {
     bg:            'rgba(194,118,58,0.07)',
     glow:          '0 0 40px 10px rgba(194,118,58,0.20), 0 0 80px 20px rgba(194,118,58,0.08)',
     glowColor:     'rgba(194,118,58,0.30)',
-    label:         '🥉 Medaille verliehen',
+    label:         '🥉 Medaille verdient!',
     labelColor:    '#c2763a',
-    title:         'Bronzemedaille erhalten!',
-    subtitle:      'Du warst heute unter den drei stärksten Athleten.',
+    title:         'Bronzemedaille verdient!',
+    subtitle:      'Du gehörst zu den drei stärksten Athleten.',
     motivation:    'Weiter so! Morgen wartet vielleicht Silber.',
     countLabel:    'Bronzemedaille',
     countLabelPl:  'Bronzemedaillen',
@@ -216,13 +210,23 @@ function medalImage(medal: DailyRecap['yesterday_medal']): string | null {
 function MedalAwardCard({
   medal,
   counts,
+  pushups,
+  rank,
 }: {
   medal: NonNullable<DailyRecap['yesterday_medal']>;
   counts: MedalCounts | null;
+  pushups?: number;
+  rank?: number | null;
 }) {
   const cfg = MEDAL_CFG[medal];
   const img = medalImage(medal);
   const total = counts ? counts[medal] : null;
+
+  // Dynamic subtitle for gold: show pushup count + rank
+  const dynamicSubtitle =
+    medal === 'gold' && pushups
+      ? `${pushups} Push-ups. ${rank === 1 ? 'Platz 1 weltweit.' : 'Ganz oben.'}`
+      : cfg.subtitle;
 
   return (
     <div
@@ -231,51 +235,45 @@ function MedalAwardCard({
         border: `1.5px solid ${cfg.border}`,
         background: cfg.bg,
         boxShadow: cfg.glow,
-        padding: '18px 16px',
+        padding: '16px 16px 14px',
       }}
     >
       {cfg.confetti && <Confetti />}
       {!cfg.confetti && <Sparkles color={cfg.sparkleColor} />}
 
-      {/* Großer Hintergrund-Glow hinter der Medaille */}
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-        aria-hidden
-      >
+      {/* Glow-Hintergrund */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
         <div
-          className="h-36 w-36 rounded-full medal-glow-pulse"
+          className="h-40 w-40 rounded-full medal-glow-pulse"
           style={{ background: `radial-gradient(circle, ${cfg.glowColor} 0%, transparent 70%)` }}
         />
       </div>
 
       {/* Label */}
-      <p
-        className="relative mb-2 text-center text-xs font-bold uppercase tracking-widest"
-        style={{ color: cfg.labelColor }}
-      >
+      <p className="relative mb-2 text-center text-xs font-bold uppercase tracking-widest" style={{ color: cfg.labelColor }}>
         {cfg.label}
       </p>
 
-      {/* Medaillen-Bild */}
+      {/* Medaillen-Bild — 25 % kleiner als vorher */}
       <div className="relative flex justify-center">
         <div className="medal-image-reveal">
           <img
             src={img ?? '/trophy-gold.webp'}
             alt={medal}
-            className="h-20 w-20 object-contain"
-            style={{ filter: `drop-shadow(0 0 16px ${cfg.glowColor})` }}
+            className="h-14 w-14 object-contain"
+            style={{ filter: `drop-shadow(0 0 18px ${cfg.glowColor})` }}
           />
         </div>
       </div>
 
       {/* Titel */}
-      <h2 className="relative mt-3 text-center text-xl font-extrabold text-white">
+      <h2 className="relative mt-3 text-center text-[22px] font-extrabold leading-tight text-white">
         {cfg.title}
       </h2>
 
       {/* Untertitel */}
-      <p className="relative mt-1 text-center text-sm text-slate-400">
-        {cfg.subtitle}
+      <p className="relative mt-1 text-center text-sm font-medium text-slate-300">
+        {dynamicSubtitle}
       </p>
 
       {/* Medaillen-Zähler */}
@@ -298,9 +296,7 @@ function MedalAwardCard({
 
       {/* Motivationstext */}
       {cfg.motivation && (
-        <p className="relative mt-2.5 text-center text-xs text-slate-500">
-          {cfg.motivation}
-        </p>
+        <p className="relative mt-2 text-center text-xs text-slate-500">{cfg.motivation}</p>
       )}
     </div>
   );
@@ -311,9 +307,9 @@ function MedalAwardCard({
 function NoMedalCard({ bronzeGap }: { bronzeGap: number | null }) {
   const urgent = bronzeGap !== null && bronzeGap <= 15;
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-900 px-4 py-4">
+    <div className="rounded-2xl border border-ink-700 bg-ink-900 px-4 py-3.5">
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-800 text-2xl">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-800 text-xl">
           🏅
         </div>
         <div className="flex-1">
@@ -334,39 +330,40 @@ function NoMedalCard({ bronzeGap }: { bronzeGap: number | null }) {
   );
 }
 
-// ── Trend-Linie (SVG) ────────────────────────────────────────────────────────
+// ── AnimatedNumber (count-up) ────────────────────────────────────────────────
 
-function TrendLine({ positive }: { positive: boolean }) {
-  const path = positive
-    ? 'M0 34 C18 28, 36 20, 55 14 S78 7, 100 2'
-    : 'M0 4 C18 10, 36 18, 55 24 S78 30, 100 34';
-  const dotY = positive ? 2 : 34;
-  return (
-    <svg viewBox="0 0 100 36" className="h-7 w-20" fill="none" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#818cf8" stopOpacity="1" />
-        </linearGradient>
-      </defs>
-      <path d={path} stroke="url(#lineGrad)" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="100" cy={dotY} r="3" fill="#818cf8" />
-    </svg>
-  );
+function AnimatedNumber({ value, animKey }: { value: number; animKey: string }) {
+  const [displayed, setDisplayed] = useState(Math.max(0, value - Math.min(value, 80)));
+  useEffect(() => {
+    const duration = 900;
+    const start = Date.now();
+    const from = Math.max(0, value - Math.min(value, 80));
+    let raf: number;
+    const tick = () => {
+      const progress = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayed(Math.round(from + (value - from) * eased));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animKey]);
+  return <>{displayed}</>;
 }
 
 // ── Podest ───────────────────────────────────────────────────────────────────
 
 const PODIUM_CFG = [
-  { ring: '2px solid #60a5fa', glow: '0 0 14px 2px rgba(96,165,250,0.35)',   badgeBg: '#3b82f6', scoreColor: 'text-slate-300',  size: 42, mt: 22, label: '2' },
-  { ring: '2px solid #f59e0b', glow: '0 0 20px 4px rgba(245,158,11,0.45)',   badgeBg: '#d97706', scoreColor: 'text-amber-400',  size: 58, mt: 0,  label: '1' },
-  { ring: '2px solid #c2763a', glow: '0 0 14px 2px rgba(194,118,58,0.35)',   badgeBg: '#c2510a', scoreColor: 'text-orange-400', size: 42, mt: 28, label: '3' },
+  { ring: '2px solid #60a5fa', glow: '0 0 16px 3px rgba(96,165,250,0.30)',   badgeBg: '#3b82f6', scoreColor: 'text-slate-300',  size: 44, mt: 26, label: '2' },
+  { ring: '2px solid #f59e0b', glow: '0 0 28px 6px rgba(245,158,11,0.50)',   badgeBg: '#d97706', scoreColor: 'text-amber-400',  size: 64, mt: 0,  label: '1' },
+  { ring: '2px solid #c2763a', glow: '0 0 16px 3px rgba(194,118,58,0.30)',   badgeBg: '#c2510a', scoreColor: 'text-orange-400', size: 44, mt: 32, label: '3' },
 ] as const;
 
 const PLAT_CFG = [
-  { bg: 'rgba(96,165,250,0.18)',  h: 12 },
-  { bg: 'rgba(245,158,11,0.25)',  h: 20 },
-  { bg: 'rgba(194,118,58,0.18)',  h: 8 },
+  { bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.25)',  h: 32 },
+  { bg: 'rgba(245,158,11,0.22)',  border: 'rgba(245,158,11,0.35)',  h: 52 },
+  { bg: 'rgba(194,118,58,0.15)',  border: 'rgba(194,118,58,0.25)',  h: 20 },
 ];
 
 function Podium({ entries, userRank }: { entries: TopThreeEntry[]; userRank?: number | null }) {
@@ -375,28 +372,42 @@ function Podium({ entries, userRank }: { entries: TopThreeEntry[]; userRank?: nu
   const display = [second, first, third];
 
   return (
-    <div className="flex items-end justify-center gap-5 pt-3 pb-1">
+    <div className="flex items-end justify-center gap-6 pt-3 pb-4">
       {display.map((entry, i) => {
         const cfg = PODIUM_CFG[i];
         const plat = PLAT_CFG[i];
         const isUser = entry && userRank != null && entry.rank === userRank;
+        const isFirst = i === 1;
         return (
-          <div key={i} className="flex flex-col items-center" style={{ marginTop: cfg.mt }}>
+          <div
+            key={i}
+            className="flex flex-col items-center"
+            style={{
+              marginTop: cfg.mt,
+              animation: 'podFadeUp 0.38s ease-out forwards',
+              animationDelay: `${[90, 0, 180][i]}ms`,
+              opacity: 0,
+            }}
+          >
             {entry ? (
               <>
+                {/* Crown for 1st place */}
+                {isFirst && (
+                  <span className="mb-0.5 text-lg crown-bounce" style={{ lineHeight: 1 }}>👑</span>
+                )}
                 <div
                   className="relative rounded-full"
                   style={{
                     outline: isUser ? '2.5px solid rgba(167,139,250,0.9)' : cfg.ring,
                     boxShadow: isUser
-                      ? `${cfg.glow}, 0 0 18px 4px rgba(167,139,250,0.45)`
+                      ? `${cfg.glow}, 0 0 22px 6px rgba(167,139,250,0.45)`
                       : cfg.glow,
                   }}
                 >
                   <Avatar url={entry.avatar} name={entry.name} size={cfg.size} />
                   <div
-                    className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ background: cfg.badgeBg }}
+                    className="absolute -bottom-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    style={{ background: cfg.badgeBg, boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
                   >
                     {cfg.label}
                   </div>
@@ -412,10 +423,71 @@ function Podium({ entries, userRank }: { entries: TopThreeEntry[]; userRank?: nu
             ) : (
               <div className="rounded-full bg-ink-800" style={{ width: cfg.size, height: cfg.size }} />
             )}
-            <div className="relative mt-2 w-20 rounded-t" style={{ height: plat.h, background: plat.bg }} />
+
+            {/* Podest-Block */}
+            <div
+              className="mt-2 w-[72px] rounded-t-md"
+              style={{
+                height: plat.h,
+                background: plat.bg,
+                border: `1px solid ${plat.border}`,
+                borderBottom: 'none',
+                boxShadow: isFirst
+                  ? '0 0 28px rgba(245,158,11,0.18), 0 -4px 16px rgba(245,158,11,0.10)'
+                  : undefined,
+              }}
+            />
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Achievement-Zusammenfassung ───────────────────────────────────────────────
+
+function AchievementSummaryCard({
+  medal,
+  rank,
+  pushups,
+  delta,
+}: {
+  medal: DailyRecap['yesterday_medal'];
+  rank: number | null | undefined;
+  pushups: number;
+  delta: number;
+}) {
+  const items: { icon: string; text: string }[] = [];
+
+  if (medal === 'gold')   items.push({ icon: '🥇', text: 'Goldmedaille verdient' });
+  else if (medal === 'silver') items.push({ icon: '🥈', text: 'Silbermedaille verdient' });
+  else if (medal === 'bronze') items.push({ icon: '🥉', text: 'Bronzemedaille verdient' });
+
+  if (rank === 1)         items.push({ icon: '👑', text: 'Tagessieg erreicht' });
+  else if (rank != null && rank <= 3) items.push({ icon: '🏅', text: `Platz ${rank} weltweit` });
+
+  if (delta > 0)          items.push({ icon: '📈', text: `+${delta} Push-ups vs. gestern` });
+  else if (delta < 0)     items.push({ icon: '📉', text: `${Math.abs(delta)} weniger als gestern` });
+
+  if (pushups >= 1000)    items.push({ icon: '🤯', text: '1.000+ Push-ups in einem Tag' });
+  else if (pushups >= 500) items.push({ icon: '🚀', text: '500+ Push-ups in einem Tag' });
+  else if (pushups >= 100) items.push({ icon: '💯', text: '100+ Push-ups in einem Tag' });
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-ink-700 bg-ink-900 px-4 py-3">
+      <p className="mb-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        🎁 Heute freigeschaltet
+      </p>
+      <div className="space-y-1.5">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-2.5">
+            <span className="text-base leading-none">{item.icon}</span>
+            <span className="text-sm font-semibold text-slate-300">{item.text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -512,7 +584,7 @@ export function DailyRecapModal({
   const [closingVisible, setClosingVisible] = useState(false);
 
   useEffect(() => {
-    setClosingVisible(false); // reset on date change so card re-animates
+    setClosingVisible(false);
   }, [recap.recap_date]);
 
   useEffect(() => {
@@ -538,7 +610,6 @@ export function DailyRecapModal({
   const top3      = recap.top_three ?? [];
   const isResting = recap.yesterday_pushups === 0 && !recap.yesterday_rank;
 
-  // Bronze-Abstand berechnen
   const bronzeEntry = top3.find((e) => e.rank === 3) ?? top3[top3.length - 1];
   const bronzeGap   = !recap.yesterday_medal && bronzeEntry
     ? Math.max(0, bronzeEntry.pushups - recap.yesterday_pushups)
@@ -560,7 +631,6 @@ export function DailyRecapModal({
         visible ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Onboarding-Swipe-Hint – über dem gesamten Modal */}
       {showHint && (
         <div className="pointer-events-none absolute inset-x-0 z-20 flex justify-center" style={{ top: '42%' }}>
           <div className="rounded-2xl bg-black/75 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm animate-hint-fade">
@@ -570,11 +640,7 @@ export function DailyRecapModal({
       )}
 
       {/* ── Header ───────────────────────────────────────────────── */}
-      <div
-        className="shrink-0 px-4"
-        style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}
-      >
-        {/* Zeile: Leer links, ✕ rechts */}
+      <div className="shrink-0 px-4" style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-end pb-1">
           <button
             onClick={handleClose}
@@ -584,8 +650,6 @@ export function DailyRecapModal({
             ✕
           </button>
         </div>
-
-        {/* Datums-Leiste */}
         <DateStrip
           dates={availableDates}
           currentIdx={currentDateIdx}
@@ -594,165 +658,182 @@ export function DailyRecapModal({
         />
       </div>
 
-      {/* ── Scrollbarer Inhalt (mit Swipe-Erkennung) ─────────────── */}
-      <div
-        className="flex-1 overflow-y-auto"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
-
-        {/* Animierter Inhalts-Wrapper – Key-Wechsel triggert Slide */}
+      {/* ── Scrollbarer Inhalt ────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div
           key={slideKey}
           className={slideDir === 'left' ? 'slide-from-left' : slideDir === 'right' ? 'slide-from-right' : ''}
         >
 
-        {/* Hero */}
-        <div className="relative px-4 pb-3 pt-1 text-center">
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-48 w-48 rounded-full bg-brand-600/10 blur-3xl" />
+          {/* Hero */}
+          <div className="relative px-4 pb-2 pt-1 text-center">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="h-48 w-48 rounded-full bg-brand-600/10 blur-3xl" />
+            </div>
+            <h1 className="relative text-2xl font-extrabold tracking-tight text-white">Arena-Rückblick</h1>
+            <p className="relative mt-0 text-sm text-slate-400">{dateLong}</p>
           </div>
-          <h1 className="relative text-2xl font-extrabold tracking-tight text-white">Arena-Rückblick</h1>
-          <p className="relative mt-0 text-sm text-slate-400">{dateLong}</p>
-        </div>
 
-        {/* Karten */}
-        {navLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-          </div>
-        ) : (
-          <div className="space-y-3 px-3 pb-8">
+          {navLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            </div>
+          ) : (
+            <div className="space-y-2.5 px-3 pb-6">
 
-            {isResting ? (
-              <div className="rounded-2xl border border-ink-700 bg-ink-900 p-4 text-center">
-                <span className="text-3xl">💤</span>
-                <p className="mt-2 text-base font-bold text-slate-200">Ruhetag</p>
-                <p className="mt-0.5 text-sm text-slate-500">Kein Training eingetragen.</p>
-              </div>
-            ) : (
-              <>
-                {/* ── 1. Top 3 ──────────────────────────────────── */}
-                {top3.length > 0 && (
-                  <div className="rounded-2xl border border-ink-700 bg-ink-900 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                      🏆 Top 3 dieses Tages
-                    </p>
-                    <Podium entries={top3} userRank={recap.yesterday_rank} />
-                  </div>
-                )}
+              {isResting ? (
+                <div className="rounded-2xl border border-ink-700 bg-ink-900 p-4 text-center">
+                  <span className="text-3xl">💤</span>
+                  <p className="mt-2 text-base font-bold text-slate-200">Ruhetag</p>
+                  <p className="mt-0.5 text-sm text-slate-500">Kein Training eingetragen.</p>
+                </div>
+              ) : (
+                <>
+                  {/* ── 1. Medaillenvergabe (Hero) ─────────────────── */}
+                  {recap.yesterday_medal ? (
+                    <MedalAwardCard
+                      medal={recap.yesterday_medal}
+                      counts={medalCounts}
+                      pushups={recap.yesterday_pushups}
+                      rank={recap.yesterday_rank}
+                    />
+                  ) : (
+                    <NoMedalCard bronzeGap={bronzeGap} />
+                  )}
 
-                {/* ── 2. Deine Leistung ─────────────────────────── */}
-                <div className="rounded-2xl border border-brand-500/35 bg-ink-900 p-3.5">
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-brand-400">
-                    💪 Deine Leistung
-                  </p>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-4xl font-extrabold leading-none text-white">
-                        {recap.yesterday_pushups}
+                  {/* ── 2. Top 3 dieses Tages ─────────────────────── */}
+                  {top3.length > 0 && (
+                    <div className="rounded-2xl border border-ink-700 bg-ink-900 px-3 pt-3 pb-1">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                        🏆 Top 3 dieses Tages
                       </p>
-                      <p className="mt-0.5 text-sm text-slate-400">Push-ups</p>
-                      {recap.yesterday_rank != null && (
-                        <p className="mt-1 text-xs font-semibold text-brand-300">
-                          Platz {recap.yesterday_rank} weltweit
-                        </p>
-                      )}
-                    </div>
-                    <TrendLine positive={delta >= 0 || !hasDelta} />
-                  </div>
-                  {hasDelta && (
-                    <div className="mt-2.5 border-t border-ink-700 pt-2.5">
-                      <p className={`flex items-center gap-1 text-sm font-semibold ${
-                        delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}>
-                        <span>{delta >= 0 ? '↑' : '↓'}</span>
-                        <span>{Math.abs(delta)} {delta >= 0 ? 'mehr' : 'weniger'} als vorgestern</span>
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Vorheriger Tag: {recap.prev_day_pushups} Push-ups
-                      </p>
+                      <Podium entries={top3} userRank={recap.yesterday_rank} />
                     </div>
                   )}
-                </div>
 
-                {/* ── 3. Medaillenvergabe ────────────────────────── */}
-                {recap.yesterday_medal ? (
-                  <MedalAwardCard medal={recap.yesterday_medal} counts={medalCounts} />
-                ) : (
-                  <NoMedalCard bronzeGap={bronzeGap} />
-                )}
-              </>
-            )}
+                  {/* ── 3. Deine Leistung ─────────────────────────── */}
+                  <div className="rounded-2xl border border-brand-500/35 bg-ink-900 px-3.5 py-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-brand-400">
+                      💪 Deine Leistung
+                    </p>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <p className="text-4xl font-extrabold leading-none text-white">
+                          <AnimatedNumber value={recap.yesterday_pushups} animKey={slideKey} />
+                        </p>
+                        <p className="mt-0.5 text-sm text-slate-400">Push-ups</p>
+                        {recap.yesterday_rank != null && (
+                          <p className="mt-1 text-xs font-semibold text-brand-300">
+                            Platz {recap.yesterday_rank} weltweit
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-            {/* ── Abschluss-Karte ───────────────────────────────── */}
-            <div
-              ref={closingCardRef}
-              className="transition-[opacity,transform] duration-[250ms] ease-out"
-              style={{
-                opacity: closingVisible ? 1 : 0,
-                transform: closingVisible ? 'translateY(0)' : 'translateY(16px)',
-              }}
-            >
+                    {/* Highlight-Chips */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {recap.yesterday_rank === 1 && (
+                        <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
+                          🏆 Platz 1 weltweit
+                        </span>
+                      )}
+                      {recap.yesterday_rank != null && recap.yesterday_rank > 1 && recap.yesterday_rank <= 3 && (
+                        <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-400/80">
+                          🥈 Top 3 weltweit
+                        </span>
+                      )}
+                      {recap.yesterday_rank != null && recap.yesterday_rank > 3 && recap.yesterday_rank <= 10 && (
+                        <span className="rounded-full bg-teal-500/12 px-2.5 py-1 text-[11px] font-semibold text-teal-400">
+                          📊 Top 10 weltweit
+                        </span>
+                      )}
+                      {hasDelta && delta > 0 && (
+                        <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">
+                          🔥 +{delta} vs. gestern
+                        </span>
+                      )}
+                      {hasDelta && delta < 0 && (
+                        <span className="rounded-full bg-rose-500/12 px-2.5 py-1 text-[11px] font-semibold text-rose-400">
+                          📉 {Math.abs(delta)} weniger als gestern
+                        </span>
+                      )}
+                    </div>
+
+                    {hasDelta && (
+                      <p className="mt-2 border-t border-ink-700/60 pt-2 text-xs text-slate-500">
+                        Vorheriger Tag: {recap.prev_day_pushups} Push-ups
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ── 4. Heute freigeschaltet ───────────────────── */}
+                  <AchievementSummaryCard
+                    medal={recap.yesterday_medal}
+                    rank={recap.yesterday_rank}
+                    pushups={recap.yesterday_pushups}
+                    delta={delta}
+                  />
+                </>
+              )}
+
+              {/* ── Abschluss-Karte ───────────────────────────────── */}
               <div
-                className="rounded-2xl border border-brand-500/25 p-5 text-center"
+                ref={closingCardRef}
+                className="transition-[opacity,transform] duration-[250ms] ease-out"
                 style={{
-                  background: 'linear-gradient(145deg, rgba(99,102,241,0.13) 0%, rgba(8,8,15,0.97) 100%)',
-                  boxShadow: '0 0 48px 0 rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  opacity: closingVisible ? 1 : 0,
+                  transform: closingVisible ? 'translateY(0)' : 'translateY(16px)',
                 }}
               >
-                <p className="text-[13px] font-bold uppercase tracking-widest text-brand-400">
-                  🏁 Arena-Rückblick abgeschlossen
-                </p>
-                <p className="mt-2 text-sm text-slate-400">
-                  Du bist bereit für den heutigen Wettkampf.
-                </p>
-                <button
-                  onClick={handleStartTraining}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-base font-extrabold text-white
-                    shadow-[0_0_28px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.97]"
+                <div
+                  className="rounded-2xl border border-brand-500/25 p-5 text-center"
+                  style={{
+                    background: 'linear-gradient(145deg, rgba(99,102,241,0.13) 0%, rgba(8,8,15,0.97) 100%)',
+                    boxShadow: '0 0 48px 0 rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
                 >
-                  <span>💪</span>
-                  <span>Training starten</span>
-                </button>
+                  <p className="text-[13px] font-bold uppercase tracking-widest text-brand-400">
+                    🏁 Arena-Rückblick abgeschlossen
+                  </p>
+                  <p className="mt-2 text-sm text-slate-400">
+                    Du bist bereit für den heutigen Wettkampf.
+                  </p>
+                  <button
+                    onClick={handleStartTraining}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-base font-extrabold text-white
+                      shadow-[0_0_28px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.97]"
+                  >
+                    <span>💪</span>
+                    <span>Training starten</span>
+                  </button>
+                </div>
               </div>
-            </div>
 
-          </div>
-        )}
-        </div> {/* /slide-animated wrapper */}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Animationen ────────────────────────────────────────────── */}
+      {/* ── Animationen ──────────────────────────────────────────── */}
       <style>{`
-        .slide-from-left {
-          animation: slideFromLeft 0.26s cubic-bezier(0.25,0.46,0.45,0.94) both;
-        }
-        .slide-from-right {
-          animation: slideFromRight 0.26s cubic-bezier(0.25,0.46,0.45,0.94) both;
-        }
-        .animate-hint-fade {
-          animation: hintFade 3s ease-in-out both;
-        }
-        @keyframes slideFromLeft {
-          from { opacity: 0; transform: translateX(-28px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes slideFromRight {
-          from { opacity: 0; transform: translateX(28px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
+        .slide-from-left  { animation: slideFromLeft  0.26s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+        .slide-from-right { animation: slideFromRight 0.26s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+        .animate-hint-fade { animation: hintFade 3s ease-in-out both; }
+
+        @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes slideFromRight { from { opacity:0; transform:translateX(28px);  } to { opacity:1; transform:translateX(0); } }
         @keyframes hintFade {
-          0%   { opacity: 0; transform: translateY(4px); }
-          15%  { opacity: 1; transform: translateY(0); }
-          75%  { opacity: 1; }
-          100% { opacity: 0; }
+          0%   { opacity:0; transform:translateY(4px); }
+          15%  { opacity:1; transform:translateY(0); }
+          75%  { opacity:1; }
+          100% { opacity:0; }
         }
+
         .medal-reveal {
-          animation: medalReveal 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both;
+          animation: medalReveal 0.55s cubic-bezier(0.22,1,0.36,1) 0.15s both;
         }
         .medal-image-reveal {
-          animation: medalScale 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.35s both;
+          animation: medalScale 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.30s both;
           display: inline-block;
         }
         .medal-glow-pulse {
@@ -764,27 +845,18 @@ export function DailyRecapModal({
         .sparkle-pulse {
           animation: sparkleFade 1.8s ease-in-out infinite;
         }
+        .crown-bounce {
+          animation: crownBounce 3s ease-in-out 0.5s infinite;
+          display: inline-block;
+        }
 
-        @keyframes medalReveal {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes medalScale {
-          from { opacity: 0; transform: scale(0.78); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-        @keyframes glowPulse {
-          0%, 100% { opacity: 0.55; transform: scale(0.95); }
-          50%       { opacity: 1;    transform: scale(1.05); }
-        }
-        @keyframes confettiFall {
-          0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
-          100% { opacity: 0; transform: translateY(340px) rotate(540deg); }
-        }
-        @keyframes sparkleFade {
-          0%, 100% { opacity: 0.2; transform: scale(0.8); }
-          50%       { opacity: 0.8; transform: scale(1.2); }
-        }
+        @keyframes medalReveal  { from { opacity:0; transform:translateY(18px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes medalScale   { from { opacity:0; transform:scale(0.70); } to { opacity:1; transform:scale(1); } }
+        @keyframes glowPulse    { 0%,100% { opacity:0.55; transform:scale(0.95); } 50% { opacity:1; transform:scale(1.05); } }
+        @keyframes confettiFall { 0% { opacity:1; transform:translateY(0) rotate(0deg); } 100% { opacity:0; transform:translateY(340px) rotate(540deg); } }
+        @keyframes sparkleFade  { 0%,100% { opacity:0.2; transform:scale(0.8); } 50% { opacity:0.8; transform:scale(1.2); } }
+        @keyframes crownBounce  { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
+        @keyframes podFadeUp    { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
     </div>
   );
