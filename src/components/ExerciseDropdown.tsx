@@ -21,7 +21,7 @@ export function ExerciseDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex h-[40px] w-full items-center gap-2.5 rounded-xl border border-ink-700 bg-ink-800 px-3.5 transition hover:bg-ink-700"
+        className="flex h-[40px] w-full items-center gap-2.5 rounded-xl border border-ink-700/50 bg-transparent px-3.5 transition hover:bg-ink-800/50"
       >
         <img
           src={EXERCISE_ICONS[activeExercise?.slug ?? ''] ?? ''}
@@ -45,7 +45,7 @@ export function ExerciseDropdown() {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-ink-700 bg-ink-800 shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-ink-700/50 bg-ink-950/60 shadow-xl backdrop-blur-md">
           {enrolledExercises.map((ex) => {
             const isActive = ex.id === activeExercise?.id;
             return (
@@ -53,7 +53,7 @@ export function ExerciseDropdown() {
                 key={ex.id}
                 onClick={() => { switchExercise(ex); setOpen(false); }}
                 className={`flex w-full items-center gap-3 px-4 py-3 transition ${
-                  isActive ? 'bg-brand-600/20 text-brand-300' : 'text-slate-300 hover:bg-ink-700'
+                  isActive ? 'bg-brand-600/20 text-brand-300' : 'text-slate-300 hover:bg-ink-800/60'
                 }`}
               >
                 <img
