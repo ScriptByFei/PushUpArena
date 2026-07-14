@@ -3,7 +3,6 @@
  * Reihenfolge: Medaille (Hero) → Top 3 → Deine Leistung → Heute freigeschaltet → Abschluss
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Avatar } from '@/components/ui/Avatar';
 import type { DailyRecap, TopThreeEntry, MedalCounts, RecapDateEntry } from '@/hooks/useDailyRecap';
 
@@ -579,7 +578,6 @@ export function DailyRecapModal({
   }, []);
 
   // ── Abschluss-Karte ──────────────────────────────────────────────────────
-  const navigate = useNavigate();
   const closingCardRef = useRef<HTMLDivElement>(null);
   const [closingVisible, setClosingVisible] = useState(false);
 
@@ -597,13 +595,6 @@ export function DailyRecapModal({
     obs.observe(el);
     return () => obs.disconnect();
   }, [recap.recap_date]);
-
-  async function handleStartTraining() {
-    setVisible(false);
-    await new Promise((r) => setTimeout(r, 220));
-    onClose();
-    navigate('/track');
-  }
 
   const delta     = recap.yesterday_pushups - recap.prev_day_pushups;
   const hasDelta  = recap.prev_day_pushups > 0;
@@ -798,14 +789,6 @@ export function DailyRecapModal({
                   <p className="mt-2 text-sm text-slate-400">
                     Du bist bereit für den heutigen Wettkampf.
                   </p>
-                  <button
-                    onClick={handleStartTraining}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-base font-extrabold text-white
-                      shadow-[0_0_28px_rgba(99,102,241,0.4)] transition hover:bg-brand-500 active:scale-[0.97]"
-                  >
-                    <span>💪</span>
-                    <span>Training starten</span>
-                  </button>
                 </div>
               </div>
 
