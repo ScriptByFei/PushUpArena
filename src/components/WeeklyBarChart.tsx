@@ -121,19 +121,28 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
           </div>
         )}
 
-        {/* ── Tagesziel-Linie: solid, amber/gold ─────────────────────────── */}
+        {/* ── Tagesziel-Linie: solid, gold — im Vordergrund ──────────────── */}
         {goalY !== null && (
           <div
-            className="pointer-events-none absolute inset-x-0"
-            style={{ top: goalY - 1, borderTop: '1.5px solid rgba(251,191,36,0.68)' }}
+            className="pointer-events-none absolute inset-x-0 z-10"
+            style={{
+              top: goalY - 1,
+              height: 2,
+              backgroundColor: 'rgba(251,191,36,0.92)',
+              boxShadow: '0 0 5px 2px rgba(251,191,36,0.28)',
+            }}
           />
         )}
 
-        {/* ── Durchschnittslinie: 2px dashed, violett ────────────────────── */}
+        {/* ── Durchschnittslinie: dashed, violett — im Vordergrund ────────── */}
         {avgY !== null && avg !== null && (
           <div
-            className="pointer-events-none absolute inset-x-0"
-            style={{ top: avgY - 1, borderTop: '2px dashed rgba(139,92,246,0.82)' }}
+            className="pointer-events-none absolute inset-x-0 z-10"
+            style={{
+              top: avgY - 1,
+              borderTop: '2px dashed rgba(167,139,250,0.90)',
+              filter: 'drop-shadow(0 0 3px rgba(167,139,250,0.38))',
+            }}
           />
         )}
 
@@ -227,44 +236,44 @@ export function WeeklyBarChart({ data, dailyGoal }: Props) {
 
       {/* ── Legende unter dem Diagramm ──────────────────────────────────────── */}
       {hasLegend && (
-        <div className="mt-2 flex items-center gap-5 px-0.5">
+        <div className="mt-4 flex items-center gap-6 px-1">
           {avg !== null && (
             <button
               type="button"
               onClick={() => tapLegend('avg')}
-              className={`flex items-center gap-1.5 transition-opacity ${
-                activeLine === 'avg' ? 'opacity-100' : 'opacity-60 hover:opacity-90'
+              className={`flex items-center gap-2.5 transition-opacity ${
+                activeLine === 'avg' ? 'opacity-100' : 'opacity-55 hover:opacity-85'
               }`}
             >
-              {/* Dashed line icon */}
-              <svg width="20" height="6" viewBox="0 0 20 6" fill="none" aria-hidden>
+              {/* Dashed line icon — länger, kräftiger */}
+              <svg width="28" height="8" viewBox="0 0 28 8" fill="none" aria-hidden>
                 <line
-                  x1="0" y1="3" x2="20" y2="3"
-                  stroke="rgba(139,92,246,0.9)"
-                  strokeWidth="2"
-                  strokeDasharray="3 2.5"
+                  x1="0" y1="4" x2="28" y2="4"
+                  stroke="rgba(167,139,250,0.92)"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 3"
                 />
               </svg>
-              <span className="text-[11px] text-slate-500">Ø {avg}</span>
+              <span className="text-[13px] font-semibold text-slate-400">Ø {avg}</span>
             </button>
           )}
           {dailyGoal != null && dailyGoal > 0 && (
             <button
               type="button"
               onClick={() => tapLegend('goal')}
-              className={`flex items-center gap-1.5 transition-opacity ${
-                activeLine === 'goal' ? 'opacity-100' : 'opacity-60 hover:opacity-90'
+              className={`flex items-center gap-2.5 transition-opacity ${
+                activeLine === 'goal' ? 'opacity-100' : 'opacity-55 hover:opacity-85'
               }`}
             >
-              {/* Solid line icon */}
-              <svg width="20" height="6" viewBox="0 0 20 6" fill="none" aria-hidden>
+              {/* Solid line icon — länger, kräftiger */}
+              <svg width="28" height="8" viewBox="0 0 28 8" fill="none" aria-hidden>
                 <line
-                  x1="0" y1="3" x2="20" y2="3"
-                  stroke="rgba(251,191,36,0.75)"
-                  strokeWidth="1.5"
+                  x1="0" y1="4" x2="28" y2="4"
+                  stroke="rgba(251,191,36,0.92)"
+                  strokeWidth="2.5"
                 />
               </svg>
-              <span className="text-[11px] text-slate-500">🎯 {dailyGoal}</span>
+              <span className="text-[13px] font-semibold text-slate-400">🎯 {dailyGoal}</span>
             </button>
           )}
         </div>
