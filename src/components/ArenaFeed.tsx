@@ -175,7 +175,7 @@ function GroupCard({
 
             {/* Headline event — the story */}
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-[20px] leading-none">{hIcon}</span>
+              <span className="text-[22px] leading-none">{hIcon}</span>
               <span className="min-w-0 truncate text-[15px] font-extrabold leading-snug tracking-tight text-slate-100">
                 {hLabel}
               </span>
@@ -188,7 +188,7 @@ function GroupCard({
                   const { icon, label } = getChip(ev);
                   return (
                     <div key={ev.id} className="flex items-center gap-2">
-                      <span className="w-5 shrink-0 text-center text-[14px] leading-none opacity-60">
+                      <span className="w-5 shrink-0 text-center text-[16px] leading-none opacity-60">
                         {icon}
                       </span>
                       <span className="min-w-0 truncate text-[12px] font-medium leading-snug text-slate-500">
