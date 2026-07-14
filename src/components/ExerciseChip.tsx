@@ -29,11 +29,11 @@ export function ExerciseChip({ compact = false }: { compact?: boolean }) {
         >
           {/* Icon in dezenter Kreisfläche + winziger Pfeil */}
           <div className="relative">
-            <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-ink-700/60 bg-ink-800/60">
+            <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-ink-700/40 bg-transparent">
               <img
                 src={EXERCISE_ICONS[exercise.slug] ?? ''}
                 alt=""
-                className="h-[20px] w-[20px] shrink-0 object-contain"
+                className="h-[24px] w-[24px] shrink-0 object-contain"
               />
             </div>
             {/* Winziger Pfeil unten rechts */}
