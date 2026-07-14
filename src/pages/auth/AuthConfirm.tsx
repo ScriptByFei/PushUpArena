@@ -124,8 +124,9 @@ export default function AuthConfirm() {
               Schließe diesen Browser und öffne die{' '}
               <strong className="text-slate-200">PushupArena</strong>-App auf deinem Homescreen.
             </p>
-            <div className="rounded-2xl border border-ink-600 bg-ink-800 px-4 py-3 text-left text-xs">
-              💡 App noch nicht installiert? Safari → Teilen <span className="text-slate-500">↑</span> → „Zum Home-Bildschirm"
+            <div className="flex items-start gap-2 rounded-2xl border border-ink-600 bg-ink-800 px-4 py-3 text-left text-xs">
+              <span className="shrink-0">💡</span>
+              <span>App noch nicht installiert? Safari → Teilen <span className="text-slate-500">↑</span> → „Zum Home-Bildschirm"</span>
             </div>
           </>
         ) : (
