@@ -111,6 +111,13 @@ export const FEED_EVENT_REGISTRY: Record<string, EventDefinition> = {
   },
 
   // ── Training: daily rep milestones ────────────────────────────────────────────
+  milestone_20: {
+    icon: '💪',
+    label: ev => `${fmtDe(dailyReps(ev, 20))} ${ev.exercise_name ?? 'PushUps'} heute`,
+    accent: 'none',
+    category: 'training',
+    priority: 1,
+  },
   milestone_100: {
     icon: '💯',
     label: ev => `${fmtDe(dailyReps(ev, 100))} ${ev.exercise_name ?? 'PushUps'} heute`,
