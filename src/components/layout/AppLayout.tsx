@@ -89,20 +89,18 @@ export function AppLayout() {
             </button>
           </div>
 
-          {/* Zone C — Titel + optionaler Chip als zentrierte Einheit */}
-          <div className="pointer-events-none absolute left-[96px] right-[96px] flex items-center justify-center gap-2">
-            <span className="text-[15px] font-bold tracking-tight text-slate-100 whitespace-nowrap">
-              {title}
-            </span>
+          {/* Zone C — Titel immer exakt zentriert */}
+          <span className="pointer-events-none absolute inset-x-0 text-center text-[15px] font-bold tracking-tight text-slate-100 whitespace-nowrap">
+            {title}
+          </span>
+
+          {/* Zone R — Chip (kompakt) + Glocke + Settings, rechtsbündig */}
+          <div className="ml-auto flex shrink-0 items-center pr-0">
             {showChip && (
-              <div className="pointer-events-auto shrink-0">
+              <div className="mr-1">
                 <ExerciseChip compact />
               </div>
             )}
-          </div>
-
-          {/* Zone R — Glocke + Settings: je 48×48 px → exakt gleich breit wie Zone L */}
-          <div className="ml-auto flex shrink-0 items-center pr-0">
             <button
               onClick={() => {
                 if (pushActive) setBellConfirmOpen(true);
