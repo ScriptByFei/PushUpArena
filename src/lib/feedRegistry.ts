@@ -74,7 +74,7 @@ export const FEED_EVENT_REGISTRY: Record<string, EventDefinition> = {
     icon: '📈',
     label: ev => {
       const reps = ev.metadata?.reps as number | undefined;
-      return reps != null ? `Tagesrekord · ${fmtDe(reps)} Wdh.` : 'Neuer Tagesrekord';
+      return reps != null ? `Persönlicher Rekord · ${fmtDe(reps)} Wdh.` : 'Neuer Persönlicher Rekord';
     },
     accent: 'brand',
     category: 'training',
