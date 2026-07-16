@@ -60,8 +60,13 @@ export const FEED_EVENT_REGISTRY: Record<string, FeedEventDefinition> = {
   // ── Live Leaderboard ───────────────────────────────────────────────────────────
   place1_new: {
     icon: '👑',
-    label: ev => `Platz 1 · ${ev.exercise_name ?? 'PushUp'}`,
-    accent: 'gold', category: 'community', cardType: 'hero', priority: 9, visibility: 'global', ttlHours: 72,
+    // Past-tense label: this is a HISTORICAL event ("first reached #1 today"), not current state.
+    // Current #1 state is derived from the live leaderboard, not from this event.
+    label: ev => `Platz 1 übernommen · ${ev.exercise_name ?? 'PushUp'}`,
+    accent: 'gold', category: 'community',
+    // standard, not hero — current-state hero comes from leaderboard, not event snapshots
+    cardType: 'standard',
+    priority: 9, visibility: 'global', ttlHours: 24,
   },
   top3_first: {
     icon: '🏅',

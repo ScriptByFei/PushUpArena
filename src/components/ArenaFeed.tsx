@@ -12,6 +12,7 @@ import type { ArenaFeedEvent, ArenaFeedGroup, FeedCardType } from '@/types/feed'
 interface RankEntry {
   userId: string;
   displayName: string;
+  avatarUrl: string | null;
   reps: number;
   rank: number;
 }
@@ -137,30 +138,9 @@ function buildStories(
     g.items = [headline, ...secondary];
   }
 
-  // ── Actuality pass: per exercise, only the MOST RECENT place1_new story is hero.
-  // Others get place1_new stripped; remaining items become their card.
-  const place1ByEx = new Map<string | null, string[]>();
-  for (const g of map.values()) {
-    if (g.items[0]?.event_type === 'place1_new') {
-      const exId = g.items[0].exercise_id;
-      if (!place1ByEx.has(exId)) place1ByEx.set(exId, []);
-      place1ByEx.get(exId)!.push(g.key);
-    }
-  }
-  for (const [, keys] of place1ByEx) {
-    // Sort by latest_at desc → first entry is current leader
-    keys.sort((a, b) => map.get(b)!.latest_at.localeCompare(map.get(a)!.latest_at));
-    for (let i = 1; i < keys.length; i++) {
-      const g = map.get(keys[i])!;
-      const newItems = g.items.filter(ev => ev.event_type !== 'place1_new');
-      if (newItems.length === 0) {
-        map.delete(keys[i]);
-      } else {
-        g.items = newItems;
-        g.cardType = getGroupCardType(newItems);
-      }
-    }
-  }
+  // NOTE: No actuality pass needed. place1_new is now cardType:'standard' in the registry
+  // (a historical "first reached #1 today" event). The CurrentLeaderCard component
+  // in ArenaFeed is the sole source of current-leader truth, built from get_all_active_today.
 
   // ── Sort: live → hero priority → recency
   const CARD_WEIGHT: Partial<Record<FeedCardType, number>> = {
@@ -187,7 +167,9 @@ function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
   const m = ev.metadata as Record<string, unknown>;
   switch (ev.event_type) {
     case 'place1_new':
-      return `${shortName} übernimmt Platz 1`;
+      // Historical event: "first reached #1 today". Past tense — current state
+      // comes from the live leaderboard (CurrentLeaderCard), not this event.
+      return `${shortName} übernahm heute Platz 1`;
     case 'medal_gold':
       return 'Goldmedaille';
     case 'medal_silver':
@@ -393,7 +375,9 @@ interface CardProps {
 }
 
 // ─── HeroCard ─────────────────────────────────────────────────────────────────
-// Used for: place1_new, medal_gold, milestone_500/1000, streak_365
+// Used for: medal_gold, medal_silver, medal_bronze, milestone_500/1000, streak_365.
+// NOT used for place1_new — that is now a standard historical event.
+// Current #1 state is shown via CurrentLeaderCard (built from live leaderboard).
 
 function HeroCard({ group, rankList, onOpenProfile, onToggleReaction }: CardProps) {
   const name = group.display_name || group.username || 'Unbekannt';
@@ -805,6 +789,84 @@ function LiveCard({ displayName, avatarUrl, entry, rankList, userId, onOpenProfi
   );
 }
 
+// ─── CurrentLeaderCard ────────────────────────────────────────────────────────
+// Built EXCLUSIVELY from the live leaderboard (get_all_active_today).
+// Never uses a feed_event as its source of truth.
+// Shown at the top of every feed render — always correct, never stale.
+
+interface CurrentLeaderCardProps {
+  leader: RankEntry;
+  secondPlace: RankEntry | undefined;
+  isLive: boolean;
+  exerciseName: string;
+  onOpenProfile: () => void;
+}
+
+function CurrentLeaderCard({
+  leader,
+  secondPlace,
+  isLive,
+  exerciseName,
+  onOpenProfile,
+}: CurrentLeaderCardProps) {
+  const shortName = leader.displayName.split(' ')[0];
+  const lead = secondPlace ? leader.reps - secondPlace.reps : null;
+
+  return (
+    <div
+      className="overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-ink-900 via-ink-900 to-amber-950/30 shadow-[0_0_20px_-6px_rgba(251,191,36,0.3)] transition-transform active:scale-[0.985]"
+    >
+      <button
+        className="w-full text-left"
+        onClick={onOpenProfile}
+        aria-label={`Profil von ${leader.displayName}`}
+      >
+        <div className="px-3.5 pt-3 pb-3">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Avatar url={leader.avatarUrl} name={leader.displayName} size={30} />
+              <span className="truncate text-[12px] font-semibold leading-none text-slate-400">
+                {leader.displayName}
+              </span>
+              {isLive && (
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-400" />
+                </span>
+              )}
+            </div>
+            <span className="shrink-0 text-[10px] font-semibold leading-none text-amber-500/80">
+              Platz 1 • live
+            </span>
+          </div>
+
+          {/* Big number */}
+          <div className="mt-2 flex items-end gap-2.5">
+            <span className="text-[22px] leading-none">👑</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1">
+                <span className="text-[28px] font-black leading-none tabular-nums text-amber-300">
+                  {leader.reps.toLocaleString('de-DE')}
+                </span>
+                <span className="text-[11px] font-semibold text-slate-500">{exerciseName} heute</span>
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0">
+                <span className="text-[11px] font-bold text-amber-400">{shortName} führt</span>
+                {lead != null && lead > 0 && secondPlace && (
+                  <span className="text-[10px] text-slate-600">
+                    {lead.toLocaleString('de-DE')} vor {secondPlace.displayName.split(' ')[0]}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
@@ -896,7 +958,8 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
         .map((r: any, i: number) => ({
           userId: r.user_id,
           displayName: r.display_name || r.username || 'Unbekannt',
-          reps: r.today_amount,
+          avatarUrl: (r.avatar_url ?? null) as string | null,
+          reps: r.today_amount as number,
           rank: i + 1,
         }));
       setRankList(sorted);
@@ -1072,6 +1135,30 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-2">
+              {/* ── Current leader — built from live leaderboard, never from feed events ── */}
+              {rankList.length > 0 && rankList[0].reps > 0 && (
+                <CurrentLeaderCard
+                  leader={rankList[0]}
+                  secondPlace={rankList[1]}
+                  isLive={!!liveActivity[rankList[0].userId]}
+                  exerciseName={
+                    events.find(e => e.exercise_id)?.exercise_name ?? 'PushUps'
+                  }
+                  onOpenProfile={() => {
+                    const exerciseId =
+                      activeExercise?.id ??
+                      events.find(e => e.exercise_id)?.exercise_id;
+                    if (!exerciseId) return;
+                    setInfoSheet({
+                      userId: rankList[0].userId,
+                      displayName: rankList[0].displayName,
+                      avatarUrl: rankList[0].avatarUrl,
+                      exerciseId,
+                    });
+                  }}
+                />
+              )}
+
               {liveOnlyUsers.map(l => (
                 <LiveCard
                   key={`live-${l.userId}`}
