@@ -1,34 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { useFeed, type FeedEvent, type FeedFilter } from '@/hooks/useFeed';
-import { groupAccentClass, getChip, getEventPriority } from '@/lib/feedRegistry';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useArenaFeed, type FeedFilter, type LiveActivityMap } from '@/hooks/useArenaFeed';
+import { getChip, getEventPriority, getGroupCardType } from '@/lib/feedRegistry';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
 import { useExercise } from '@/context/ExerciseContext';
 import { Avatar } from '@/components/ui/Avatar';
+import type { ArenaFeedEvent, ArenaFeedGroup, FeedCardType } from '@/types/feed';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Group events by group_key (user × exercise × day, computed server-side) ──
 
-interface EventGroup {
-  key: string;
-  user_id: string;
-  display_name: string;
-  username: string | null;
-  avatar_url: string | null;
-  event_date: string;
-  latest_at: string;
-  items: FeedEvent[];
-  isNew: boolean;
-}
-
-// ─── Group events by user × day ──────────────────────────────────────────────
-
-type LiveActivity = Record<string, { addedReps: number; ts: string }>;
-
-function groupEvents(events: FeedEvent[], newIds: Set<string>, live: LiveActivity): EventGroup[] {
-  const map = new Map<string, EventGroup>();
+function groupEvents(events: ArenaFeedEvent[], newIds: Set<string>, live: LiveActivityMap): ArenaFeedGroup[] {
+  const map = new Map<string, ArenaFeedGroup>();
   const order: string[] = [];
 
   for (const ev of events) {
-    const key = `${ev.user_id}::${ev.event_date}`;
+    const key = ev.group_key;
     if (!map.has(key)) {
       map.set(key, {
         key,
@@ -40,6 +25,7 @@ function groupEvents(events: FeedEvent[], newIds: Set<string>, live: LiveActivit
         latest_at: ev.created_at,
         items: [],
         isNew: false,
+        cardType: 'standard',
       });
       order.push(key);
     }
@@ -49,12 +35,11 @@ function groupEvents(events: FeedEvent[], newIds: Set<string>, live: LiveActivit
     if (ev.created_at > g.latest_at) g.latest_at = ev.created_at;
   }
 
-  // Sort chips within each group by priority (highest first)
   for (const g of map.values()) {
     g.items.sort((a, b) => getEventPriority(b.event_type) - getEventPriority(a.event_type));
+    g.cardType = getGroupCardType(g.items);
   }
 
-  // Sort groups: most recently active (live or latest_at) first
   return order
     .map(k => map.get(k)!)
     .sort((a, b) => {
@@ -76,24 +61,113 @@ function compactTime(iso: string): string {
   return `${Math.floor(h / 24)} Tg.`;
 }
 
-// ─── Group card (Story layout) ────────────────────────────────────────────────
-//
-// Structure:
-//   [Avatar]  [name · time]
-//             [HEADLINE ICON] [HEADLINE LABEL — big]
-//             [small icon]    [secondary label — muted]
-//             ...
+// ─── Reactions bar ────────────────────────────────────────────────────────────
 
-function GroupCard({
-  group,
-  liveReps,
-  onOpenProfile,
+const REACTION_EMOJIS = ['💪', '🔥', '👑', '🤯', '❤️'];
+
+function ReactionsBar({
+  eventId,
+  reactions,
+  onToggle,
 }: {
-  group: EventGroup;
-  liveReps?: { addedReps: number; ts: string };
-  onOpenProfile: (group: EventGroup) => void;
+  eventId: string;
+  reactions: ArenaFeedEvent['reactions'];
+  onToggle: (eventId: string, emoji: string) => void;
 }) {
-  // Flash border animation when new live reps arrive
+  return (
+    <div className="mt-2.5 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      {REACTION_EMOJIS.map(emoji => {
+        const r = reactions[emoji];
+        const count = r?.count ?? 0;
+        const reacted = r?.reacted ?? false;
+        return (
+          <button
+            key={emoji}
+            onClick={() => onToggle(eventId, emoji)}
+            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition ${
+              reacted
+                ? 'bg-brand-500/20 text-brand-300'
+                : 'bg-ink-800/80 text-slate-500 hover:bg-ink-700'
+            }`}
+          >
+            <span className="text-[13px] leading-none">{emoji}</span>
+            {count > 0 && <span className="tabular-nums">{count}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Shared card chrome ───────────────────────────────────────────────────────
+
+interface CardProps {
+  group: ArenaFeedGroup;
+  liveReps?: { addedReps: number; ts: string };
+  onOpenProfile: (group: ArenaFeedGroup) => void;
+  onToggleReaction: (eventId: string, emoji: string) => void;
+}
+
+const CARD_TYPE_GLOW: Partial<Record<FeedCardType, string>> = {
+  hero: 'shadow-[0_0_24px_-6px_rgba(251,191,36,0.35)]',
+};
+
+function CardShell({
+  group,
+  flashing,
+  extraClass,
+  children,
+}: {
+  group: ArenaFeedGroup;
+  flashing: boolean;
+  extraClass?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`overflow-hidden rounded-2xl border bg-ink-900 transition-transform active:scale-[0.985] ${
+        group.cardType === 'hero' ? 'border-amber-400/30' : 'border-ink-700/60'
+      } ${CARD_TYPE_GLOW[group.cardType] ?? ''} ${extraClass ?? ''}`}
+      style={
+        group.isNew
+          ? { animation: 'feedEnter 0.35s ease-out' }
+          : flashing
+          ? { animation: 'liveFlash 0.9s ease-out' }
+          : undefined
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({
+  name,
+  avatarUrl,
+  time,
+  size = 38,
+}: {
+  name: string;
+  avatarUrl: string | null;
+  time: string;
+  size?: number;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <Avatar url={avatarUrl} name={name} size={size} />
+        <span className="truncate text-[13px] font-semibold leading-none text-slate-400">{name}</span>
+      </div>
+      <span className="shrink-0 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
+        {compactTime(time)}
+      </span>
+    </div>
+  );
+}
+
+// ─── StandardCard ─────────────────────────────────────────────────────────────
+
+function StandardCard({ group, liveReps, onOpenProfile, onToggleReaction }: CardProps) {
   const [flashing, setFlashing] = useState(false);
   const prevTsRef = useRef<string | undefined>(liveReps?.ts);
   useEffect(() => {
@@ -105,113 +179,294 @@ function GroupCard({
     }
   }, [liveReps?.ts]);
 
-  // Count-up animation for the delta badge
-  const prevRepsRef = useRef(0);
-  const [displayedReps, setDisplayedReps] = useState(0);
-  useEffect(() => {
-    if (liveReps?.addedReps == null) return;
-    const from = prevRepsRef.current;
-    const to = liveReps.addedReps;
-    prevRepsRef.current = to;
-    if (from === to) return;
-    const start = performance.now();
-    const dur = 500;
-    let rafId: number;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / dur);
-      const ease = 1 - (1 - t) ** 3;
-      setDisplayedReps(Math.round(from + (to - from) * ease));
-      if (t < 1) rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [liveReps?.addedReps]);
-
   const name = group.display_name || group.username || 'Unbekannt';
-  const accent = groupAccentClass(group.items);
+  const [headline, ...secondary] = group.items;
+  const { icon: hIcon, label: hLabel } = getChip(headline);
+  const displayTime = liveReps?.ts && liveReps.ts > group.latest_at ? liveReps.ts : group.latest_at;
 
-  // Highest-priority event is the story headline; rest are secondary details
+  return (
+    <CardShell group={group} flashing={flashing}>
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} />
+
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[22px] leading-none">{hIcon}</span>
+            <span className="min-w-0 truncate text-[15px] font-extrabold leading-snug tracking-tight text-slate-100">
+              {hLabel}
+            </span>
+          </div>
+
+          {secondary.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {secondary.map(ev => {
+                const { icon, label } = getChip(ev);
+                return (
+                  <div key={ev.id} className="flex items-center gap-2">
+                    <span className="w-5 shrink-0 text-center text-[16px] leading-none opacity-60">{icon}</span>
+                    <span className="min-w-0 truncate text-[12px] font-medium leading-snug text-slate-500">
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {liveReps && liveReps.addedReps > 0 && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[11px] font-bold text-brand-400">
+                +{liveReps.addedReps}
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-slate-600">
+                <span className="inline-block h-1 w-1 rounded-full bg-green-400 animate-pulse" />
+                gerade eben
+              </span>
+            </div>
+          )}
+        </div>
+      </button>
+      <div className="px-4 pb-3.5">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
+
+// ─── HeroCard — selten, groß, mit Glow ────────────────────────────────────────
+
+function HeroCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
+  const name = group.display_name || group.username || 'Unbekannt';
   const [headline, ...secondary] = group.items;
   const { icon: hIcon, label: hLabel } = getChip(headline);
 
-  // Use live timestamp for recency display if more recent
-  const displayTime = liveReps?.ts && liveReps.ts > group.latest_at
-    ? liveReps.ts
-    : group.latest_at;
-
   return (
-    <div
-      className={`overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900 transition-transform active:scale-[0.985] ${accent}`}
-      style={
-        group.isNew
-          ? { animation: 'feedEnter 0.35s ease-out' }
-          : flashing
-          ? { animation: 'liveFlash 0.9s ease-out' }
-          : undefined
-      }
-    >
-      <button
-        className="w-full text-left"
-        onClick={() => onOpenProfile(group)}
-        aria-label={`Profil von ${name}`}
-      >
-        <div className="flex items-start gap-3 px-4 pt-3.5 pb-3.5">
-          {/* Avatar */}
-          <div className="shrink-0 pt-0.5">
-            <Avatar url={group.avatar_url} name={name} size={38} />
+    <CardShell group={group} flashing={false} extraClass="bg-gradient-to-br from-ink-900 via-ink-900 to-amber-950/20">
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-4 pb-4">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={42} />
+
+          <div className="mt-2.5 flex items-center gap-3">
+            <span className="text-[34px] leading-none animate-pulse">{hIcon}</span>
+            <span className="min-w-0 truncate text-[19px] font-black leading-tight tracking-tight text-amber-300">
+              {hLabel}
+            </span>
           </div>
 
-          {/* Story content */}
-          <div className="min-w-0 flex-1">
-            {/* Name + time row */}
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-[13px] font-semibold leading-none text-slate-400">
-                {name}
-              </span>
-              <span className="shrink-0 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
-                {compactTime(displayTime)}
-              </span>
+          {secondary.length > 0 && (
+            <div className="mt-2.5 space-y-1">
+              {secondary.map(ev => {
+                const { icon, label } = getChip(ev);
+                return (
+                  <div key={ev.id} className="flex items-center gap-2">
+                    <span className="w-5 shrink-0 text-center text-[16px] leading-none opacity-70">{icon}</span>
+                    <span className="min-w-0 truncate text-[12px] font-medium leading-snug text-slate-400">
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
+          )}
+        </div>
+      </button>
+      <div className="px-4 pb-4">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
 
-            {/* Headline event — the story */}
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-[22px] leading-none">{hIcon}</span>
-              <span className="min-w-0 truncate text-[15px] font-extrabold leading-snug tracking-tight text-slate-100">
-                {hLabel}
-              </span>
+// ─── RecordCard — alt vs. neu ──────────────────────────────────────────────────
+
+function RecordCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
+  const name = group.display_name || group.username || 'Unbekannt';
+  const [headline] = group.items;
+  const { icon: hIcon, label: hLabel } = getChip(headline);
+  const m = headline.metadata as Record<string, unknown>;
+  const reps = m.reps as number | undefined;
+  const prevBest = m.prev_best as number | undefined;
+
+  return (
+    <CardShell group={group} flashing={false}>
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} />
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[22px] leading-none">{hIcon}</span>
+            <span className="min-w-0 truncate text-[15px] font-extrabold leading-snug tracking-tight text-slate-100">
+              {hLabel}
+            </span>
+          </div>
+          {reps != null && prevBest != null && prevBest > 0 && (
+            <div className="mt-2 flex items-center gap-2 text-[13px] font-bold tabular-nums">
+              <span className="text-slate-600 line-through">{prevBest}</span>
+              <span className="text-slate-600">→</span>
+              <span className="text-brand-400">{reps}</span>
             </div>
+          )}
+        </div>
+      </button>
+      <div className="px-4 pb-3.5">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
 
-            {/* Secondary events — supporting details */}
-            {secondary.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {secondary.map(ev => {
-                  const { icon, label } = getChip(ev);
-                  return (
-                    <div key={ev.id} className="flex items-center gap-2">
-                      <span className="w-5 shrink-0 text-center text-[16px] leading-none opacity-60">
-                        {icon}
-                      </span>
-                      <span className="min-w-0 truncate text-[12px] font-medium leading-snug text-slate-500">
-                        {label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+// ─── RankMovementCard — Rang vorher → nachher ─────────────────────────────────
 
-            {/* Live delta badge — appears when new reps are logged since card was shown */}
-            {liveReps && displayedReps > 0 && (
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[11px] font-bold text-brand-400">
-                  +{displayedReps}
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-slate-600">
-                  <span className="inline-block h-1 w-1 rounded-full bg-green-400 animate-pulse" />
-                  gerade eben
-                </span>
-              </div>
+function RankMovementCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
+  const name = group.display_name || group.username || 'Unbekannt';
+  const [headline] = group.items;
+  const m = headline.metadata as Record<string, unknown>;
+  const oldRank = m.old_rank as number | undefined;
+  const newRank = m.new_rank as number | undefined;
+  const overtaken = m.overtaken_name as string | undefined;
+
+  return (
+    <CardShell group={group} flashing={false}>
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} />
+          <div className="mt-1.5 flex items-center gap-2.5">
+            <span className="text-[22px] leading-none">📈</span>
+            {oldRank != null && newRank != null ? (
+              <span className="flex items-center gap-1.5 text-[16px] font-black tabular-nums text-slate-100">
+                <span className="text-slate-500">#{oldRank}</span>
+                <span className="text-brand-400">→</span>
+                <span className="text-brand-400">#{newRank}</span>
+              </span>
+            ) : (
+              <span className="text-[15px] font-extrabold text-slate-100">Rangverbesserung</span>
             )}
+          </div>
+          {overtaken && (
+            <p className="mt-1 text-[12px] font-medium text-slate-500">{overtaken} überholt</p>
+          )}
+        </div>
+      </button>
+      <div className="px-4 pb-3.5">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
+
+// ─── ComebackCard ─────────────────────────────────────────────────────────────
+
+function ComebackCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
+  const name = group.display_name || group.username || 'Unbekannt';
+  const [headline] = group.items;
+  const daysOff = (headline.metadata as Record<string, unknown>).days_off as number | undefined;
+
+  return (
+    <CardShell group={group} flashing={false} extraClass="bg-gradient-to-br from-ink-900 to-orange-950/10">
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} />
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[22px] leading-none">💥</span>
+            <span className="text-[15px] font-extrabold text-orange-300">
+              {daysOff != null ? `Comeback nach ${daysOff} Tagen` : 'Comeback'}
+            </span>
+          </div>
+        </div>
+      </button>
+      <div className="px-4 pb-3.5">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
+
+// ─── StreakCard ────────────────────────────────────────────────────────────────
+
+function StreakCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
+  const name = group.display_name || group.username || 'Unbekannt';
+  const [headline] = group.items;
+  const { icon: hIcon, label: hLabel } = getChip(headline);
+  const days = (headline.metadata as Record<string, unknown>).days as number | undefined;
+
+  return (
+    <CardShell group={group} flashing={false}>
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} />
+          <div className="mt-1.5 flex items-center gap-2.5">
+            <span className="text-[26px] leading-none">{hIcon}</span>
+            <div className="flex flex-col">
+              <span className="text-[15px] font-extrabold leading-snug text-slate-100">{hLabel}</span>
+              {days != null && (
+                <span className="text-[11px] font-semibold text-slate-600">{days} Tage in Folge</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </button>
+      <div className="px-4 pb-3.5">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
+
+// ─── DuelCard — knapper Zweikampf (rank_improved mit improvement === 1) ───────
+
+function DuelCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
+  const name = group.display_name || group.username || 'Unbekannt';
+  const [headline] = group.items;
+  const m = headline.metadata as Record<string, unknown>;
+  const overtaken = m.overtaken_name as string | undefined;
+  const newRank = m.new_rank as number | undefined;
+
+  return (
+    <CardShell group={group} flashing={false} extraClass="bg-gradient-to-br from-ink-900 to-brand-950/20">
+      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} />
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="text-[22px] leading-none">⚔️</span>
+            <span className="text-[15px] font-extrabold text-brand-300">
+              Knapp an {overtaken ?? 'der Konkurrenz'} vorbeigezogen{newRank != null ? ` · #${newRank}` : ''}
+            </span>
+          </div>
+        </div>
+      </button>
+      <div className="px-4 pb-3.5">
+        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
+      </div>
+    </CardShell>
+  );
+}
+
+// ─── LiveCard — flüchtige Live-Aktivität ohne eigenes Feed-Event ──────────────
+
+interface LiveCardProps {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  entry: { addedReps: number; ts: string };
+  onOpenProfile: () => void;
+}
+
+function LiveCard({ displayName, avatarUrl, entry, onOpenProfile }: LiveCardProps) {
+  return (
+    <div
+      className="overflow-hidden rounded-2xl border border-green-500/25 bg-ink-900 transition-transform active:scale-[0.985]"
+      style={{ animation: 'feedEnter 0.35s ease-out' }}
+    >
+      <button className="w-full text-left" onClick={onOpenProfile} aria-label={`Profil von ${displayName}`}>
+        <div className="px-4 pt-3.5 pb-3.5">
+          <CardHeader name={displayName} avatarUrl={avatarUrl} time={entry.ts} />
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
+            </span>
+            <span className="text-[15px] font-extrabold text-green-400">
+              Trainiert gerade · +{entry.addedReps}
+            </span>
           </div>
         </div>
       </button>
@@ -240,27 +495,35 @@ function SkeletonCard() {
 
 // ─── Filter pill ─────────────────────────────────────────────────────────────
 
-function FilterPill({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function FilterPill({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-        active
-          ? 'bg-brand-500 text-white'
-          : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
+        active ? 'bg-brand-500 text-white' : 'bg-ink-800 text-slate-400 hover:bg-ink-700'
       }`}
     >
       {label}
     </button>
   );
+}
+
+// ─── Card dispatch ────────────────────────────────────────────────────────────
+
+function FeedCard(props: CardProps) {
+  const [headline] = props.group.items;
+  const m = headline.metadata as Record<string, unknown>;
+  if (headline.event_type === 'rank_improved' && (m.improvement as number | undefined) === 1) {
+    return <DuelCard {...props} />;
+  }
+  switch (props.group.cardType) {
+    case 'hero':          return <HeroCard {...props} />;
+    case 'record':         return <RecordCard {...props} />;
+    case 'rank_movement':  return <RankMovementCard {...props} />;
+    case 'comeback':       return <ComebackCard {...props} />;
+    case 'streak':         return <StreakCard {...props} />;
+    default:               return <StandardCard {...props} />;
+  }
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -278,13 +541,32 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const [infoSheet, setInfoSheet] = useState<InfoSheetState | null>(null);
   const {
     events, loading, refreshing, hasMore, newEventIds, liveActivity,
-    refresh, loadMore,
-  } = useFeed(filter);
+    refresh, loadMore, toggleReaction,
+  } = useArenaFeed(filter);
 
-  const groups = groupEvents(events, newEventIds, liveActivity);
+  const groups = useMemo(() => groupEvents(events, newEventIds, liveActivity), [events, newEventIds, liveActivity]);
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
+
+  // Users with live activity in the last 5 minutes that have no group in the current
+  // list yet (e.g. their first rep of the day hasn't crossed a milestone threshold).
+  const liveOnlyUsers = useMemo(() => {
+    const groupedUserIds = new Set(groups.map(g => g.user_id));
+    const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+    return Object.entries(liveActivity)
+      .filter(([userId, entry]) => !groupedUserIds.has(userId) && new Date(entry.ts).getTime() > fiveMinAgo)
+      .map(([userId, entry]) => {
+        const ref = events.find(e => e.user_id === userId);
+        return {
+          userId,
+          displayName: ref?.display_name || ref?.username || 'Unbekannt',
+          avatarUrl: ref?.avatar_url ?? null,
+          entry: { addedReps: entry.lastDelta, ts: entry.ts },
+        };
+      })
+      .filter(l => l.entry.addedReps > 0);
+  }, [liveActivity, groups, events]);
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -321,17 +603,14 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   }, [refresh]);
 
   // Pull-to-refresh via touch
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
   const handleTouchEnd = (e: React.TouchEvent) => {
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (dy > 60 && (listRef.current?.scrollTop ?? 0) <= 0 && !refreshing) void refresh();
   };
 
-  const handleOpenProfile = (group: EventGroup) => {
-    const exerciseId =
-      group.items.find(i => i.exercise_id)?.exercise_id ?? activeExercise?.id;
+  const handleOpenProfile = (group: ArenaFeedGroup) => {
+    const exerciseId = group.items.find(i => i.exercise_id)?.exercise_id ?? activeExercise?.id;
     if (!exerciseId) return;
     setInfoSheet({
       userId: group.user_id,
@@ -339,6 +618,12 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
       avatarUrl: group.avatar_url,
       exerciseId,
     });
+  };
+
+  const handleOpenLiveProfile = (userId: string, displayName: string, avatarUrl: string | null) => {
+    const exerciseId = liveActivity[userId]?.exerciseId ?? activeExercise?.id;
+    if (!exerciseId) return;
+    setInfoSheet({ userId, displayName, avatarUrl, exerciseId });
   };
 
   return (
@@ -409,7 +694,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
             <div className="space-y-2">
               {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
-          ) : groups.length === 0 ? (
+          ) : groups.length === 0 && liveOnlyUsers.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-ink-800 text-3xl">
                 🏋️
@@ -423,12 +708,28 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-2">
+              {liveOnlyUsers.map(l => (
+                <LiveCard
+                  key={`live-${l.userId}`}
+                  userId={l.userId}
+                  displayName={l.displayName}
+                  avatarUrl={l.avatarUrl}
+                  entry={l.entry}
+                  onOpenProfile={() => handleOpenLiveProfile(l.userId, l.displayName, l.avatarUrl)}
+                />
+              ))}
+
               {groups.map(group => (
-                <GroupCard
+                <FeedCard
                   key={group.key}
                   group={group}
-                  liveReps={liveActivity[group.user_id]}
+                  liveReps={
+                    liveActivity[group.user_id]
+                      ? { addedReps: liveActivity[group.user_id].lastDelta, ts: liveActivity[group.user_id].ts }
+                      : undefined
+                  }
                   onOpenProfile={handleOpenProfile}
+                  onToggleReaction={toggleReaction}
                 />
               ))}
 

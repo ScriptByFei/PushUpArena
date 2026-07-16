@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import type { ArenaFeedEvent } from '@/types/feed';
 
 // Central list of exercise names allowed in the feed (mirrors the RPC's feed_slugs CTE).
 // To enable more exercises in the feed, add their names here.
@@ -8,41 +9,31 @@ export const FEED_EXERCISE_NAMES: string[] = ['PushUp'];
 
 export type FeedFilter = 'global' | 'friends';
 
-export interface FeedReactions {
-  [emoji: string]: { count: number; reacted: boolean };
+export interface LiveActivityEntry {
+  exerciseId: string;
+  todayTotal: number;
+  lastDelta: number;
+  ts: string;
 }
 
-export interface FeedEvent {
-  id: string;
-  user_id: string;
-  display_name: string;
-  username: string | null;
-  avatar_url: string | null;
-  event_type: string;
-  exercise_id: string | null;
-  exercise_name: string | null;
-  metadata: Record<string, unknown>;
-  event_date: string;
-  created_at: string;
-  reactions: FeedReactions;
-}
+export type LiveActivityMap = Record<string, LiveActivityEntry>;
 
 const PAGE_SIZE = 20;
 
-function applyFilter(rows: FeedEvent[]): FeedEvent[] {
+function applyFilter(rows: ArenaFeedEvent[]): ArenaFeedEvent[] {
   return rows.filter(
     ev => ev.exercise_id === null || FEED_EXERCISE_NAMES.includes(ev.exercise_name ?? ''),
   );
 }
 
-export function useFeed(filter: FeedFilter) {
+export function useArenaFeed(filter: FeedFilter) {
   const { user } = useAuth();
-  const [events, setEvents] = useState<FeedEvent[]>([]);
+  const [events, setEvents] = useState<ArenaFeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [newEventIds, setNewEventIds] = useState<Set<string>>(new Set());
-  const [liveActivity, setLiveActivity] = useState<Record<string, { addedReps: number; ts: string }>>({});
+  const [liveActivity, setLiveActivity] = useState<LiveActivityMap>({});
   const cursorRef = useRef<string | null>(null);
 
   const fetchPage = useCallback(
@@ -50,13 +41,13 @@ export function useFeed(filter: FeedFilter) {
       if (!user) return;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase as any).rpc('get_feed_events', {
+        const { data, error } = await (supabase as any).rpc('get_arena_feed', {
           p_filter: filter,
           p_cursor: cursor,
           p_limit: PAGE_SIZE,
         });
         if (error) throw error;
-        const rows = applyFilter((data as FeedEvent[]) ?? []);
+        const rows = applyFilter((data as ArenaFeedEvent[]) ?? []);
         if (replace) {
           setEvents(rows);
         } else {
@@ -67,7 +58,7 @@ export function useFeed(filter: FeedFilter) {
         }
         setHasMore(rows.length === PAGE_SIZE);
       } catch (e) {
-        console.error('useFeed fetchPage error', e);
+        console.error('useArenaFeed fetchPage error', e);
       }
     },
     [user, filter],
@@ -100,7 +91,7 @@ export function useFeed(filter: FeedFilter) {
     async (eventId: string, emoji: string) => {
       if (!user) return;
 
-      let snapshot: FeedEvent | undefined;
+      let snapshot: ArenaFeedEvent | undefined;
 
       setEvents(prev =>
         prev.map(ev => {
@@ -154,7 +145,7 @@ export function useFeed(filter: FeedFilter) {
 
     const fetchNewEvents = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase as any).rpc('get_feed_events', {
+      const { data } = await (supabase as any).rpc('get_arena_feed', {
         p_filter: filter,
         p_cursor: null,
         p_limit: 5,
@@ -162,7 +153,7 @@ export function useFeed(filter: FeedFilter) {
       if (!data) return;
       setEvents(prev => {
         const existingIds = new Set(prev.map(e => e.id));
-        const newItems = applyFilter(data as FeedEvent[]).filter(e => !existingIds.has(e.id));
+        const newItems = applyFilter(data as ArenaFeedEvent[]).filter(e => !existingIds.has(e.id));
         if (newItems.length === 0) return prev;
 
         // Mark as new for animation
@@ -196,25 +187,31 @@ export function useFeed(filter: FeedFilter) {
     };
   }, [user, filter]);
 
-  // Realtime: live workout entries → accumulate rep deltas per user for live badge display.
-  // Fires whenever anyone logs a workout (table is now in supabase_realtime publication).
+  // Realtime: live_activity aggregate → per-user today totals + last delta.
+  // Replaces the old raw workout_entries subscription (fewer rows, no client-side accumulation).
   useEffect(() => {
     if (!user) return;
+    const applyRow = (row: {
+      user_id: string; exercise_id: string; today_total: number; last_delta: number; last_updated: string;
+    }) => {
+      setLiveActivity(prev => ({
+        ...prev,
+        [row.user_id]: {
+          exerciseId: row.exercise_id,
+          todayTotal: Number(row.today_total) || 0,
+          lastDelta: Number(row.last_delta) || 0,
+          ts: row.last_updated,
+        },
+      }));
+    };
+
     const channel = supabase
-      .channel('workout_entries_live')
+      .channel('live_activity_realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'workout_entries' },
-        (payload) => {
-          const entry = payload.new as { user_id: string; amount: number };
-          setLiveActivity(prev => ({
-            ...prev,
-            [entry.user_id]: {
-              addedReps: (prev[entry.user_id]?.addedReps ?? 0) + (Number(entry.amount) || 0),
-              ts: new Date().toISOString(),
-            },
-          }));
-        },
+        { event: '*', schema: 'public', table: 'live_activity' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => applyRow(payload.new),
       )
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
