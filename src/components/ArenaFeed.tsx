@@ -322,79 +322,6 @@ function compactTime(iso: string): string {
   return `vor ${Math.floor(h / 24)} Tg.`;
 }
 
-// ─── Reactions bar ────────────────────────────────────────────────────────────
-
-const REACTION_EMOJIS = ['💪', '🔥', '👑', '🤯', '❤️'];
-
-function ReactionsBar({
-  eventId,
-  reactions,
-  onToggle,
-}: {
-  eventId: string;
-  reactions: ArenaFeedEvent['reactions'];
-  onToggle: (eventId: string, emoji: string) => void;
-}) {
-  const hasAny = REACTION_EMOJIS.some(e => (reactions[e]?.count ?? 0) > 0);
-  return (
-    <div className="mt-2 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-      {REACTION_EMOJIS.map(emoji => {
-        const r = reactions[emoji];
-        const count = r?.count ?? 0;
-        const reacted = r?.reacted ?? false;
-        const visible = count > 0 || !hasAny; // always show if none have counts
-        if (!visible) return null;
-        return (
-          <button
-            key={emoji}
-            onClick={() => onToggle(eventId, emoji)}
-            aria-label={`${emoji} Reaktion`}
-            aria-pressed={reacted}
-            className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold transition
-              ${reacted
-                ? 'bg-brand-500/25 text-brand-300 ring-1 ring-brand-500/50'
-                : count > 0
-                  ? 'bg-ink-800 text-slate-400 hover:bg-ink-700'
-                  : 'bg-ink-800/60 text-slate-600 hover:bg-ink-700 hover:text-slate-400'
-              }`}
-          >
-            <span className="text-[12px] leading-none">{emoji}</span>
-            {count > 0 && (
-              <span className="ml-0.5 tabular-nums leading-none">{count}</span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Secondary chips ──────────────────────────────────────────────────────────
-
-function SecondaryChips({ events, overflow }: { events: ArenaFeedEvent[]; overflow: number }) {
-  if (events.length === 0) return null;
-  return (
-    <div className="mt-1.5 flex flex-wrap gap-1">
-      {events.map(ev => {
-        const { icon, label } = getChip(ev);
-        return (
-          <span
-            key={ev.id}
-            className="flex max-w-full items-center gap-0.5 rounded-full bg-ink-800/70 px-2 py-0.5 text-[10px] font-medium text-slate-500"
-          >
-            <span className="leading-none">{icon}</span>
-            <span className="truncate leading-none">{label}</span>
-          </span>
-        );
-      })}
-      {overflow > 0 && (
-        <span className="flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
-          +{overflow}
-        </span>
-      )}
-    </div>
-  );
-}
 
 // ─── Shared card shell ────────────────────────────────────────────────────────
 
@@ -460,7 +387,6 @@ interface CardProps {
   rankList: RankEntry[];
   liveReps?: { addedReps: number; ts: string };
   onOpenProfile: (group: ArenaFeedGroup) => void;
-  onToggleReaction: (eventId: string, emoji: string) => void;
 }
 
 // ─── PremiumFeedCard ─────────────────────────────────────────────────────────
@@ -469,7 +395,7 @@ interface CardProps {
 // Number-centric events (milestones, streaks): big number is the hero.
 // Action-centric events (lead, overtake, record, medals): action phrase is hero.
 
-function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleReaction }: CardProps) {
+function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile }: CardProps) {
   const [flashing, setFlashing] = useState(false);
   const prevTsRef = useRef<string | undefined>(liveReps?.ts);
 
@@ -533,30 +459,30 @@ function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleRea
         onClick={() => onOpenProfile(group)}
         aria-label={`Profil von ${name}`}
       >
-        <div className="px-4 pt-4 pb-3">
+        <div className="px-4 pt-3 pb-2.5">
           {/* ── Header ── */}
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} size={28} />
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} size={26} />
 
           {/* ── Event badge ── */}
-          <div className="mt-3">
+          <div className="mt-2">
             <span className={`inline-block rounded-full px-2 py-[3px] text-[9px] font-bold uppercase tracking-widest ${style.badgeClasses}`}>
               {style.badge}
             </span>
           </div>
 
           {/* ── Primary content ── */}
-          <div className="mt-2.5">
+          <div className="mt-2">
             {bigNumber != null ? (
               /* Number hero */
               <div className="flex items-baseline gap-1.5">
-                <span className={`text-[30px] font-black leading-none tabular-nums ${style.accentTextClass}`}>
+                <span className={`text-[28px] font-black leading-none tabular-nums ${style.accentTextClass}`}>
                   {bigNumber.toLocaleString('de-DE')}
                 </span>
-                <span className="text-[14px] font-semibold text-slate-400">{bigUnit}</span>
+                <span className="text-[13px] font-semibold text-slate-400">{bigUnit}</span>
               </div>
             ) : (
               /* Action hero */
-              <span className={`block text-[17px] font-extrabold leading-snug tracking-tight ${style.accentTextClass}`}>
+              <span className={`block text-[16px] font-extrabold leading-snug tracking-tight ${style.accentTextClass}`}>
                 {action}
               </span>
             )}
@@ -564,7 +490,7 @@ function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleRea
 
           {/* ── Secondary content (action cards only) ── */}
           {bigNumber != null ? null : repsAtEvent != null ? (
-            <p className="mt-1.5 text-[13px] font-semibold text-slate-400">
+            <p className="mt-1 text-[13px] font-semibold text-slate-400">
               {repsAtEvent.toLocaleString('de-DE')}{' '}
               <span className="text-[12px] font-medium text-slate-500">{exName}</span>
               {delta != null && delta > 0 && (
@@ -578,7 +504,7 @@ function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleRea
 
           {/* ── Live progress — "Jetzt: 240 (+140)" ── */}
           {showLiveNow && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-1.5 flex items-center gap-2">
               <span className="text-[11px] font-medium text-slate-500">
                 Jetzt: {currentReps!.toLocaleString('de-DE')} {exName}
               </span>
@@ -592,12 +518,12 @@ function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleRea
 
           {/* ── Rank status (event snapshot) ── */}
           {status && (
-            <p className="mt-2 text-[11px] font-medium text-slate-500">{status}</p>
+            <p className="mt-1.5 text-[11px] font-medium text-slate-500">{status}</p>
           )}
 
           {/* ── Real-time session delta badge ── */}
           {liveReps && liveReps.addedReps > 0 && (
-            <div className="mt-2 flex items-center gap-1.5">
+            <div className="mt-1.5 flex items-center gap-1.5">
               <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-bold text-brand-400">
                 +{liveReps.addedReps}
               </span>
@@ -609,9 +535,6 @@ function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleRea
           )}
         </div>
       </button>
-      <div className="px-4 pb-3">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
     </CardShell>
   );
 }
@@ -795,7 +718,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
 
   const {
     events, loading, refreshing, hasMore, newEventIds, liveActivity,
-    refresh, loadMore, toggleReaction,
+    refresh, loadMore,
   } = useArenaFeed(filter);
 
   // Fetch live leaderboard for competitive context (lead-over-#2, rank proximity)
@@ -1039,7 +962,6 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
                       : undefined
                   }
                   onOpenProfile={handleOpenProfile}
-                  onToggleReaction={toggleReaction}
                 />
               ))}
 
