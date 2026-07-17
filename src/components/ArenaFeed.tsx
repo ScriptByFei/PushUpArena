@@ -280,6 +280,57 @@ function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
   }
 }
 
+// ─── Snapshot rank status line ────────────────────────────────────────────────
+// Generates a compact rank status badge from event metadata (snapshot at event
+// time, never live). Returns null when rank is unknown so callers can skip it.
+
+function rankStatusLine(ev: ArenaFeedEvent): string | null {
+  const m = ev.metadata as Record<string, unknown>;
+  const rank = (m.new_rank ?? m.rank) as number | undefined;
+  if (rank == null) return null;
+
+  // Optional enrichment fields (stored by DB edge function when available)
+  const leadOver    = m.lead_over    as number | undefined; // reps ahead of #2
+  const gapToFirst  = m.gap_to_first as number | undefined; // reps behind #1
+  const compName    = ((m.lead_name ?? m.target_name ?? m.overtaken_name) as string | undefined)
+                        ?.split(' ')[0];
+
+  if (rank === 1) {
+    if (leadOver != null && leadOver > 0 && compName) {
+      return `🥇 Führt mit +${leadOver} vor ${compName}`;
+    }
+    if (leadOver != null && leadOver > 0) {
+      return `🥇 Führt mit +${leadOver} Vorsprung`;
+    }
+    return ev.event_type === 'place1_new' ? '🥇 Platz 1 übernommen' : '🥇 Führt weiterhin';
+  }
+
+  if (rank === 2) {
+    if (gapToFirst != null && gapToFirst > 0 && compName) {
+      return `🥈 ${gapToFirst} hinter ${compName}`;
+    }
+    if (gapToFirst != null && gapToFirst > 0) {
+      return `🥈 ${gapToFirst} hinter Platz 1`;
+    }
+    return ev.event_type === 'rank_improved' ? '🥈 Jetzt Platz 2' : '🥈 Platz 2';
+  }
+
+  if (rank === 3) {
+    if (gapToFirst != null && gapToFirst > 0) {
+      return `🥉 ${gapToFirst} hinter Platz 1`;
+    }
+    return ev.event_type === 'rank_improved' ? '🥉 Jetzt Platz 3' : '🥉 Platz 3';
+  }
+
+  // Rank 4+
+  if (gapToFirst != null && gapToFirst > 0) {
+    return `⬆️ ${gapToFirst} hinter Platz 1`;
+  }
+  return ev.event_type === 'rank_improved'
+    ? `⬆️ Auf Platz ${rank} verbessert`
+    : `⬆️ Platz ${rank}`;
+}
+
 // ─── Compact time ─────────────────────────────────────────────────────────────
 
 function compactTime(iso: string): string {
@@ -437,7 +488,7 @@ interface CardProps {
 // NOT used for place1_new — that is now a standard historical event.
 // Current #1 state is shown via CurrentLeaderCard (built from live leaderboard).
 
-function HeroCard({ group, rankList, onOpenProfile, onToggleReaction }: CardProps) {
+function HeroCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
   const name = group.display_name || group.username || 'Unbekannt';
   const shortName = (group.display_name || group.username || 'Unbekannt').split(' ')[0];
   const [headline, ...secondary] = group.items;
@@ -445,20 +496,10 @@ function HeroCard({ group, rankList, onOpenProfile, onToggleReaction }: CardProp
   const m = headline.metadata as Record<string, unknown>;
 
   const bigNumber = (m.today_total ?? m.reps ?? m.total) as number | undefined;
-  const streakDays = m.streak_days as number | undefined;
-  const rank = (m.rank ?? m.new_rank) as number | undefined;
-
-  // Competitive context: lead over #2 from live leaderboard
-  const myRankEntry = rankList.find(r => r.userId === group.user_id);
-  const myReps = myRankEntry?.reps ?? (bigNumber as number | undefined);
-  const myRank = myRankEntry?.rank ?? rank;
-  const nextBelow = myRankEntry ? rankList[myRankEntry.rank] : undefined; // rank is 1-indexed, array is 0-indexed
-  const leadReps = myReps != null && nextBelow ? myReps - nextBelow.reps : undefined;
-  const leadName = nextBelow?.displayName.split(' ')[0];
-
-  const displayTime = group.latest_at;
-
   const isGold = headline.event_type === 'medal_gold' || headline.event_type === 'place1_new';
+
+  // Snapshot-based status — never from live leaderboard
+  const heroStatus = rankStatusLine(headline);
 
   return (
     <CardShell
@@ -468,7 +509,7 @@ function HeroCard({ group, rankList, onOpenProfile, onToggleReaction }: CardProp
     >
       <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
         <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} size={30} />
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
 
           <div className="mt-2 flex items-end gap-2.5">
             <span className="text-[22px] leading-none">{hIcon}</span>
@@ -483,34 +524,20 @@ function HeroCard({ group, rankList, onOpenProfile, onToggleReaction }: CardProp
                       {headline.exercise_name ?? 'PushUps'}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className={`text-[11px] font-bold ${isGold ? 'text-amber-400' : 'text-brand-400'}`}>
-                      {storyHeadline(headline, shortName)}
-                    </span>
-                    {myRank != null && (
-                      <span className="text-[10px] font-semibold text-slate-600">#{myRank}</span>
-                    )}
-                  </div>
+                  <span className={`mt-0.5 block text-[11px] font-bold ${isGold ? 'text-amber-400' : 'text-brand-400'}`}>
+                    {storyHeadline(headline, shortName)}
+                  </span>
                 </>
               ) : (
                 <span className={`text-[16px] font-black leading-tight tracking-tight ${isGold ? 'text-amber-300' : 'text-brand-300'}`}>
                   {storyHeadline(headline, shortName)}
                 </span>
               )}
-
-              {/* Competitive or streak context */}
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0">
-                {leadReps != null && leadName && leadReps > 0 && (
-                  <span className="text-[10px] text-slate-600">
-                    {leadReps} vor {leadName}
-                  </span>
-                )}
-                {streakDays && streakDays > 1 && (
-                  <span className="text-[10px] text-amber-500/70">
-                    🔥 {streakDays} Tage in Folge
-                  </span>
-                )}
-              </div>
+              {heroStatus && (
+                <span className="mt-0.5 block text-[11px] font-medium text-slate-500">
+                  {heroStatus}
+                </span>
+              )}
             </div>
           </div>
 
@@ -545,43 +572,23 @@ function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReacti
   const { icon: hIcon } = getChip(headline);
   const displayTime = liveReps?.ts && liveReps.ts > group.latest_at ? liveReps.ts : group.latest_at;
 
-  // Context line: event-specific subtitle. Historical events use snapshot data;
-  // other events use live rankList for competitive context.
+  // Snapshot data from event metadata — never from live rankList.
+  // repsLine: how many reps the user had at event time.
+  // statusLine: their rank situation at that exact moment.
   const headlineMeta = headline.metadata as Record<string, unknown>;
-  let contextLine: string | null = null;
   const exName = headline.exercise_name ?? 'PushUps';
+  const repsAtEvent = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
 
-  if (headline.event_type === 'place1_new') {
-    // Snapshot from event metadata — stays accurate after being overtaken
-    const repsAtEvent = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
-    if (repsAtEvent != null) {
-      contextLine = `Führte mit ${repsAtEvent.toLocaleString('de-DE')} ${exName}`;
-    }
-  } else if (headline.event_type === 'rank_improved') {
-    const newRank = headlineMeta.new_rank as number | undefined;
-    if (newRank != null) contextLine = `Jetzt Platz ${newRank}`;
-  } else if (headline.event_type === 'top3_first') {
-    const newRank = headlineMeta.new_rank as number | undefined;
-    contextLine = newRank != null ? `Platz ${newRank}` : 'Erstmals in den Top 3';
-  } else if (headline.event_type.startsWith('milestone_')) {
-    const reps = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
-    if (reps != null) contextLine = `${reps.toLocaleString('de-DE')} ${exName} heute`;
-  } else if (headline.event_type.startsWith('streak_')) {
-    const days = headlineMeta.days as number | undefined;
-    if (days != null) contextLine = `${days} Tage aktiv ohne Pause`;
-  } else {
-    // Live competitive context for all other event types
-    const myEntry = rankList.find(r => r.userId === group.user_id);
-    if (myEntry) {
-      const above = rankList[myEntry.rank - 2]; // rank is 1-indexed
-      if (above && above.reps > myEntry.reps) {
-        contextLine = `Noch ${above.reps - myEntry.reps} bis Platz ${myEntry.rank - 1}`;
-      } else if (myEntry.rank === 1) {
-        const below = rankList[1];
-        if (below) contextLine = `${myEntry.reps - below.reps} vor ${below.displayName.split(' ')[0]}`;
-      }
-    }
-  }
+  // Streak events show duration instead of reps as the primary number
+  const streakDays = headlineMeta.days as number | undefined;
+
+  const repsLine = repsAtEvent != null
+    ? `${repsAtEvent.toLocaleString('de-DE')} ${exName}`
+    : streakDays != null
+      ? `${streakDays} Tage aktiv`
+      : null;
+
+  const statusLine = rankStatusLine(headline);
 
   return (
     <CardShell group={group} flashing={flashing}>
@@ -595,8 +602,15 @@ function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReacti
               <span className="block truncate text-[14px] font-extrabold leading-snug tracking-tight text-slate-100">
                 {storyHeadline(headline, shortName)}
               </span>
-              {contextLine && (
-                <span className="text-[11px] font-medium text-slate-600">{contextLine}</span>
+              {repsLine && (
+                <span className="block text-[12px] font-semibold leading-snug text-slate-400">
+                  {repsLine}
+                </span>
+              )}
+              {statusLine && (
+                <span className="block text-[11px] font-medium leading-snug text-slate-500">
+                  {statusLine}
+                </span>
               )}
             </div>
           </div>
