@@ -469,7 +469,7 @@ interface CardProps {
 // Number-centric events (milestones, streaks): big number is the hero.
 // Action-centric events (lead, overtake, record, medals): action phrase is hero.
 
-function PremiumFeedCard({ group, liveReps, onOpenProfile, onToggleReaction }: CardProps) {
+function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile, onToggleReaction }: CardProps) {
   const [flashing, setFlashing] = useState(false);
   const prevTsRef = useRef<string | undefined>(liveReps?.ts);
 
@@ -512,6 +512,20 @@ function PremiumFeedCard({ group, liveReps, onOpenProfile, onToggleReaction }: C
   const isRecord = headline.event_type === 'daily_record' || headline.event_type === 'personal_record';
   const delta = isRecord && recordReps != null && prevBest != null ? recordReps - prevBest : undefined;
 
+  // ── Live progress ──────────────────────────────────────────────────────────
+  // Show the user's current today-total from rankList alongside the event snapshot.
+  // Uses already-fetched data — zero extra DB calls. Only shown when there's
+  // genuine progress beyond the event value (progress > 0).
+  const liveEntry = rankList.find(r => r.userId === group.user_id);
+  const currentReps = liveEntry?.reps;
+  // Compare against the event's rep snapshot. For streak events we skip this.
+  const snapReps = isStreakCentric ? undefined : repsAtEvent;
+  const liveProgress = currentReps != null && snapReps != null && currentReps > snapReps
+    ? currentReps - snapReps
+    : null;
+  // Show "Jetzt: X" when there's a progress delta, or when no snapshot exists (context-only)
+  const showLiveNow = !isStreakCentric && currentReps != null && currentReps > 0 && liveProgress != null;
+
   return (
     <CardShell group={group} flashing={flashing} leftAccent={style.borderColor}>
       <button
@@ -548,7 +562,7 @@ function PremiumFeedCard({ group, liveReps, onOpenProfile, onToggleReaction }: C
             )}
           </div>
 
-          {/* ── Secondary content ── */}
+          {/* ── Secondary content (action cards only) ── */}
           {bigNumber != null ? null : repsAtEvent != null ? (
             <p className="mt-1.5 text-[13px] font-semibold text-slate-400">
               {repsAtEvent.toLocaleString('de-DE')}{' '}
@@ -562,12 +576,26 @@ function PremiumFeedCard({ group, liveReps, onOpenProfile, onToggleReaction }: C
             </p>
           ) : null}
 
-          {/* ── Rank status (snapshot) ── */}
+          {/* ── Live progress — "Jetzt: 240 (+140)" ── */}
+          {showLiveNow && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[11px] font-medium text-slate-500">
+                Jetzt: {currentReps!.toLocaleString('de-DE')} {exName}
+              </span>
+              {liveProgress != null && liveProgress > 0 && (
+                <span className="rounded-full bg-green-500/12 px-1.5 py-px text-[10px] font-bold text-green-400">
+                  +{liveProgress.toLocaleString('de-DE')}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* ── Rank status (event snapshot) ── */}
           {status && (
             <p className="mt-2 text-[11px] font-medium text-slate-500">{status}</p>
           )}
 
-          {/* ── Live activity badge ── */}
+          {/* ── Real-time session delta badge ── */}
           {liveReps && liveReps.addedReps > 0 && (
             <div className="mt-2 flex items-center gap-1.5">
               <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-bold text-brand-400">
