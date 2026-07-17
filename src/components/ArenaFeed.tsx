@@ -45,6 +45,16 @@ function addDays(dateStr: string, delta: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Deterministic phrase picker — same event id always yields the same phrase.
+// Avoids flicker on re-renders while still producing variation across events.
+function pickPhrase(phrases: readonly string[], seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
+  }
+  return phrases[h % phrases.length];
+}
+
 function buildStories(
   events: ArenaFeedEvent[],
   newIds: Set<string>,
@@ -142,6 +152,37 @@ function buildStories(
   // (a historical "first reached #1 today" event). The CurrentLeaderCard component
   // in ArenaFeed is the sole source of current-leader truth, built from get_all_active_today.
 
+  // ── Scenario annotation for place1_new ────────────────────────────────────────
+  // Determine which place1_new per exercise happened first (= "first of day")
+  // vs. later ones (= "takeover"). storyHeadline() uses __p1_scenario to vary text.
+  {
+    // Collect all place1_new events across all groups (use rawItemsMap = pre-dedup)
+    const allP1 = [...rawItemsMap.values()]
+      .flat()
+      .filter(ev => ev.event_type === 'place1_new')
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)); // ascending → earliest first
+
+    // First occurrence per exercise = "first of day"
+    const exFirstLeader = new Map<string | null, string>(); // exercise_id → user_id
+    for (const ev of allP1) {
+      if (!exFirstLeader.has(ev.exercise_id)) exFirstLeader.set(ev.exercise_id, ev.user_id);
+    }
+
+    // Stamp each group's place1_new item with the resolved scenario
+    for (const g of map.values()) {
+      if (!g.items.some(ev => ev.event_type === 'place1_new')) continue;
+      const scenario: 'first_of_day' | 'takeover' =
+        exFirstLeader.get(g.items.find(ev => ev.event_type === 'place1_new')!.exercise_id) === g.user_id
+          ? 'first_of_day'
+          : 'takeover';
+      g.items = g.items.map(ev =>
+        ev.event_type === 'place1_new'
+          ? { ...ev, metadata: { ...ev.metadata, __p1_scenario: scenario } }
+          : ev,
+      );
+    }
+  }
+
   // ── Sort: live → hero priority → recency
   const CARD_WEIGHT: Partial<Record<FeedCardType, number>> = {
     hero: 10, record: 8, rank_movement: 7, comeback: 6, streak: 5, duel: 5, standard: 1,
@@ -166,10 +207,29 @@ function buildStories(
 function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
   const m = ev.metadata as Record<string, unknown>;
   switch (ev.event_type) {
-    case 'place1_new':
-      // Historical event: describes the MOMENT of taking #1, not the current state.
-      // Current state lives in CurrentLeaderCard (built from live leaderboard).
-      return `${shortName} ging in Führung`;
+    case 'place1_new': {
+      // Historical event — describes the MOMENT of taking #1, not current state.
+      // Text varies by scenario (first of day vs. overtake) using a deterministic
+      // hash of the event id so the same event always shows the same phrase.
+      const scenario = m.__p1_scenario as string | undefined;
+      if (scenario === 'first_of_day') {
+        return pickPhrase([
+          `${shortName} legt als Erster vor`,
+          `${shortName} eröffnet die Tageswertung`,
+          `${shortName} setzt die erste Bestmarke`,
+        ], ev.id);
+      }
+      return pickPhrase([
+        `${shortName} geht in Führung`,
+        `${shortName} übernimmt die Führung`,
+        `${shortName} setzt sich an die Spitze`,
+        `${shortName} erobert Platz 1`,
+        `${shortName} zieht an allen vorbei`,
+        `${shortName} ist neuer Spitzenreiter`,
+        `${shortName} führt jetzt das Feld an`,
+        `${shortName} steht jetzt ganz oben`,
+      ], ev.id);
+    }
     case 'medal_gold':
       return 'Goldmedaille';
     case 'medal_silver':
