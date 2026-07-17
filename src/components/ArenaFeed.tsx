@@ -151,132 +151,46 @@ function buildStories(
 }
 
 // ─── Narrative headlines ───────────────────────────────────────────────────────
+// Short, name-free action labels. The card header already shows who did it.
+// The badge shows the category. These labels answer only "what happened".
 
-function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
+function storyHeadline(ev: ArenaFeedEvent): string {
   const m = ev.metadata as Record<string, unknown>;
-  const exName = ev.exercise_name ?? 'PushUps';
-
   switch (ev.event_type) {
-
-    // ── Lead changes ──────────────────────────────────────────────────────────
     case 'place1_new': {
       const scenario = m.__p1_scenario as string | undefined;
-      if (scenario === 'first_of_day') {
-        return pickPhrase([
-          `${shortName} legt als Erster vor`,
-          `${shortName} eröffnet die Tageswertung`,
-          `${shortName} setzt die erste Bestmarke`,
-        ], ev.id);
-      }
-      return pickPhrase([
-        `${shortName} geht in Führung`,
-        `${shortName} übernimmt die Führung`,
-        `${shortName} setzt sich an die Spitze`,
-        `${shortName} erobert Platz 1`,
-        `${shortName} zieht an allen vorbei`,
-        `${shortName} ist neuer Spitzenreiter`,
-        `${shortName} führt jetzt das Feld an`,
-        `${shortName} steht jetzt ganz oben`,
-      ], ev.id);
+      return scenario === 'first_of_day' ? 'Erste Bestmarke' : 'Führung übernommen';
     }
-
-    // ── Medals ────────────────────────────────────────────────────────────────
-    case 'medal_gold':   return `${shortName} holt Gold`;
-    case 'medal_silver': return `${shortName} sichert sich Silber`;
-    case 'medal_bronze': return `${shortName} gewinnt Bronze`;
-
-    // ── Rank movement ─────────────────────────────────────────────────────────
+    case 'medal_gold':   return 'Gold gewonnen';
+    case 'medal_silver': return 'Silber gewonnen';
+    case 'medal_bronze': return 'Bronze gewonnen';
     case 'rank_improved': {
-      const nr = m.new_rank as number | undefined;
-      const over = m.overtaken_name as string | undefined;
-      if (over) {
-        return pickPhrase([
-          `${shortName} überholt ${over}`,
-          `${shortName} zieht an ${over} vorbei`,
-          `${shortName} schiebt sich vor ${over}`,
-        ], ev.id);
-      }
-      return nr != null ? `${shortName} auf Platz ${nr}` : 'Rang verbessert';
+      const over = (m.overtaken_name as string | undefined)?.split(' ')[0];
+      return over ? `${over} überholt` : 'Platz verbessert';
     }
-
-    // ── Top 3 ─────────────────────────────────────────────────────────────────
-    case 'top3_first':
-      return pickPhrase([
-        `${shortName} kommt in die Top 3`,
-        `${shortName} drängt sich in die Top 3`,
-        `${shortName} schiebt sich in die Top 3`,
-      ], ev.id);
-
-    // ── Records ───────────────────────────────────────────────────────────────
-    case 'daily_record':
-    case 'personal_record':
-      return pickPhrase([
-        `${shortName} stellt einen neuen Rekord auf`,
-        `Neuer Rekord für ${shortName}`,
-        `${shortName} schreibt Geschichte`,
-      ], ev.id);
-
-    // ── Milestones ────────────────────────────────────────────────────────────
+    case 'top3_first':       return 'Top 3 erreicht';
+    case 'daily_record':     return 'Tagesrekord';
+    case 'personal_record':  return 'Persönlicher Rekord';
     case 'milestone_100':
-      return pickPhrase([
-        `${shortName} knackt die 100`,
-        `${shortName} erreicht 100 ${exName}`,
-        `Erstmals dreistellig — ${shortName}`,
-      ], ev.id);
     case 'milestone_250':
-      return pickPhrase([
-        `${shortName} durchbricht die 250`,
-        `${shortName} erreicht 250 ${exName}`,
-        `250 — ${shortName} hält das Tempo`,
-      ], ev.id);
     case 'milestone_500':
-      return pickPhrase([
-        `${shortName} knackt die 500-Marke`,
-        `${shortName} erreicht 500 ${exName}`,
-        `500 ${exName} — ${shortName} macht Druck`,
-      ], ev.id);
-    case 'milestone_1000':
-      return pickPhrase([
-        `${shortName} erreicht die Tausend`,
-        `1.000 — ${shortName} in einer anderen Liga`,
-        `${shortName} schafft 1.000 ${exName}`,
-      ], ev.id);
-
-    // ── Streaks ───────────────────────────────────────────────────────────────
-    case 'streak_7':   return `${shortName} — 7 Tage am Stück`;
-    case 'streak_30':  return `${shortName} — 30-Tage-Streak`;
-    case 'streak_100': return `${shortName} — 100 Tage in Folge`;
-    case 'streak_365': return `${shortName} — Ein ganzes Jahr aktiv`;
-
-    // ── Comeback ──────────────────────────────────────────────────────────────
+    case 'milestone_1000':   return 'Meilenstein'; // big number is the hero; label is secondary
+    case 'streak_7':
+    case 'streak_30':
+    case 'streak_100':
+    case 'streak_365':       return 'Aktiv-Serie';  // big day count is the hero
     case 'comeback': {
       const days = m.days_off as number | undefined;
-      return days
-        ? pickPhrase([
-            `${shortName} zurück nach ${days} Tagen`,
-            `${shortName} meldet sich zurück`,
-            `${shortName} macht weiter`,
-          ], ev.id)
-        : `${shortName} ist zurück`;
+      return days ? `Zurück nach ${days} Tagen` : 'Comeback';
     }
-
-    // ── Total milestones ──────────────────────────────────────────────────────
     case 'total_500':
     case 'total_1000':
     case 'total_5000':
     case 'total_10000':
     case 'total_25000':
     case 'total_50000':
-    case 'total_100000': {
-      const total = m.total as number | undefined;
-      return total != null
-        ? `${shortName} — ${total.toLocaleString('de-DE')} ${exName} gesamt`
-        : getChip(ev).label;
-    }
-
-    // ── Fallback ──────────────────────────────────────────────────────────────
-    default:
-      return getChip(ev).label;
+    case 'total_100000':     return 'Gesamtleistung';
+    default:                 return getChip(ev).label;
   }
 }
 
@@ -289,25 +203,28 @@ function rankStatusLine(ev: ArenaFeedEvent): string | null {
   const rank = (m.new_rank ?? m.rank) as number | undefined;
   if (rank == null) return null;
 
-  // Optional enrichment fields (stored by DB edge function when available)
-  const leadOver    = m.lead_over    as number | undefined; // reps ahead of #2
-  const gapToFirst  = m.gap_to_first as number | undefined; // reps behind #1
-  const compName    = ((m.lead_name ?? m.target_name ?? m.overtaken_name) as string | undefined)
-                        ?.split(' ')[0];
+  // leadOver: reps ahead of the person directly below us (valid for rank=1)
+  const leadOver   = m.lead_over   as number | undefined;
+  // gapToFirst: reps behind rank-1 (valid for rank=2+)
+  const gapToFirst = m.gap_to_first as number | undefined;
+  // Name of person we overtook (now below us — useful when rank=1 as the #2 person's name)
+  const overtakenShort = (m.overtaken_name as string | undefined)?.split(' ')[0];
+  // Name of person ahead of us (explicitly stored, optional)
+  const leaderShort = ((m.lead_name ?? m.target_name) as string | undefined)?.split(' ')[0];
 
   if (rank === 1) {
-    if (leadOver != null && leadOver > 0 && compName) {
-      return `🥇 Führt mit +${leadOver} vor ${compName}`;
+    if (leadOver != null && leadOver > 0 && overtakenShort) {
+      return `🥇 +${leadOver} vor ${overtakenShort}`;
     }
     if (leadOver != null && leadOver > 0) {
-      return `🥇 Führt mit +${leadOver} Vorsprung`;
+      return `🥇 Führt mit +${leadOver}`;
     }
     return ev.event_type === 'place1_new' ? '🥇 Platz 1 übernommen' : '🥇 Führt weiterhin';
   }
 
   if (rank === 2) {
-    if (gapToFirst != null && gapToFirst > 0 && compName) {
-      return `🥈 ${gapToFirst} hinter ${compName}`;
+    if (gapToFirst != null && gapToFirst > 0 && leaderShort) {
+      return `🥈 ${gapToFirst} hinter ${leaderShort}`;
     }
     if (gapToFirst != null && gapToFirst > 0) {
       return `🥈 ${gapToFirst} hinter Platz 1`;
@@ -329,6 +246,68 @@ function rankStatusLine(ev: ArenaFeedEvent): string | null {
   return ev.event_type === 'rank_improved'
     ? `⬆️ Auf Platz ${rank} verbessert`
     : `⬆️ Platz ${rank}`;
+}
+
+// ─── Event style map ──────────────────────────────────────────────────────────
+// Each event type gets a badge label, badge classes, accent text class,
+// and a left-border hex colour. Colours are intentionally subtle.
+
+interface EventStyleDef {
+  badge: string;
+  badgeClasses: string;
+  accentTextClass: string;
+  borderColor: string; // hex/rgba for inline style
+}
+
+function getEventStyle(eventType: string): EventStyleDef {
+  if (eventType === 'place1_new') return {
+    badge: 'FÜHRUNG', badgeClasses: 'bg-amber-500/15 text-amber-400',
+    accentTextClass: 'text-amber-300', borderColor: '#d97706',
+  };
+  if (eventType === 'medal_gold') return {
+    badge: 'GOLD', badgeClasses: 'bg-amber-500/15 text-amber-400',
+    accentTextClass: 'text-amber-300', borderColor: '#d97706',
+  };
+  if (eventType === 'medal_silver') return {
+    badge: 'SILBER', badgeClasses: 'bg-slate-400/15 text-slate-300',
+    accentTextClass: 'text-slate-200', borderColor: '#94a3b8',
+  };
+  if (eventType === 'medal_bronze') return {
+    badge: 'BRONZE', badgeClasses: 'bg-orange-400/15 text-orange-300',
+    accentTextClass: 'text-orange-200', borderColor: '#c2410c',
+  };
+  if (eventType === 'rank_improved') return {
+    badge: 'ÜBERHOLMANÖVER', badgeClasses: 'bg-violet-500/15 text-violet-400',
+    accentTextClass: 'text-violet-300', borderColor: '#7c3aed',
+  };
+  if (eventType === 'top3_first') return {
+    badge: 'TOP 3', badgeClasses: 'bg-purple-500/15 text-purple-400',
+    accentTextClass: 'text-purple-300', borderColor: '#9333ea',
+  };
+  if (eventType === 'daily_record' || eventType === 'personal_record') return {
+    badge: 'REKORD', badgeClasses: 'bg-green-500/15 text-green-400',
+    accentTextClass: 'text-green-300', borderColor: '#16a34a',
+  };
+  if (eventType.startsWith('milestone_')) return {
+    badge: 'MEILENSTEIN', badgeClasses: 'bg-blue-500/15 text-blue-400',
+    accentTextClass: 'text-blue-300', borderColor: '#2563eb',
+  };
+  if (eventType.startsWith('streak_')) return {
+    badge: 'STREAK', badgeClasses: 'bg-orange-500/15 text-orange-400',
+    accentTextClass: 'text-orange-300', borderColor: '#ea580c',
+  };
+  if (eventType === 'comeback') return {
+    badge: 'COMEBACK', badgeClasses: 'bg-pink-500/15 text-pink-400',
+    accentTextClass: 'text-pink-300', borderColor: '#db2777',
+  };
+  if (eventType.startsWith('total_')) return {
+    badge: 'GESAMT', badgeClasses: 'bg-teal-500/15 text-teal-400',
+    accentTextClass: 'text-teal-300', borderColor: '#0d9488',
+  };
+  return {
+    badge: 'NEWS', badgeClasses: 'bg-slate-500/15 text-slate-400',
+    accentTextClass: 'text-slate-300', borderColor: '#475569',
+  };
 }
 
 // ─── Compact time ─────────────────────────────────────────────────────────────
@@ -422,27 +401,28 @@ function SecondaryChips({ events, overflow }: { events: ArenaFeedEvent[]; overfl
 function CardShell({
   group,
   flashing,
+  leftAccent,
   extraClass,
   children,
 }: {
   group: ArenaFeedGroup;
   flashing: boolean;
+  leftAccent?: string; // hex colour for the 3 px left accent border
   extraClass?: string;
   children: React.ReactNode;
 }) {
+  const animStyle: React.CSSProperties = group.isNew
+    ? { animation: 'feedEnter 0.35s ease-out' }
+    : flashing
+      ? { animation: 'liveFlash 0.9s ease-out' }
+      : {};
   return (
     <div
-      className={`overflow-hidden rounded-2xl border bg-ink-900 transition-transform active:scale-[0.985]
-        ${group.cardType === 'hero' ? 'border-amber-400/25' : 'border-ink-700/50'}
-        ${group.cardType === 'hero' ? 'shadow-[0_0_20px_-6px_rgba(251,191,36,0.3)]' : ''}
-        ${extraClass ?? ''}`}
-      style={
-        group.isNew
-          ? { animation: 'feedEnter 0.35s ease-out' }
-          : flashing
-            ? { animation: 'liveFlash 0.9s ease-out' }
-            : undefined
-      }
+      className={`overflow-hidden rounded-2xl border border-ink-700/50 bg-ink-900 transition-transform active:scale-[0.985] ${extraClass ?? ''}`}
+      style={{
+        ...animStyle,
+        ...(leftAccent ? { borderLeftColor: leftAccent, borderLeftWidth: '3px' } : {}),
+      }}
     >
       {children}
     </div>
@@ -483,77 +463,13 @@ interface CardProps {
   onToggleReaction: (eventId: string, emoji: string) => void;
 }
 
-// ─── HeroCard ─────────────────────────────────────────────────────────────────
-// Used for: medal_gold, medal_silver, medal_bronze, milestone_500/1000, streak_365.
-// NOT used for place1_new — that is now a standard historical event.
-// Current #1 state is shown via CurrentLeaderCard (built from live leaderboard).
+// ─── PremiumFeedCard ─────────────────────────────────────────────────────────
+// Single unified card component for all feed event types.
+// Layout: left accent bar → header → badge → big primary → secondary → status.
+// Number-centric events (milestones, streaks): big number is the hero.
+// Action-centric events (lead, overtake, record, medals): action phrase is hero.
 
-function HeroCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
-  const name = group.display_name || group.username || 'Unbekannt';
-  const shortName = (group.display_name || group.username || 'Unbekannt').split(' ')[0];
-  const [headline, ...secondary] = group.items;
-  const { icon: hIcon } = getChip(headline);
-  const m = headline.metadata as Record<string, unknown>;
-
-  const bigNumber = (m.today_total ?? m.reps ?? m.total) as number | undefined;
-  const isGold = headline.event_type === 'medal_gold' || headline.event_type === 'place1_new';
-
-  // Snapshot-based status — never from live leaderboard
-  const heroStatus = rankStatusLine(headline);
-
-  return (
-    <CardShell
-      group={group}
-      flashing={false}
-      extraClass={`bg-gradient-to-br from-ink-900 via-ink-900 ${isGold ? 'to-amber-950/25' : 'to-brand-950/20'}`}
-    >
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
-
-          <div className="mt-2 flex items-end gap-2.5">
-            <span className="text-[22px] leading-none">{hIcon}</span>
-            <div className="min-w-0 flex-1">
-              {bigNumber != null ? (
-                <>
-                  <div className="flex items-baseline gap-1">
-                    <span className={`text-[28px] font-black leading-none tabular-nums ${isGold ? 'text-amber-300' : 'text-brand-300'}`}>
-                      {bigNumber.toLocaleString('de-DE')}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      {headline.exercise_name ?? 'PushUps'}
-                    </span>
-                  </div>
-                  <span className={`mt-0.5 block text-[11px] font-bold ${isGold ? 'text-amber-400' : 'text-brand-400'}`}>
-                    {storyHeadline(headline, shortName)}
-                  </span>
-                </>
-              ) : (
-                <span className={`text-[16px] font-black leading-tight tracking-tight ${isGold ? 'text-amber-300' : 'text-brand-300'}`}>
-                  {storyHeadline(headline, shortName)}
-                </span>
-              )}
-              {heroStatus && (
-                <span className="mt-0.5 block text-[11px] font-medium text-slate-500">
-                  {heroStatus}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <SecondaryChips events={secondary} overflow={group.secondaryOverflow} />
-        </div>
-      </button>
-      <div className="px-3.5 pb-2.5">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
-    </CardShell>
-  );
-}
-
-// ─── StandardCard ──────────────────────────────────────────────────────────────
-
-function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReaction }: CardProps) {
+function PremiumFeedCard({ group, liveReps, onOpenProfile, onToggleReaction }: CardProps) {
   const [flashing, setFlashing] = useState(false);
   const prevTsRef = useRef<string | undefined>(liveReps?.ts);
 
@@ -567,56 +483,93 @@ function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReacti
   }, [liveReps?.ts]);
 
   const name = group.display_name || group.username || 'Unbekannt';
-  const shortName = (group.display_name || group.username || 'Unbekannt').split(' ')[0];
-  const [headline, ...secondary] = group.items;
-  const { icon: hIcon } = getChip(headline);
+  const [headline] = group.items;
+  const m = headline.metadata as Record<string, unknown>;
+  const exName = headline.exercise_name ?? 'PushUps';
   const displayTime = liveReps?.ts && liveReps.ts > group.latest_at ? liveReps.ts : group.latest_at;
 
-  // Snapshot data from event metadata — never from live rankList.
-  // repsLine: how many reps the user had at event time.
-  // statusLine: their rank situation at that exact moment.
-  const headlineMeta = headline.metadata as Record<string, unknown>;
-  const exName = headline.exercise_name ?? 'PushUps';
-  const repsAtEvent = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
+  const style = getEventStyle(headline.event_type);
+  const action = storyHeadline(headline);
+  const status = rankStatusLine(headline);
 
-  // Streak events show duration instead of reps as the primary number
-  const streakDays = headlineMeta.days as number | undefined;
+  // Number-centric layout: big number is the hero (milestone_*, streak_*, total_*)
+  const isNumberCentric = headline.event_type.startsWith('milestone_') || headline.event_type.startsWith('total_');
+  const isStreakCentric  = headline.event_type.startsWith('streak_');
 
-  const repsLine = repsAtEvent != null
-    ? `${repsAtEvent.toLocaleString('de-DE')} ${exName}`
-    : streakDays != null
-      ? `${streakDays} Tage aktiv`
-      : null;
+  const repsAtEvent = (m.today_total ?? m.reps) as number | undefined;
+  const totalCount  = m.total as number | undefined;
+  const streakDays  = m.days as number | undefined;
+  const prevBest    = m.prev_best as number | undefined;
 
-  const statusLine = rankStatusLine(headline);
+  const bigNumber = isNumberCentric
+    ? (headline.event_type.startsWith('total_') ? totalCount : repsAtEvent)
+    : isStreakCentric ? streakDays
+    : undefined;
+  const bigUnit = isNumberCentric ? exName : 'Tage';
+
+  // For records: show improvement delta if available
+  const recordReps = (m.reps ?? m.today_total) as number | undefined;
+  const isRecord = headline.event_type === 'daily_record' || headline.event_type === 'personal_record';
+  const delta = isRecord && recordReps != null && prevBest != null ? recordReps - prevBest : undefined;
 
   return (
-    <CardShell group={group} flashing={flashing}>
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} size={30} />
+    <CardShell group={group} flashing={flashing} leftAccent={style.borderColor}>
+      <button
+        className="w-full text-left"
+        onClick={() => onOpenProfile(group)}
+        aria-label={`Profil von ${name}`}
+      >
+        <div className="px-4 pt-4 pb-3">
+          {/* ── Header ── */}
+          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} size={28} />
 
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[20px] leading-none">{hIcon}</span>
-            <div className="min-w-0">
-              <span className="block truncate text-[14px] font-extrabold leading-snug tracking-tight text-slate-100">
-                {storyHeadline(headline, shortName)}
-              </span>
-              {repsLine && (
-                <span className="block text-[12px] font-semibold leading-snug text-slate-400">
-                  {repsLine}
-                </span>
-              )}
-              {statusLine && (
-                <span className="block text-[11px] font-medium leading-snug text-slate-500">
-                  {statusLine}
-                </span>
-              )}
-            </div>
+          {/* ── Event badge ── */}
+          <div className="mt-3">
+            <span className={`inline-block rounded-full px-2 py-[3px] text-[9px] font-bold uppercase tracking-widest ${style.badgeClasses}`}>
+              {style.badge}
+            </span>
           </div>
 
+          {/* ── Primary content ── */}
+          <div className="mt-2.5">
+            {bigNumber != null ? (
+              /* Number hero */
+              <div className="flex items-baseline gap-1.5">
+                <span className={`text-[30px] font-black leading-none tabular-nums ${style.accentTextClass}`}>
+                  {bigNumber.toLocaleString('de-DE')}
+                </span>
+                <span className="text-[14px] font-semibold text-slate-400">{bigUnit}</span>
+              </div>
+            ) : (
+              /* Action hero */
+              <span className={`block text-[17px] font-extrabold leading-snug tracking-tight ${style.accentTextClass}`}>
+                {action}
+              </span>
+            )}
+          </div>
+
+          {/* ── Secondary content ── */}
+          {bigNumber != null ? null : repsAtEvent != null ? (
+            <p className="mt-1.5 text-[13px] font-semibold text-slate-400">
+              {repsAtEvent.toLocaleString('de-DE')}{' '}
+              <span className="text-[12px] font-medium text-slate-500">{exName}</span>
+              {delta != null && delta > 0 && (
+                <span className="ml-2 text-[11px] font-bold text-green-400">+{delta}</span>
+              )}
+              {!isRecord && prevBest != null && prevBest > 0 && (
+                <span className="ml-2 text-[11px] text-slate-600">vorher {prevBest}</span>
+              )}
+            </p>
+          ) : null}
+
+          {/* ── Rank status (snapshot) ── */}
+          {status && (
+            <p className="mt-2 text-[11px] font-medium text-slate-500">{status}</p>
+          )}
+
+          {/* ── Live activity badge ── */}
           {liveReps && liveReps.addedReps > 0 && (
-            <div className="mt-1 flex items-center gap-1.5">
+            <div className="mt-2 flex items-center gap-1.5">
               <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-bold text-brand-400">
                 +{liveReps.addedReps}
               </span>
@@ -626,218 +579,9 @@ function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReacti
               </span>
             </div>
           )}
-
-          <SecondaryChips events={secondary} overflow={group.secondaryOverflow} />
         </div>
       </button>
-      <div className="px-3.5 pb-2.5">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
-    </CardShell>
-  );
-}
-
-// ─── RecordCard ────────────────────────────────────────────────────────────────
-
-function RecordCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
-  const name = group.display_name || group.username || 'Unbekannt';
-  const shortName = (group.display_name || group.username || 'Unbekannt').split(' ')[0];
-  const [headline, ...secondary] = group.items;
-  const { icon: hIcon } = getChip(headline);
-  const m = headline.metadata as Record<string, unknown>;
-  const reps = m.reps as number | undefined;
-  const prevBest = m.prev_best as number | undefined;
-  const delta = reps != null && prevBest != null ? reps - prevBest : undefined;
-
-  return (
-    <CardShell group={group} flashing={false}>
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
-          <div className="mt-1.5 flex items-end gap-2">
-            <span className="text-[22px] leading-none">{hIcon}</span>
-            {reps != null ? (
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[26px] font-black leading-none tabular-nums text-brand-400">
-                    {reps.toLocaleString('de-DE')}
-                  </span>
-                  <span className="text-[11px] font-semibold text-slate-500">
-                    {headline.exercise_name ?? 'Wdh.'}
-                  </span>
-                </div>
-                <div className="mt-0.5 flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-brand-300">
-                    {storyHeadline(headline, shortName)}
-                  </span>
-                  {prevBest != null && prevBest > 0 && (
-                    <span className="text-[10px] text-slate-600">
-                      vorher {prevBest}
-                      {delta != null && delta > 0 && (
-                        <span className="ml-1 font-bold text-green-400">+{delta}</span>
-                      )}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <span className="text-[14px] font-extrabold leading-snug text-slate-100">
-                {storyHeadline(headline, shortName)}
-              </span>
-            )}
-          </div>
-          <SecondaryChips events={secondary} overflow={group.secondaryOverflow} />
-        </div>
-      </button>
-      <div className="px-3.5 pb-2.5">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
-    </CardShell>
-  );
-}
-
-// ─── RankMovementCard ─────────────────────────────────────────────────────────
-
-function RankMovementCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
-  const name = group.display_name || group.username || 'Unbekannt';
-  const [headline] = group.items;
-  const m = headline.metadata as Record<string, unknown>;
-  const oldRank = m.old_rank as number | undefined;
-  const newRank = m.new_rank as number | undefined;
-  const overtaken = m.overtaken_name as string | undefined;
-  const improvement = m.improvement as number | undefined;
-
-  return (
-    <CardShell group={group} flashing={false}>
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[20px] leading-none">📈</span>
-            {oldRank != null && newRank != null ? (
-              <span className="flex items-center gap-1.5 text-[15px] font-black tabular-nums">
-                <span className="text-slate-500">#{oldRank}</span>
-                <span className="text-brand-400">→</span>
-                <span className="text-brand-300">#{newRank}</span>
-              </span>
-            ) : (
-              <span className="text-[14px] font-extrabold text-slate-100">Rangverbesserung</span>
-            )}
-          </div>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-500">
-            {improvement != null && `${improvement} ${improvement === 1 ? 'Platz' : 'Plätze'} gewonnen`}
-            {improvement != null && overtaken && ' · '}
-            {overtaken && `${overtaken} überholt`}
-          </p>
-        </div>
-      </button>
-      <div className="px-3.5 pb-2.5">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
-    </CardShell>
-  );
-}
-
-// ─── ComebackCard ─────────────────────────────────────────────────────────────
-
-function ComebackCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
-  const name = group.display_name || group.username || 'Unbekannt';
-  const shortName = (group.display_name || group.username || 'Unbekannt').split(' ')[0];
-  const [headline, ...secondary] = group.items;
-  const daysOff = (headline.metadata as Record<string, unknown>).days_off as number | undefined;
-
-  return (
-    <CardShell group={group} flashing={false} extraClass="bg-gradient-to-br from-ink-900 to-orange-950/15">
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[20px] leading-none">💥</span>
-            <span className="text-[14px] font-extrabold text-orange-300">
-              {daysOff != null
-                ? `${shortName} zurück nach ${daysOff} Tagen`
-                : `${shortName} ist zurück`}
-            </span>
-          </div>
-          <SecondaryChips events={secondary} overflow={group.secondaryOverflow} />
-        </div>
-      </button>
-      <div className="px-3.5 pb-2.5">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
-    </CardShell>
-  );
-}
-
-// ─── StreakCard ────────────────────────────────────────────────────────────────
-
-function StreakCard({ group, onOpenProfile, onToggleReaction }: CardProps) {
-  const name = group.display_name || group.username || 'Unbekannt';
-  const [headline, ...secondary] = group.items;
-  const { icon: hIcon, label: hLabel } = getChip(headline);
-  const days = (headline.metadata as Record<string, unknown>).days as number | undefined;
-
-  return (
-    <CardShell group={group} flashing={false}>
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[22px] leading-none">{hIcon}</span>
-            <div>
-              <span className="block text-[14px] font-extrabold text-slate-100">{hLabel}</span>
-              {days != null && (
-                <span className="text-[11px] text-slate-600">{days} Tage in Folge</span>
-              )}
-            </div>
-          </div>
-          <SecondaryChips events={secondary} overflow={group.secondaryOverflow} />
-        </div>
-      </button>
-      <div className="px-3.5 pb-2.5">
-        <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
-      </div>
-    </CardShell>
-  );
-}
-
-// ─── DuelCard — knapper Zweikampf (rank_improved mit improvement === 1) ────────
-
-function DuelCard({ group, rankList, onOpenProfile, onToggleReaction }: CardProps) {
-  const name = group.display_name || group.username || 'Unbekannt';
-  const [headline] = group.items;
-  const m = headline.metadata as Record<string, unknown>;
-  const overtaken = m.overtaken_name as string | undefined;
-  const newRank = m.new_rank as number | undefined;
-
-  // Live reps comparison
-  const myEntry = rankList.find(r => r.userId === group.user_id);
-  const overtakenEntry = rankList.find(r => r.displayName === overtaken);
-  const gap = myEntry && overtakenEntry ? myEntry.reps - overtakenEntry.reps : undefined;
-
-  return (
-    <CardShell group={group} flashing={false} extraClass="bg-gradient-to-br from-ink-900 to-brand-950/20">
-      <button className="w-full text-left" onClick={() => onOpenProfile(group)} aria-label={`Profil von ${name}`}>
-        <div className="px-3.5 pt-3 pb-2">
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={group.latest_at} size={30} />
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[20px] leading-none">⚔️</span>
-            <div className="min-w-0">
-              <span className="block text-[14px] font-extrabold text-brand-300">
-                {overtaken
-                  ? `${overtaken} überholt${newRank != null ? ` · Platz ${newRank}` : ''}`
-                  : 'Knapper Zweikampf'}
-              </span>
-              {gap != null && gap > 0 && (
-                <span className="text-[11px] text-slate-500">
-                  {gap} {gap === 1 ? 'Wiederholung' : 'Wiederholungen'} Vorsprung
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </button>
-      <div className="px-3.5 pb-2.5">
+      <div className="px-4 pb-3">
         <ReactionsBar eventId={headline.id} reactions={headline.reactions} onToggle={onToggleReaction} />
       </div>
     </CardShell>
@@ -1003,18 +747,7 @@ function FilterPill({ active, label, onClick }: { active: boolean; label: string
 function FeedCard(props: CardProps) {
   const [headline] = props.group.items;
   if (!headline) return null;
-  const m = headline.metadata as Record<string, unknown>;
-  if (headline.event_type === 'rank_improved' && (m.improvement as number | undefined) === 1) {
-    return <DuelCard {...props} />;
-  }
-  switch (props.group.cardType) {
-    case 'hero':         return <HeroCard {...props} />;
-    case 'record':        return <RecordCard {...props} />;
-    case 'rank_movement': return <RankMovementCard {...props} />;
-    case 'comeback':      return <ComebackCard {...props} />;
-    case 'streak':        return <StreakCard {...props} />;
-    default:              return <StandardCard {...props} />;
-  }
+  return <PremiumFeedCard {...props} />;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
