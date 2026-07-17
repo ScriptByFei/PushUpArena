@@ -167,9 +167,9 @@ function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
   const m = ev.metadata as Record<string, unknown>;
   switch (ev.event_type) {
     case 'place1_new':
-      // Historical event: "first reached #1 today". Past tense — current state
-      // comes from the live leaderboard (CurrentLeaderCard), not this event.
-      return `${shortName} übernahm heute Platz 1`;
+      // Historical event: describes the MOMENT of taking #1, not the current state.
+      // Current state lives in CurrentLeaderCard (built from live leaderboard).
+      return `${shortName} ging in Führung`;
     case 'medal_gold':
       return 'Goldmedaille';
     case 'medal_silver':
@@ -487,17 +487,28 @@ function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReacti
   const { icon: hIcon } = getChip(headline);
   const displayTime = liveReps?.ts && liveReps.ts > group.latest_at ? liveReps.ts : group.latest_at;
 
-  // Context line: show competitive proximity
-  const myEntry = rankList.find(r => r.userId === group.user_id);
+  // Context line: for place1_new, describe the event moment (never the live state).
+  // For all other events, show current competitive proximity from the live leaderboard.
+  const headlineMeta = headline.metadata as Record<string, unknown>;
   let contextLine: string | null = null;
-  if (myEntry) {
-    const above = rankList[myEntry.rank - 2]; // rank is 1-indexed; rank-2 is the entry just above
-    if (above && above.reps > myEntry.reps) {
-      const gap = above.reps - myEntry.reps;
-      contextLine = `Noch ${gap} bis Platz ${myEntry.rank - 1}`;
-    } else if (myEntry.rank === 1) {
-      const below = rankList[1];
-      if (below) contextLine = `${myEntry.reps - below.reps} vor ${below.displayName.split(' ')[0]}`;
+
+  if (headline.event_type === 'place1_new') {
+    // Show the rep count at the moment they took #1 — stays accurate even after they're overtaken.
+    const repsAtEvent = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
+    if (repsAtEvent != null) {
+      contextLine = `Führte mit ${repsAtEvent.toLocaleString('de-DE')} ${headline.exercise_name ?? 'PushUps'}`;
+    }
+  } else {
+    const myEntry = rankList.find(r => r.userId === group.user_id);
+    if (myEntry) {
+      const above = rankList[myEntry.rank - 2]; // rank is 1-indexed; rank-2 is the entry just above
+      if (above && above.reps > myEntry.reps) {
+        const gap = above.reps - myEntry.reps;
+        contextLine = `Noch ${gap} bis Platz ${myEntry.rank - 1}`;
+      } else if (myEntry.rank === 1) {
+        const below = rankList[1];
+        if (below) contextLine = `${myEntry.reps - below.reps} vor ${below.displayName.split(' ')[0]}`;
+      }
     }
   }
 
