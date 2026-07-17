@@ -17,32 +17,31 @@ interface RankEntry {
   rank: number;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const MAX_SECONDARY = 3;
-
-// Semantic suppression: if headline is the key, drop these secondary event types.
-const SECONDARY_SUPPRESSION: Record<string, string[]> = {
-  place1_new:   ['rank_improved', 'top3_first', 'top10_first'],
-  medal_gold:   ['place1_new', 'rank_improved', 'top3_first'],
-  medal_silver: ['rank_improved', 'top3_first'],
-  medal_bronze: ['rank_improved'],
-  daily_record: ['milestone_20', 'milestone_50', 'milestone_100', 'milestone_250', 'milestone_500', 'milestone_1000'],
-  top3_first:   ['rank_improved', 'top10_first'],
-  top10_first:  ['rank_improved'],
-};
-
 // ─── Story building ────────────────────────────────────────────────────────────
-// One story per user × exercise (cross-day). Each person gets exactly ONE card
-// in the feed showing their best current achievement.
-// After grouping: actuality pass ensures only the current Platz-1 holder shows
-// place1_new as hero — the second person in the same exercise gets their
-// place1_new stripped (becomes whatever their next-best event is).
 
-function addDays(dateStr: string, delta: number): string {
-  const d = new Date(dateStr + 'T12:00:00Z');
-  d.setUTCDate(d.getUTCDate() + delta);
-  return d.toISOString().slice(0, 10);
+/** Numeric threshold for milestone_N event types (e.g. 'milestone_100' → 100). */
+function milestoneValue(eventType: string): number {
+  return parseInt(eventType.replace('milestone_', ''), 10) || 0;
+}
+
+/**
+ * Variety pass: prevent more than 2 consecutive cards of the same event_type.
+ * Preserves priority ordering as much as possible.
+ */
+function interleaveVariety(stories: ArenaFeedGroup[]): ArenaFeedGroup[] {
+  if (stories.length <= 3) return stories;
+  const result: ArenaFeedGroup[] = [];
+  const pool = [...stories];
+  while (pool.length > 0) {
+    const prevType = result.at(-1)?.items[0]?.event_type;
+    const prev2Type = result.at(-2)?.items[0]?.event_type;
+    if (prevType && prevType === prev2Type) {
+      const idx = pool.findIndex(s => s.items[0]?.event_type !== prevType);
+      if (idx > 0) { result.push(pool.splice(idx, 1)[0]); continue; }
+    }
+    result.push(pool.shift()!);
+  }
+  return result;
 }
 
 // Deterministic phrase picker — same event id always yields the same phrase.
@@ -60,157 +59,107 @@ function buildStories(
   newIds: Set<string>,
   live: LiveActivityMap,
 ): ArenaFeedGroup[] {
-  const map = new Map<string, ArenaFeedGroup>();
-  // Track ALL items per group BEFORE semantic dedup (needed for streak calculation).
-  const rawItemsMap = new Map<string, ArenaFeedEvent[]>();
-  const order: string[] = [];
+  // 1. Global ID dedup
   const seenIds = new Set<string>();
+  const unique = events.filter(ev => !seenIds.has(ev.id) && !!seenIds.add(ev.id));
 
-  for (const ev of events) {
-    if (seenIds.has(ev.id)) continue;
-    seenIds.add(ev.id);
-
-    // Cross-day story key — ONE card per person per exercise
-    const key = `${ev.user_id}::${ev.exercise_id ?? 'none'}`;
-    if (!map.has(key)) {
-      map.set(key, {
-        key,
-        user_id: ev.user_id,
-        display_name: ev.display_name,
-        username: ev.username,
-        avatar_url: ev.avatar_url,
-        event_date: ev.event_date,
-        latest_at: ev.created_at,
-        items: [],
-        secondaryOverflow: 0,
-        isNew: false,
-        cardType: 'standard',
-      });
-      rawItemsMap.set(key, []);
-      order.push(key);
-    }
-    const g = map.get(key)!;
-    g.items.push(ev);
-    rawItemsMap.get(key)!.push(ev);
-    if (newIds.has(ev.id)) g.isNew = true;
-    if (ev.created_at > g.latest_at) {
-      g.latest_at = ev.created_at;
-      g.event_date = ev.event_date;
+  // 2. Milestone dedup: only the highest milestone per user×exercise earns a card
+  const milestonePeak = new Map<string, ArenaFeedEvent>();
+  for (const ev of unique) {
+    if (!ev.event_type.startsWith('milestone_')) continue;
+    const k = `${ev.user_id}::${ev.exercise_id ?? ''}`;
+    const cur = milestonePeak.get(k);
+    if (!cur || milestoneValue(ev.event_type) > milestoneValue(cur.event_type)) {
+      milestonePeak.set(k, ev);
     }
   }
+  const keepMilestones = new Set([...milestonePeak.values()].map(e => e.id));
 
-  for (const g of map.values()) {
-    // Sort by DB priority DESC, then recency DESC
-    g.items.sort((a, b) => {
-      const pd = (b.priority ?? 0) - (a.priority ?? 0);
-      if (pd !== 0) return pd;
-      return b.created_at.localeCompare(a.created_at);
+  // 3. rank_improved dedup: only the best rank achieved per user×exercise
+  const overtakePeak = new Map<string, ArenaFeedEvent>();
+  for (const ev of unique) {
+    if (ev.event_type !== 'rank_improved') continue;
+    const k = `${ev.user_id}::${ev.exercise_id ?? ''}`;
+    const cur = overtakePeak.get(k);
+    const newRank = (ev.metadata as Record<string, unknown>).new_rank as number | undefined;
+    const curRank = cur ? (cur.metadata as Record<string, unknown>).new_rank as number | undefined : 99;
+    if (newRank != null && (curRank == null || newRank < curRank)) overtakePeak.set(k, ev);
+  }
+  const keepOvertakes = new Set([...overtakePeak.values()].map(e => e.id));
+
+  // 4. Low-value event types that don't merit a standalone card
+  const SKIP = new Set([
+    'top10_first', 'milestone_20', 'milestone_50', 'streak_broken',
+    'quick_starter', 'night_owl', 'new_friend', 'friendship_confirmed', 'friend_overtaken',
+  ]);
+
+  // 5. One card per significant event
+  const stories: ArenaFeedGroup[] = [];
+  for (const ev of unique) {
+    if (SKIP.has(ev.event_type)) continue;
+    if (ev.event_type.startsWith('milestone_') && !keepMilestones.has(ev.id)) continue;
+    if (ev.event_type === 'rank_improved' && !keepOvertakes.has(ev.id)) continue;
+    stories.push({
+      key: ev.id,
+      user_id: ev.user_id,
+      display_name: ev.display_name,
+      username: ev.username,
+      avatar_url: ev.avatar_url,
+      event_date: ev.event_date,
+      latest_at: ev.created_at,
+      items: [ev],
+      secondaryOverflow: 0,
+      isNew: newIds.has(ev.id),
+      cardType: getGroupCardType([ev]),
     });
-
-    g.cardType = getGroupCardType(g.items);
-
-    // Compute place1_new streak BEFORE semantic dedup
-    const p1Events = rawItemsMap.get(g.key)!
-      .filter(ev => ev.event_type === 'place1_new')
-      .sort((a, b) => b.event_date.localeCompare(a.event_date));
-
-    if (p1Events.length >= 2) {
-      let streak = 1;
-      for (let i = 1; i < p1Events.length; i++) {
-        if (p1Events[i].event_date === addDays(p1Events[i - 1].event_date, -1)) streak++;
-        else break;
-      }
-      if (streak > 1) {
-        // Augment the most recent place1_new with streak_days (client-side only)
-        const idx = g.items.findIndex(ev => ev.event_type === 'place1_new');
-        if (idx >= 0) {
-          const ev = g.items[idx];
-          g.items[idx] = { ...ev, metadata: { ...ev.metadata, streak_days: streak } };
-        }
-      }
-    }
-
-    // Semantic dedup + suppression
-    const [headline, ...rest] = g.items;
-    if (!headline) continue;
-
-    const suppressed = SECONDARY_SUPPRESSION[headline.event_type] ?? [];
-    const seenTypes = new Set<string>([headline.event_type]);
-    const deduped = rest.filter(ev => {
-      if (suppressed.includes(ev.event_type)) return false;
-      if (seenTypes.has(ev.event_type)) return false;
-      seenTypes.add(ev.event_type);
-      return true;
-    });
-
-    const secondary = deduped.slice(0, MAX_SECONDARY);
-    g.secondaryOverflow = deduped.length - secondary.length;
-    g.items = [headline, ...secondary];
   }
 
-  // NOTE: No actuality pass needed. place1_new is now cardType:'standard' in the registry
-  // (a historical "first reached #1 today" event). The CurrentLeaderCard component
-  // in ArenaFeed is the sole source of current-leader truth, built from get_all_active_today.
-
-  // ── Scenario annotation for place1_new ────────────────────────────────────────
-  // Determine which place1_new per exercise happened first (= "first of day")
-  // vs. later ones (= "takeover"). storyHeadline() uses __p1_scenario to vary text.
+  // 6. place1_new scenario annotation: first of day vs. takeover
   {
-    // Collect all place1_new events across all groups (use rawItemsMap = pre-dedup)
-    const allP1 = [...rawItemsMap.values()]
-      .flat()
+    const allP1 = unique
       .filter(ev => ev.event_type === 'place1_new')
-      .sort((a, b) => a.created_at.localeCompare(b.created_at)); // ascending → earliest first
-
-    // First occurrence per exercise = "first of day"
-    const exFirstLeader = new Map<string | null, string>(); // exercise_id → user_id
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const exFirstLeader = new Map<string | null, string>();
     for (const ev of allP1) {
       if (!exFirstLeader.has(ev.exercise_id)) exFirstLeader.set(ev.exercise_id, ev.user_id);
     }
-
-    // Stamp each group's place1_new item with the resolved scenario
-    for (const g of map.values()) {
-      if (!g.items.some(ev => ev.event_type === 'place1_new')) continue;
+    for (const s of stories) {
+      const ev = s.items[0];
+      if (ev.event_type !== 'place1_new') continue;
       const scenario: 'first_of_day' | 'takeover' =
-        exFirstLeader.get(g.items.find(ev => ev.event_type === 'place1_new')!.exercise_id) === g.user_id
-          ? 'first_of_day'
-          : 'takeover';
-      g.items = g.items.map(ev =>
-        ev.event_type === 'place1_new'
-          ? { ...ev, metadata: { ...ev.metadata, __p1_scenario: scenario } }
-          : ev,
-      );
+        exFirstLeader.get(ev.exercise_id) === s.user_id ? 'first_of_day' : 'takeover';
+      s.items = [{ ...ev, metadata: { ...ev.metadata, __p1_scenario: scenario } }];
     }
   }
 
-  // ── Sort: live → hero priority → recency
+  // 7. Sort: live activity → card weight → recency
   const CARD_WEIGHT: Partial<Record<FeedCardType, number>> = {
     hero: 10, record: 8, rank_movement: 7, comeback: 6, streak: 5, duel: 5, standard: 1,
   };
+  stories.sort((a, b) => {
+    const aLive = live[a.user_id]?.ts && live[a.user_id].ts > a.latest_at;
+    const bLive = live[b.user_id]?.ts && live[b.user_id].ts > b.latest_at;
+    if (aLive !== bLive) return aLive ? -1 : 1;
+    const wa = CARD_WEIGHT[a.cardType] ?? 1;
+    const wb = CARD_WEIGHT[b.cardType] ?? 1;
+    if (wa !== wb) return wb - wa;
+    return b.latest_at.localeCompare(a.latest_at);
+  });
 
-  return order
-    .filter(k => map.has(k))
-    .map(k => map.get(k)!)
-    .sort((a, b) => {
-      const aLiveFresh = live[a.user_id]?.ts && live[a.user_id].ts > a.latest_at;
-      const bLiveFresh = live[b.user_id]?.ts && live[b.user_id].ts > b.latest_at;
-      if (aLiveFresh !== bLiveFresh) return aLiveFresh ? -1 : 1;
-      const wa = CARD_WEIGHT[a.cardType] ?? 1;
-      const wb = CARD_WEIGHT[b.cardType] ?? 1;
-      if (wa !== wb) return wb - wa;
-      return b.latest_at.localeCompare(a.latest_at);
-    });
+  // 8. Variety pass: no more than 2 consecutive cards of the same event_type
+  return interleaveVariety(stories);
 }
 
 // ─── Narrative headlines ───────────────────────────────────────────────────────
 
 function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
   const m = ev.metadata as Record<string, unknown>;
+  const exName = ev.exercise_name ?? 'PushUps';
+
   switch (ev.event_type) {
+
+    // ── Lead changes ──────────────────────────────────────────────────────────
     case 'place1_new': {
-      // Historical event — describes the MOMENT of taking #1, not current state.
-      // Text varies by scenario (first of day vs. overtake) using a deterministic
-      // hash of the event id so the same event always shows the same phrase.
       const scenario = m.__p1_scenario as string | undefined;
       if (scenario === 'first_of_day') {
         return pickPhrase([
@@ -230,53 +179,102 @@ function storyHeadline(ev: ArenaFeedEvent, shortName: string): string {
         `${shortName} steht jetzt ganz oben`,
       ], ev.id);
     }
-    case 'medal_gold':
-      return 'Goldmedaille';
-    case 'medal_silver':
-      return 'Silbermedaille';
-    case 'medal_bronze':
-      return 'Bronzemedaille';
+
+    // ── Medals ────────────────────────────────────────────────────────────────
+    case 'medal_gold':   return `${shortName} holt Gold`;
+    case 'medal_silver': return `${shortName} sichert sich Silber`;
+    case 'medal_bronze': return `${shortName} gewinnt Bronze`;
+
+    // ── Rank movement ─────────────────────────────────────────────────────────
     case 'rank_improved': {
       const nr = m.new_rank as number | undefined;
       const over = m.overtaken_name as string | undefined;
-      if (over && nr) return `${over} überholt · Platz ${nr}`;
-      if (nr) return `Jetzt Platz ${nr}`;
-      return 'Rang verbessert';
+      if (over) {
+        return pickPhrase([
+          `${shortName} überholt ${over}`,
+          `${shortName} zieht an ${over} vorbei`,
+          `${shortName} schiebt sich vor ${over}`,
+        ], ev.id);
+      }
+      return nr != null ? `${shortName} auf Platz ${nr}` : 'Rang verbessert';
     }
+
+    // ── Top 3 ─────────────────────────────────────────────────────────────────
     case 'top3_first':
-      return `${shortName} erreicht die Top 3`;
-    case 'top10_first':
-      return `${shortName} in den Top 10`;
-    case 'daily_record': {
-      const reps = m.reps as number | undefined;
-      return reps
-        ? `Rekord · ${reps.toLocaleString('de-DE')} ${ev.exercise_name ?? 'Wdh.'}`
-        : `${shortName} bricht den Rekord`;
-    }
-    case 'personal_record': {
-      const reps = m.reps as number | undefined;
-      return reps ? `Rekord · ${reps.toLocaleString('de-DE')} ${ev.exercise_name ?? 'Wdh.'}` : 'Persönlicher Rekord';
-    }
+      return pickPhrase([
+        `${shortName} kommt in die Top 3`,
+        `${shortName} drängt sich in die Top 3`,
+        `${shortName} schiebt sich in die Top 3`,
+      ], ev.id);
+
+    // ── Records ───────────────────────────────────────────────────────────────
+    case 'daily_record':
+    case 'personal_record':
+      return pickPhrase([
+        `${shortName} stellt einen neuen Rekord auf`,
+        `Neuer Rekord für ${shortName}`,
+        `${shortName} schreibt Geschichte`,
+      ], ev.id);
+
+    // ── Milestones ────────────────────────────────────────────────────────────
+    case 'milestone_100':
+      return pickPhrase([
+        `${shortName} knackt die 100`,
+        `${shortName} erreicht 100 ${exName}`,
+        `Erstmals dreistellig — ${shortName}`,
+      ], ev.id);
+    case 'milestone_250':
+      return pickPhrase([
+        `${shortName} durchbricht die 250`,
+        `${shortName} erreicht 250 ${exName}`,
+        `250 — ${shortName} hält das Tempo`,
+      ], ev.id);
+    case 'milestone_500':
+      return pickPhrase([
+        `${shortName} knackt die 500-Marke`,
+        `${shortName} erreicht 500 ${exName}`,
+        `500 ${exName} — ${shortName} macht Druck`,
+      ], ev.id);
+    case 'milestone_1000':
+      return pickPhrase([
+        `${shortName} erreicht die Tausend`,
+        `1.000 — ${shortName} in einer anderen Liga`,
+        `${shortName} schafft 1.000 ${exName}`,
+      ], ev.id);
+
+    // ── Streaks ───────────────────────────────────────────────────────────────
+    case 'streak_7':   return `${shortName} — 7 Tage am Stück`;
+    case 'streak_30':  return `${shortName} — 30-Tage-Streak`;
+    case 'streak_100': return `${shortName} — 100 Tage in Folge`;
+    case 'streak_365': return `${shortName} — Ein ganzes Jahr aktiv`;
+
+    // ── Comeback ──────────────────────────────────────────────────────────────
     case 'comeback': {
       const days = m.days_off as number | undefined;
-      return days ? `${shortName} zurück nach ${days} Tagen` : `${shortName} ist zurück`;
+      return days
+        ? pickPhrase([
+            `${shortName} zurück nach ${days} Tagen`,
+            `${shortName} meldet sich zurück`,
+            `${shortName} macht weiter`,
+          ], ev.id)
+        : `${shortName} ist zurück`;
     }
-    case 'milestone_1000':
-      return `1.000 ${ev.exercise_name ?? 'PushUps'} heute 🤯`;
-    case 'milestone_500':
-      return `500 ${ev.exercise_name ?? 'PushUps'} heute`;
-    case 'milestone_250':
-      return `250 ${ev.exercise_name ?? 'PushUps'} heute`;
-    case 'milestone_100':
-      return `100 ${ev.exercise_name ?? 'PushUps'} heute`;
-    case 'streak_365':
-      return '365-Tage-Streak 💎';
-    case 'streak_100':
-      return '100-Tage-Streak 🔱';
-    case 'streak_30':
-      return '30-Tage-Streak ⚡';
-    case 'streak_7':
-      return '7-Tage-Streak 🔥';
+
+    // ── Total milestones ──────────────────────────────────────────────────────
+    case 'total_500':
+    case 'total_1000':
+    case 'total_5000':
+    case 'total_10000':
+    case 'total_25000':
+    case 'total_50000':
+    case 'total_100000': {
+      const total = m.total as number | undefined;
+      return total != null
+        ? `${shortName} — ${total.toLocaleString('de-DE')} ${exName} gesamt`
+        : getChip(ev).label;
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────────
     default:
       return getChip(ev).label;
   }
@@ -547,24 +545,37 @@ function StandardCard({ group, rankList, liveReps, onOpenProfile, onToggleReacti
   const { icon: hIcon } = getChip(headline);
   const displayTime = liveReps?.ts && liveReps.ts > group.latest_at ? liveReps.ts : group.latest_at;
 
-  // Context line: for place1_new, describe the event moment (never the live state).
-  // For all other events, show current competitive proximity from the live leaderboard.
+  // Context line: event-specific subtitle. Historical events use snapshot data;
+  // other events use live rankList for competitive context.
   const headlineMeta = headline.metadata as Record<string, unknown>;
   let contextLine: string | null = null;
+  const exName = headline.exercise_name ?? 'PushUps';
 
   if (headline.event_type === 'place1_new') {
-    // Show the rep count at the moment they took #1 — stays accurate even after they're overtaken.
+    // Snapshot from event metadata — stays accurate after being overtaken
     const repsAtEvent = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
     if (repsAtEvent != null) {
-      contextLine = `Führte mit ${repsAtEvent.toLocaleString('de-DE')} ${headline.exercise_name ?? 'PushUps'}`;
+      contextLine = `Führte mit ${repsAtEvent.toLocaleString('de-DE')} ${exName}`;
     }
+  } else if (headline.event_type === 'rank_improved') {
+    const newRank = headlineMeta.new_rank as number | undefined;
+    if (newRank != null) contextLine = `Jetzt Platz ${newRank}`;
+  } else if (headline.event_type === 'top3_first') {
+    const newRank = headlineMeta.new_rank as number | undefined;
+    contextLine = newRank != null ? `Platz ${newRank}` : 'Erstmals in den Top 3';
+  } else if (headline.event_type.startsWith('milestone_')) {
+    const reps = (headlineMeta.today_total ?? headlineMeta.reps) as number | undefined;
+    if (reps != null) contextLine = `${reps.toLocaleString('de-DE')} ${exName} heute`;
+  } else if (headline.event_type.startsWith('streak_')) {
+    const days = headlineMeta.days as number | undefined;
+    if (days != null) contextLine = `${days} Tage aktiv ohne Pause`;
   } else {
+    // Live competitive context for all other event types
     const myEntry = rankList.find(r => r.userId === group.user_id);
     if (myEntry) {
-      const above = rankList[myEntry.rank - 2]; // rank is 1-indexed; rank-2 is the entry just above
+      const above = rankList[myEntry.rank - 2]; // rank is 1-indexed
       if (above && above.reps > myEntry.reps) {
-        const gap = above.reps - myEntry.reps;
-        contextLine = `Noch ${gap} bis Platz ${myEntry.rank - 1}`;
+        contextLine = `Noch ${above.reps - myEntry.reps} bis Platz ${myEntry.rank - 1}`;
       } else if (myEntry.rank === 1) {
         const below = rankList[1];
         if (below) contextLine = `${myEntry.reps - below.reps} vor ${below.displayName.split(' ')[0]}`;
