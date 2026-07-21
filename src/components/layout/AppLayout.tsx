@@ -37,6 +37,7 @@ export function AppLayout() {
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
+  const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -86,6 +87,14 @@ export function AppLayout() {
               style={{ width: 48, height: 48 }}
             >
               <img src="/recap-icon.webp" alt="" style={{ width: 44, height: 44, display: 'block', objectFit: 'contain' }} />
+            </button>
+            <button
+              onClick={() => setDailyChallengeOpen(true)}
+              aria-label="Daily Challenge"
+              className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
+              style={{ width: 48, height: 48 }}
+            >
+              <img src="/daily-challenge-icon.webp" alt="" style={{ width: 44, height: 44, display: 'block', objectFit: 'contain' }} />
             </button>
           </div>
 
@@ -139,6 +148,29 @@ export function AppLayout() {
 
       {/* Arena Feed */}
       {feedOpen && <ArenaFeed onClose={() => setFeedOpen(false)} />}
+
+      {/* Daily Challenge — TODO: replace with DailyChallengeModal once built */}
+      {dailyChallengeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setDailyChallengeOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+            <p className="text-center text-base font-bold text-slate-100">Daily Challenge</p>
+            <p className="mt-2 text-center text-sm text-slate-500">Coming soon.</p>
+            <button
+              onClick={() => setDailyChallengeOpen(false)}
+              className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Daily Recap Modal — auto-show oder manuell */}
       {(recapOpen || recapManualOpen) && recap && (
