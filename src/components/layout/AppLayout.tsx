@@ -70,13 +70,13 @@ export function AppLayout() {
         {/* Hauptzeile — symmetrisch: linke und rechte Zone je 96 px */}
         <div className="relative flex items-center" style={{ height: 48 }}>
 
-          {/* Zone L — Feed + Recap: je 48×48 px */}
-          <div className="flex shrink-0 items-center pl-0">
+          {/* Zone L — Feed + Recap + Daily Challenge */}
+          <div className="flex shrink-0 items-center gap-0 pl-0">
             <button
               onClick={() => setFeedOpen(true)}
               aria-label="Arena-Feed"
               className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-              style={{ width: 48, height: 48 }}
+              style={{ width: 40, height: 48 }}
             >
               <img src="/arena-feed-icon.webp" alt="" style={{ width: 52, height: 52, display: 'block', objectFit: 'contain' }} />
             </button>
@@ -84,7 +84,7 @@ export function AppLayout() {
               onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
               aria-label="Tages-Recap"
               className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-              style={{ width: 48, height: 48 }}
+              style={{ width: 40, height: 48 }}
             >
               <img src="/recap-icon.webp" alt="" style={{ width: 44, height: 44, display: 'block', objectFit: 'contain' }} />
             </button>
@@ -92,7 +92,7 @@ export function AppLayout() {
               onClick={() => setDailyChallengeOpen(true)}
               aria-label="Daily Challenge"
               className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-              style={{ width: 48, height: 48 }}
+              style={{ width: 40, height: 48 }}
             >
               <img src="/daily-challenge-icon.webp" alt="" style={{ width: 30, height: 30, display: 'block', objectFit: 'contain' }} />
             </button>
