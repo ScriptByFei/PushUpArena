@@ -23,6 +23,9 @@ const titles: Record<string, string> = {
 // Nach 5 Minuten im Hintergrund → beim Öffnen zurück zum Dashboard
 const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 
+// Swipe-Reihenfolge = Bottom-Nav-Reihenfolge
+const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
+
 export function AppLayout() {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? 'PushupArena';
@@ -30,6 +33,8 @@ export function AppLayout() {
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
   const hiddenAtRef = useRef<number | null>(null);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
   const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
   const { enrolledExercises } = useExercise();
   const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats' && pathname !== '/achievements';
@@ -57,6 +62,24 @@ export function AppLayout() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [navigate]);
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+  };
+
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    if (swipeStartX.current === null || swipeStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    swipeStartX.current = null;
+    swipeStartY.current = null;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > 80) return;
+    const idx = SWIPE_ROUTES.indexOf(pathname);
+    if (idx === -1) return;
+    const next = dx < 0 ? idx + 1 : idx - 1;
+    if (next >= 0 && next < SWIPE_ROUTES.length) navigate(SWIPE_ROUTES[next]);
+  };
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
@@ -140,7 +163,11 @@ export function AppLayout() {
 
       </header>
 
-      <main className="flex-1 px-4 pb-32 pt-3">
+      <main
+        className="flex-1 px-4 pb-32 pt-3"
+        onTouchStart={handleSwipeStart}
+        onTouchEnd={handleSwipeEnd}
+      >
         <Outlet />
       </main>
 
