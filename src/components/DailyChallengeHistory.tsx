@@ -23,9 +23,15 @@ function rankAccentClass(rank: number): string {
   return '';
 }
 
-// ── Einzelne History-Karte ─────────────────────────────────────────────────
+// ── Einzelne History-Karte (anklickbar) ───────────────────────────────────
 
-function HistoryCard({ day }: { day: DailyChallengeHistoryDay }) {
+function HistoryCard({
+  day,
+  onSelect,
+}: {
+  day: DailyChallengeHistoryDay;
+  onSelect: (challengeDate: string) => void;
+}) {
   const {
     challengeDate,
     rank,
@@ -39,40 +45,58 @@ function HistoryCard({ day }: { day: DailyChallengeHistoryDay }) {
   const accent = rankAccentClass(rank);
 
   return (
-    <Card className="overflow-hidden">
-      {/* Dezente Akzentlinie für Top 3 */}
-      {isTop3 && (
-        <div className={`-mx-4 -mt-4 mb-3 h-[3px] ${accent}`} />
-      )}
+    <button
+      onClick={() => onSelect(challengeDate)}
+      className="w-full text-left transition active:scale-[0.98]"
+    >
+      <Card className="overflow-hidden">
+        {/* Dezente Akzentlinie für Top 3 */}
+        {isTop3 && (
+          <div className={`-mx-4 -mt-4 mb-3 h-[3px] ${accent}`} />
+        )}
 
-      {/* Datum */}
-      <p className="text-xs text-slate-500">{formatChallengeDateLong(challengeDate)}</p>
+        <div className="flex items-start">
+          <div className="flex-1 min-w-0">
+            {/* Datum */}
+            <p className="text-xs text-slate-500">{formatChallengeDateLong(challengeDate)}</p>
 
-      {/* Platz */}
-      <p className={`mt-1 text-2xl font-bold tabular-nums leading-none ${rankTextColor(rank)}`}>
-        Platz {rank}
-      </p>
+            {/* Platz */}
+            <p className={`mt-1 text-2xl font-bold tabular-nums leading-none ${rankTextColor(rank)}`}>
+              Platz {rank}
+            </p>
 
-      {/* Wiederholungen + Sätze */}
-      <p className="mt-2 text-sm text-slate-400">
-        <span className="tabular-nums font-semibold text-slate-100">{totalRepetitions}</span>
-        {' '}Wdh.
-        <span className="mx-1.5 text-slate-700">·</span>
-        <span className="tabular-nums font-semibold text-slate-100">{setCount}</span>
-        {' '}{setCount === 1 ? 'Satz' : 'Sätze'}
-      </p>
+            {/* Wiederholungen + Sätze */}
+            <p className="mt-2 text-sm text-slate-400">
+              <span className="tabular-nums font-semibold text-slate-100">{totalRepetitions}</span>
+              {' '}Wdh.
+              <span className="mx-1.5 text-slate-700">·</span>
+              <span className="tabular-nums font-semibold text-slate-100">{setCount}</span>
+              {' '}{setCount === 1 ? 'Satz' : 'Sätze'}
+            </p>
 
-      {/* Teilnehmer + Sieger (falls sinnvoll) */}
-      {(participantCount > 1 || (displayName && rank > 1)) && (
-        <p className="mt-1 text-xs text-slate-600">
-          {participantCount > 1 && `${participantCount} Teilnehmer`}
-          {participantCount > 1 && displayName && rank > 1 && (
-            <span className="mx-1">·</span>
-          )}
-          {displayName && rank > 1 && `Sieger: ${displayName}`}
-        </p>
-      )}
-    </Card>
+            {/* Teilnehmer + Sieger (falls sinnvoll) */}
+            {(participantCount > 1 || (displayName && rank > 1)) && (
+              <p className="mt-1 text-xs text-slate-600">
+                {participantCount > 1 && `${participantCount} Teilnehmer`}
+                {participantCount > 1 && displayName && rank > 1 && (
+                  <span className="mx-1">·</span>
+                )}
+                {displayName && rank > 1 && `Sieger: ${displayName}`}
+              </p>
+            )}
+          </div>
+
+          {/* Chevron */}
+          <svg viewBox="0 0 20 20" fill="currentColor" className="mt-1 h-4 w-4 shrink-0 text-slate-700">
+            <path
+              fillRule="evenodd"
+              d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+      </Card>
+    </button>
   );
 }
 
@@ -98,6 +122,7 @@ export interface HistoryListProps {
   isLoadingHistory: boolean;
   historyError: string | null;
   refreshHistory: () => Promise<void>;
+  onSelectDay: (challengeDate: string) => void;
 }
 
 export function HistoryList({
@@ -105,6 +130,7 @@ export function HistoryList({
   isLoadingHistory,
   historyError,
   refreshHistory,
+  onSelectDay,
 }: HistoryListProps) {
   // Fehler
   if (historyError) {
@@ -156,7 +182,7 @@ export function HistoryList({
   return (
     <div className="flex flex-col gap-3">
       {sorted.map(day => (
-        <HistoryCard key={day.challengeDate} day={day} />
+        <HistoryCard key={day.challengeDate} day={day} onSelect={onSelectDay} />
       ))}
     </div>
   );

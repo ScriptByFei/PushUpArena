@@ -394,6 +394,47 @@ export interface Database {
           last_set_at: string | null;
         }[];
       };
+      get_daily_challenge_day_details: {
+        Args: { p_exercise_id: string; p_date: string };
+        // JSONB return — parsed by Supabase to JS object
+        Returns: {
+          error?: string;
+          summary?: {
+            challenge_date: string;
+            participant_count: number;
+            total_repetitions: number;
+            total_sets: number;
+            max_set: number | null;
+            winner_user_id: string | null;
+            winner_display_name: string | null;
+            winner_avatar_url: string | null;
+            winner_total_repetitions: number | null;
+          };
+          leaderboard?: {
+            rank: number;
+            user_id: string;
+            display_name: string;
+            avatar_url: string | null;
+            total_repetitions: number;
+            set_count: number;
+            max_set: number | null;
+            min_set: number | null;
+            avg_set: string | null;     // numeric(6,2) → string in JS
+            first_set_at: string | null;
+            last_set_at: string | null;
+            is_me: boolean;
+          }[];
+        };
+      };
+      get_daily_challenge_participant_sets: {
+        Args: { p_exercise_id: string; p_date: string; p_user_id: string };
+        Returns: {
+          entry_id: string;
+          set_number: number;
+          repetitions: number;
+          created_at: string;
+        }[];
+      };
     };
     Enums: {
       friend_request_status: FriendRequestStatus;

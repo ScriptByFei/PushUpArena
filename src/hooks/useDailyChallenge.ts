@@ -24,11 +24,16 @@ import {
   type DailyChallengeLeaderboardEntry,
   type DailyChallengeSet,
   type DailyChallengeStatus,
+  type DailyChallengeDayDetails,
+  type DailyChallengeParticipantDetails,
+  type DailyChallengeHistoricalSet,
   DC_ERROR_MESSAGES,
   mapHistoryDay,
   mapLeaderboardEntry,
   mapSet,
   mapStatus,
+  mapDayDetails,
+  mapHistoricalSet,
 } from '@/lib/dailyChallenge.types';
 
 const VISIBILITY_REFETCH_MS = 5 * 60 * 1000; // 5 Min im Hintergrund → re-sync
@@ -59,6 +64,16 @@ export function useDailyChallenge() {
   const [isLoadingHistory, setIsLoadingHistory]   = useState(false);
   const [historyError, setHistoryError]           = useState<string | null>(null);
 
+  // ── Historische Tagesdetails (lazy, gecacht per exerciseId+date) ──────────
+  const [selectedDayDetails, setSelectedDayDetails]               = useState<DailyChallengeDayDetails | null>(null);
+  const [isLoadingDayDetails, setIsLoadingDayDetails]             = useState(false);
+  const [dayDetailsError, setDayDetailsError]                     = useState<string | null>(null);
+
+  // ── Historische Teilnehmerdetails (lazy, gecacht per exerciseId+date+userId)
+  const [selectedParticipantDetails, setSelectedParticipantDetails] = useState<DailyChallengeParticipantDetails | null>(null);
+  const [isLoadingParticipantDetails, setIsLoadingParticipantDetails] = useState(false);
+  const [participantDetailsError, setParticipantDetailsError]     = useState<string | null>(null);
+
   // ── Aktions-States ────────────────────────────────────────────────────────
   const [isJoining, setIsJoining]                 = useState(false);
   const [isLoggingSet, setIsLoggingSet]           = useState(false);
@@ -69,6 +84,12 @@ export function useDailyChallenge() {
   const currentChallengeDateRef   = useRef<string | null>(null);
   const channelRef                = useRef<RealtimeChannel | null>(null);
   const hiddenAtRef               = useRef<number | null>(null);
+  // Caches für Tages- und Teilnehmerdetails (Modal-Lebensdauer)
+  const dayDetailsCacheRef        = useRef(new Map<string, DailyChallengeDayDetails>());
+  const participantCacheRef       = useRef(new Map<string, DailyChallengeParticipantDetails>());
+  // Schutz vor Doppelklick-Races
+  const isLoadingDayRef           = useRef(false);
+  const isLoadingParticipantRef   = useRef(false);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const isActive      = status?.isActive  ?? false;
@@ -166,6 +187,111 @@ export function useDailyChallenge() {
       setHistoryError(msg);
     } finally {
       setIsLoadingHistory(false);
+    }
+  }, [exerciseId, user]);
+
+  // ── loadHistoryDay ────────────────────────────────────────────────────────
+  // Lädt Tageszusammenfassung + finale Rangliste für einen abgeschlossenen Tag.
+  // Gecacht per exerciseId+challengeDate für die Modal-Lebensdauer.
+  const loadHistoryDay = useCallback(async (challengeDate: string) => {
+    if (!exerciseId || !user) return;
+    if (isLoadingDayRef.current) return; // Doppelklick-Schutz
+
+    const cacheKey = `${exerciseId}_${challengeDate}`;
+    const cached = dayDetailsCacheRef.current.get(cacheKey);
+    if (cached) {
+      setSelectedDayDetails(cached);
+      setDayDetailsError(null);
+      return;
+    }
+
+    isLoadingDayRef.current = true;
+    setIsLoadingDayDetails(true);
+    setDayDetailsError(null);
+    setSelectedDayDetails(null);
+    try {
+      const { data, error } = await supabase.rpc('get_daily_challenge_day_details', {
+        p_exercise_id: exerciseId,
+        p_date:        challengeDate,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('Keine Daten erhalten.');
+      if ('error' in data && data.error) throw new Error(String(data.error));
+      const mapped = mapDayDetails(data);
+      dayDetailsCacheRef.current.set(cacheKey, mapped);
+      setSelectedDayDetails(mapped);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Tagesdetails konnten nicht geladen werden.';
+      setDayDetailsError(msg);
+    } finally {
+      isLoadingDayRef.current = false;
+      setIsLoadingDayDetails(false);
+    }
+  }, [exerciseId, user]);
+
+  // ── loadHistoryParticipant ─────────────────────────────────────────────────
+  // Lädt historische Satzliste + kombiniert mit Leaderboard-Eintrag aus dem
+  // bereits gecachten Tagesergebnis.
+  // Gecacht per exerciseId+challengeDate+userId.
+  const loadHistoryParticipant = useCallback(async (challengeDate: string, userId: string) => {
+    if (!exerciseId || !user) return;
+    if (isLoadingParticipantRef.current) return; // Doppelklick-Schutz
+
+    const cacheKey = `${exerciseId}_${challengeDate}_${userId}`;
+    const cached = participantCacheRef.current.get(cacheKey);
+    if (cached) {
+      setSelectedParticipantDetails(cached);
+      setParticipantDetailsError(null);
+      return;
+    }
+
+    isLoadingParticipantRef.current = true;
+    setIsLoadingParticipantDetails(true);
+    setParticipantDetailsError(null);
+    setSelectedParticipantDetails(null);
+    try {
+      // Leaderboard-Eintrag aus Tages-Cache holen (Tag muss vorher geladen worden sein)
+      const dayCacheKey = `${exerciseId}_${challengeDate}`;
+      const dayDetails = dayDetailsCacheRef.current.get(dayCacheKey);
+      const resultRow = dayDetails?.leaderboard.find(e => e.userId === userId);
+      if (!resultRow) throw new Error('Teilnehmer nicht gefunden. Bitte gehe zurück und versuche es erneut.');
+
+      // Satzliste laden
+      const { data: setsData, error: setsError } = await supabase.rpc(
+        'get_daily_challenge_participant_sets',
+        {
+          p_exercise_id: exerciseId,
+          p_date:        challengeDate,
+          p_user_id:     userId,
+        },
+      );
+      if (setsError) throw setsError;
+
+      const sets: DailyChallengeHistoricalSet[] = (setsData ?? []).map(mapHistoricalSet);
+
+      const participant: DailyChallengeParticipantDetails = {
+        userId:           resultRow.userId,
+        displayName:      resultRow.displayName,
+        avatarUrl:        resultRow.avatarUrl,
+        rank:             resultRow.rank,
+        totalRepetitions: resultRow.totalRepetitions,
+        setCount:         resultRow.setCount,
+        maxSet:           resultRow.maxSet,
+        minSet:           resultRow.minSet,
+        avgSet:           resultRow.avgSet,
+        firstSetAt:       resultRow.firstSetAt,
+        lastSetAt:        resultRow.lastSetAt,
+        sets,
+      };
+
+      participantCacheRef.current.set(cacheKey, participant);
+      setSelectedParticipantDetails(participant);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Teilnehmerdetails konnten nicht geladen werden.';
+      setParticipantDetailsError(msg);
+    } finally {
+      isLoadingParticipantRef.current = false;
+      setIsLoadingParticipantDetails(false);
     }
   }, [exerciseId, user]);
 
@@ -330,12 +456,16 @@ export function useDailyChallenge() {
     leaderboard,
     mySets,
     history,
+    selectedDayDetails,
+    selectedParticipantDetails,
 
     // Lade-Flags
     isLoadingStatus,
     isLoadingLeaderboard,
     isLoadingMySets,
     isLoadingHistory,
+    isLoadingDayDetails,
+    isLoadingParticipantDetails,
     isJoining,
     isLoggingSet,
 
@@ -344,6 +474,8 @@ export function useDailyChallenge() {
     leaderboardError,
     setsError,
     historyError,
+    dayDetailsError,
+    participantDetailsError,
     actionError,
 
     // Aktionen
@@ -351,6 +483,8 @@ export function useDailyChallenge() {
     refreshLeaderboard,
     refreshMySets,
     refreshHistory,
+    loadHistoryDay,
+    loadHistoryParticipant,
     refreshToday,
     joinChallenge,
     logSet,

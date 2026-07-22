@@ -5,10 +5,13 @@
 import type { Database } from './database.types';
 
 // ── Raw-Typen (direkt aus den RPC-Signaturen) ──────────────────────────────
-type StatusRaw    = Database['public']['Functions']['get_daily_challenge_status']['Returns'];
-type LbRowRaw     = Database['public']['Functions']['get_daily_challenge_leaderboard']['Returns'][number];
-type SetRowRaw    = Database['public']['Functions']['get_my_challenge_sets']['Returns'][number];
-type HistoryRaw   = Database['public']['Functions']['get_challenge_history']['Returns'][number];
+type StatusRaw        = Database['public']['Functions']['get_daily_challenge_status']['Returns'];
+type LbRowRaw         = Database['public']['Functions']['get_daily_challenge_leaderboard']['Returns'][number];
+type SetRowRaw        = Database['public']['Functions']['get_my_challenge_sets']['Returns'][number];
+type HistoryRaw       = Database['public']['Functions']['get_challenge_history']['Returns'][number];
+type DayDetailsRaw    = Database['public']['Functions']['get_daily_challenge_day_details']['Returns'];
+type DayLbEntryRaw    = NonNullable<DayDetailsRaw['leaderboard']>[number];
+type ParticipantSetRaw = Database['public']['Functions']['get_daily_challenge_participant_sets']['Returns'][number];
 
 // ── Fehlercodes ────────────────────────────────────────────────────────────
 export type DailyChallengeError =
@@ -83,6 +86,62 @@ export interface DailyChallengeHistoryDay {
   lastSetAt: Date | null;
 }
 
+// ── Historische Tagesdetail-Typen ─────────────────────────────────────────
+
+export interface DailyChallengeDaySummary {
+  challengeDate: string;                    // 'YYYY-MM-DD'
+  participantCount: number;
+  totalRepetitions: number;
+  totalSets: number;
+  maxSet: number | null;
+  winnerUserId: string | null;
+  winnerDisplayName: string | null;
+  winnerAvatarUrl: string | null;
+  winnerTotalRepetitions: number | null;
+}
+
+export interface DailyChallengeHistoricalLeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  totalRepetitions: number;
+  setCount: number;
+  maxSet: number | null;
+  minSet: number | null;
+  avgSet: number | null;
+  firstSetAt: Date | null;
+  lastSetAt: Date | null;
+  isMe: boolean;
+}
+
+export interface DailyChallengeDayDetails {
+  summary: DailyChallengeDaySummary;
+  leaderboard: DailyChallengeHistoricalLeaderboardEntry[];
+}
+
+export interface DailyChallengeHistoricalSet {
+  entryId: string;
+  setNumber: number;
+  repetitions: number;
+  createdAt: Date;
+}
+
+export interface DailyChallengeParticipantDetails {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  rank: number;
+  totalRepetitions: number;
+  setCount: number;
+  maxSet: number | null;
+  minSet: number | null;
+  avgSet: number | null;
+  firstSetAt: Date | null;
+  lastSetAt: Date | null;
+  sets: DailyChallengeHistoricalSet[];
+}
+
 // ── Mapper ─────────────────────────────────────────────────────────────────
 
 export function mapStatus(raw: StatusRaw): DailyChallengeStatus {
@@ -138,5 +197,49 @@ export function mapHistoryDay(raw: HistoryRaw): DailyChallengeHistoryDay {
     avgSet:           raw.avg_set != null ? parseFloat(raw.avg_set) : null,
     firstSetAt:       raw.first_set_at ? new Date(raw.first_set_at) : null,
     lastSetAt:        raw.last_set_at  ? new Date(raw.last_set_at)  : null,
+  };
+}
+
+export function mapDayLbEntry(raw: DayLbEntryRaw): DailyChallengeHistoricalLeaderboardEntry {
+  return {
+    rank:             Number(raw.rank),
+    userId:           raw.user_id,
+    displayName:      raw.display_name,
+    avatarUrl:        raw.avatar_url,
+    totalRepetitions: raw.total_repetitions,
+    setCount:         raw.set_count,
+    maxSet:           raw.max_set,
+    minSet:           raw.min_set,
+    avgSet:           raw.avg_set != null ? parseFloat(raw.avg_set) : null,
+    firstSetAt:       raw.first_set_at ? new Date(raw.first_set_at) : null,
+    lastSetAt:        raw.last_set_at  ? new Date(raw.last_set_at)  : null,
+    isMe:             raw.is_me,
+  };
+}
+
+export function mapDayDetails(raw: DayDetailsRaw): DailyChallengeDayDetails {
+  const s = raw.summary!;
+  return {
+    summary: {
+      challengeDate:            s.challenge_date,
+      participantCount:         Number(s.participant_count),
+      totalRepetitions:         Number(s.total_repetitions),
+      totalSets:                Number(s.total_sets),
+      maxSet:                   s.max_set,
+      winnerUserId:             s.winner_user_id,
+      winnerDisplayName:        s.winner_display_name,
+      winnerAvatarUrl:          s.winner_avatar_url,
+      winnerTotalRepetitions:   s.winner_total_repetitions,
+    },
+    leaderboard: (raw.leaderboard ?? []).map(mapDayLbEntry),
+  };
+}
+
+export function mapHistoricalSet(raw: ParticipantSetRaw): DailyChallengeHistoricalSet {
+  return {
+    entryId:     raw.entry_id,
+    setNumber:   raw.set_number,
+    repetitions: raw.repetitions,
+    createdAt:   new Date(raw.created_at),
   };
 }

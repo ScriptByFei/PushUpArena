@@ -12,6 +12,7 @@ import { useCountdown } from '@/hooks/useCountdown';
 import { formatBerlinTime } from '@/lib/date';
 import { LeaderboardCard } from '@/components/DailyChallengeLeaderboard';
 import { HistoryList } from '@/components/DailyChallengeHistory';
+import { HistoryDayView, HistoryParticipantView } from '@/components/DailyChallengeHistoryDetail';
 import type { DailyChallengeHistoryDay, DailyChallengeLeaderboardEntry, DailyChallengeSet } from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
@@ -832,22 +833,91 @@ function HeuteTab({
   );
 }
 
-// ── Verlauf-Tab ────────────────────────────────────────────────────────────
+// ── Verlauf-Tab (mit interner Navigation list → day → participant) ─────────
+
+type HistoryView = 'list' | 'day' | 'participant';
 
 interface VerlaufTabProps {
+  historyView: HistoryView;
+  selectedChallengeDate: string | null;
+  selectedParticipantId: string | null;
+  // Verlaufsliste
   history: DailyChallengeHistoryDay[];
   isLoadingHistory: boolean;
   historyError: string | null;
   refreshHistory: () => Promise<void>;
+  // Tagesdetail
+  dayDetails: import('@/lib/dailyChallenge.types').DailyChallengeDayDetails | null;
+  isLoadingDayDetails: boolean;
+  dayDetailsError: string | null;
+  // Teilnehmerdetail
+  participantDetails: import('@/lib/dailyChallenge.types').DailyChallengeParticipantDetails | null;
+  isLoadingParticipantDetails: boolean;
+  participantDetailsError: string | null;
+  // Navigation-Handler
+  onSelectDay: (challengeDate: string) => void;
+  onSelectParticipant: (userId: string) => void;
+  onBackToList: () => void;
+  onBackToDay: () => void;
+  retryLoadDay: () => void;
+  retryLoadParticipant: () => void;
 }
 
-function VerlaufTab({ history, isLoadingHistory, historyError, refreshHistory }: VerlaufTabProps) {
+function VerlaufTab({
+  historyView,
+  selectedChallengeDate,
+  history,
+  isLoadingHistory,
+  historyError,
+  refreshHistory,
+  dayDetails,
+  isLoadingDayDetails,
+  dayDetailsError,
+  participantDetails,
+  isLoadingParticipantDetails,
+  participantDetailsError,
+  onSelectDay,
+  onSelectParticipant,
+  onBackToList,
+  onBackToDay,
+  retryLoadDay,
+  retryLoadParticipant,
+}: VerlaufTabProps) {
+  if (historyView === 'day' && selectedChallengeDate) {
+    return (
+      <HistoryDayView
+        challengeDate={selectedChallengeDate}
+        dayDetails={dayDetails}
+        isLoading={isLoadingDayDetails}
+        error={dayDetailsError}
+        onBack={onBackToList}
+        onSelectParticipant={onSelectParticipant}
+        retryLoadDay={retryLoadDay}
+      />
+    );
+  }
+
+  if (historyView === 'participant' && selectedChallengeDate) {
+    return (
+      <HistoryParticipantView
+        challengeDate={selectedChallengeDate}
+        participant={participantDetails}
+        isLoading={isLoadingParticipantDetails}
+        error={participantDetailsError}
+        onBack={onBackToDay}
+        retryLoadParticipant={retryLoadParticipant}
+      />
+    );
+  }
+
+  // Default: Liste
   return (
     <HistoryList
       history={history}
       isLoadingHistory={isLoadingHistory}
       historyError={historyError}
       refreshHistory={refreshHistory}
+      onSelectDay={onSelectDay}
     />
   );
 }
@@ -878,12 +948,20 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     history,
     isLoadingHistory,
     historyError,
+    selectedDayDetails,
+    isLoadingDayDetails,
+    dayDetailsError,
+    selectedParticipantDetails,
+    isLoadingParticipantDetails,
+    participantDetailsError,
     joinChallenge,
     logSet,
     refreshStatus,
     refreshMySets,
     refreshLeaderboard,
     refreshHistory,
+    loadHistoryDay,
+    loadHistoryParticipant,
   } = useDailyChallenge();
 
   const [activeTab, setActiveTab] = useState<Tab>('heute');
@@ -897,6 +975,45 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     hasRequestedHistoryRef.current = true;
     void refreshHistory();
   }, [activeTab, refreshHistory]);
+
+  // ── Verlauf-interne Navigation ───────────────────────────────────────────
+  const [historyView, setHistoryView]                       = useState<'list' | 'day' | 'participant'>('list');
+  const [selectedChallengeDate, setSelectedChallengeDate]   = useState<string | null>(null);
+  const [selectedParticipantId, setSelectedParticipantId]   = useState<string | null>(null);
+
+  const handleSelectDay = (challengeDate: string) => {
+    setHistoryView('day');
+    setSelectedChallengeDate(challengeDate);
+    void loadHistoryDay(challengeDate);
+  };
+
+  const handleSelectParticipant = (userId: string) => {
+    if (!selectedChallengeDate) return;
+    setHistoryView('participant');
+    setSelectedParticipantId(userId);
+    void loadHistoryParticipant(selectedChallengeDate, userId);
+  };
+
+  const handleBackToList = () => {
+    setHistoryView('list');
+    setSelectedChallengeDate(null);
+    setSelectedParticipantId(null);
+  };
+
+  const handleBackToDay = () => {
+    setHistoryView('day');
+    setSelectedParticipantId(null);
+  };
+
+  const handleRetryDay = () => {
+    if (selectedChallengeDate) void loadHistoryDay(selectedChallengeDate);
+  };
+
+  const handleRetryParticipant = () => {
+    if (selectedChallengeDate && selectedParticipantId) {
+      void loadHistoryParticipant(selectedChallengeDate, selectedParticipantId);
+    }
+  };
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -966,10 +1083,25 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
           />
         ) : (
           <VerlaufTab
+            historyView={historyView}
+            selectedChallengeDate={selectedChallengeDate}
+            selectedParticipantId={selectedParticipantId}
             history={history}
             isLoadingHistory={isLoadingHistory}
             historyError={historyError}
             refreshHistory={refreshHistory}
+            dayDetails={selectedDayDetails}
+            isLoadingDayDetails={isLoadingDayDetails}
+            dayDetailsError={dayDetailsError}
+            participantDetails={selectedParticipantDetails}
+            isLoadingParticipantDetails={isLoadingParticipantDetails}
+            participantDetailsError={participantDetailsError}
+            onSelectDay={handleSelectDay}
+            onSelectParticipant={handleSelectParticipant}
+            onBackToList={handleBackToList}
+            onBackToDay={handleBackToDay}
+            retryLoadDay={handleRetryDay}
+            retryLoadParticipant={handleRetryParticipant}
           />
         )}
       </div>
