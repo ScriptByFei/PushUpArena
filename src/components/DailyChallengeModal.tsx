@@ -10,7 +10,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useCountdown } from '@/hooks/useCountdown';
 import { formatBerlinTime } from '@/lib/date';
-import type { DailyChallengeSet } from '@/lib/dailyChallenge.types';
+import { LeaderboardCard } from '@/components/DailyChallengeLeaderboard';
+import type { DailyChallengeLeaderboardEntry, DailyChallengeSet } from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 
@@ -448,19 +449,6 @@ function SatzEingabeCard({
   );
 }
 
-// ── Platzhalter-Karte ──────────────────────────────────────────────────────
-
-function PlaceholderCard({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <Card>
-      <CardTitle>{title}</CardTitle>
-      <p className="mt-2 text-sm text-slate-500">
-        {subtitle ?? 'Wird in Phase 3D implementiert.'}
-      </p>
-    </Card>
-  );
-}
-
 // ── Leistungs-Statistik ────────────────────────────────────────────────────
 
 interface ChallengeStats {
@@ -740,12 +728,16 @@ interface HeuteTabProps {
   isJoining: boolean;
   isLoggingSet: boolean;
   isLoadingMySets: boolean;
+  isLoadingLeaderboard: boolean;
   actionError: string | null;
   setsError: string | null;
+  leaderboardError: string | null;
   mySets: DailyChallengeSet[];
+  leaderboard: DailyChallengeLeaderboardEntry[];
   joinChallenge: () => Promise<void>;
   logSet: (reps: number) => Promise<{ ok: boolean; secondsRemaining?: number }>;
   refreshMySets: () => Promise<void>;
+  refreshLeaderboard: () => Promise<void>;
 }
 
 function HeuteTab({
@@ -760,12 +752,16 @@ function HeuteTab({
   isJoining,
   isLoggingSet,
   isLoadingMySets,
+  isLoadingLeaderboard,
   actionError,
   setsError,
+  leaderboardError,
   mySets,
+  leaderboard,
   joinChallenge,
   logSet,
   refreshMySets,
+  refreshLeaderboard,
 }: HeuteTabProps) {
   // actionError aus joinChallenge soll nicht in SatzEingabeCard erscheinen.
   // SatzEingabeCard verwendet intern hasTried-Guard — hier wird die gleiche
@@ -816,9 +812,13 @@ function HeuteTab({
         setsError={setsError}
         refreshMySets={refreshMySets}
       />
-      <PlaceholderCard
-        title="Live-Rangliste"
-        subtitle="Echtzeit-Rangliste aller Teilnehmer von heute."
+      <LeaderboardCard
+        isActive={isActive}
+        hasJoined={hasJoined}
+        leaderboard={leaderboard}
+        isLoadingLeaderboard={isLoadingLeaderboard}
+        leaderboardError={leaderboardError}
+        refreshLeaderboard={refreshLeaderboard}
       />
       <MySetsCard
         hasJoined={hasJoined}
@@ -857,16 +857,20 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     startsAt,
     endsAt,
     serverNow,
+    leaderboard,
+    mySets,
     isJoining,
     isLoggingSet,
     isLoadingMySets,
+    isLoadingLeaderboard,
     actionError,
     setsError,
-    mySets,
+    leaderboardError,
     joinChallenge,
     logSet,
     refreshStatus,
     refreshMySets,
+    refreshLeaderboard,
   } = useDailyChallenge();
 
   const [activeTab, setActiveTab] = useState<Tab>('heute');
@@ -926,12 +930,16 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             isJoining={isJoining}
             isLoggingSet={isLoggingSet}
             isLoadingMySets={isLoadingMySets}
+            isLoadingLeaderboard={isLoadingLeaderboard}
             actionError={actionError}
             setsError={setsError}
+            leaderboardError={leaderboardError}
             mySets={mySets}
+            leaderboard={leaderboard}
             joinChallenge={joinChallenge}
             logSet={logSet}
             refreshMySets={refreshMySets}
+            refreshLeaderboard={refreshLeaderboard}
           />
         ) : (
           <VerlaufTab />
