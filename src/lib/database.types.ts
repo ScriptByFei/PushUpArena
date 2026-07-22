@@ -180,6 +180,66 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      // ── Daily Challenge ────────────────────────────────────────────────────
+      daily_challenge_participations: {
+        Row: {
+          id: string;
+          user_id: string;
+          exercise_id: string;
+          challenge_date: string;   // 'YYYY-MM-DD'
+          joined_at: string;        // timestamptz → ISO string
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          exercise_id: string;
+          challenge_date: string;
+          joined_at?: string;
+          created_at?: string;
+        };
+        Update: never;              // immutable — no client updates
+        Relationships: [];
+      };
+      daily_challenge_entries: {
+        Row: {
+          id: string;
+          participation_id: string;
+          user_id: string;
+          exercise_id: string;
+          challenge_date: string;
+          repetitions: number;      // integer, 10–100
+          created_at: string;
+          is_flagged: boolean;
+          flag_reason: string | null;
+        };
+        Insert: never;              // only via log_challenge_set RPC
+        Update: never;
+        Relationships: [];
+      };
+      daily_challenge_results: {
+        Row: {
+          id: string;
+          user_id: string;
+          exercise_id: string;
+          challenge_date: string;
+          rank: number;
+          participant_count: number;
+          display_name: string;     // snapshot at finalization time
+          avatar_url: string | null;
+          total_repetitions: number;
+          set_count: number;
+          max_set: number | null;
+          min_set: number | null;
+          avg_set: string | null;   // numeric(6,2) → string in JS
+          first_set_at: string | null;
+          last_set_at: string | null;
+          finalized_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -255,6 +315,83 @@ export interface Database {
           avatar_url: string | null;
           role: string;
           weekly_amount: number;
+        }[];
+      };
+      // ── Daily Challenge RPCs ───────────────────────────────────────────────
+      get_daily_challenge_status: {
+        Args: { p_exercise_id: string };
+        Returns: {
+          is_active: boolean;
+          challenge_date: string;       // 'YYYY-MM-DD'
+          starts_at: string;            // ISO timestamptz
+          ends_at: string;
+          has_joined: boolean;
+          server_now: string;           // ISO timestamptz
+          seconds_until_start: number;  // integer
+          seconds_until_end: number;    // integer
+        };
+      };
+      join_daily_challenge: {
+        Args: { p_exercise_id: string };
+        Returns: {
+          status?: 'JOINED' | 'ALREADY_JOINED';
+          error?: string;
+          participation_id?: string;
+        };
+      };
+      log_challenge_set: {
+        Args: { p_exercise_id: string; p_repetitions: number };
+        Returns: {
+          status?: 'OK';
+          error?: string;
+          entry_id?: string;
+          total_repetitions?: number;
+          set_count?: number;
+          seconds_remaining?: number;
+          message?: string;
+        };
+      };
+      get_daily_challenge_leaderboard: {
+        Args: { p_exercise_id: string; p_date?: string | null };
+        Returns: {
+          user_id: string;
+          display_name: string;
+          avatar_url: string | null;
+          total_repetitions: number;
+          set_count: number;
+          max_set: number | null;
+          min_set: number | null;
+          average_set: string | null;   // numeric(6,2) → string in JS
+          first_set_at: string | null;
+          last_set_at: string | null;
+          joined_at: string;
+          rank: number;                 // bigint safely fits in number
+          is_me: boolean;
+        }[];
+      };
+      get_my_challenge_sets: {
+        Args: { p_exercise_id: string; p_date?: string | null };
+        Returns: {
+          id: string;
+          repetitions: number;
+          created_at: string;
+        }[];
+      };
+      get_challenge_history: {
+        Args: { p_exercise_id: string; p_limit?: number };
+        Returns: {
+          challenge_date: string;       // 'YYYY-MM-DD'
+          rank: number;
+          participant_count: number;
+          display_name: string;
+          avatar_url: string | null;
+          total_repetitions: number;
+          set_count: number;
+          max_set: number | null;
+          min_set: number | null;
+          avg_set: string | null;       // numeric(6,2) → string in JS
+          first_set_at: string | null;
+          last_set_at: string | null;
         }[];
       };
     };
