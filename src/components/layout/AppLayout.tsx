@@ -9,6 +9,7 @@ import { useDailyRecap } from '@/hooks/useDailyRecap';
 import { ExerciseChip } from '@/components/ExerciseChip';
 import { useExercise } from '@/context/ExerciseContext';
 import { ArenaFeed } from '@/components/ArenaFeed';
+import { DailyChallengeModal } from '@/components/DailyChallengeModal';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -56,7 +57,6 @@ export function AppLayout() {
   const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
   const { enrolledExercises } = useExercise();
   const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats' && pathname !== '/achievements';
-  const centerTitle = !showChip;
   const [recapManualOpen, setRecapManualOpen] = useState(false);
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
@@ -209,27 +209,9 @@ export function AppLayout() {
       {/* Arena Feed */}
       {feedOpen && <ArenaFeed onClose={() => setFeedOpen(false)} />}
 
-      {/* Daily Challenge — TODO: replace with DailyChallengeModal once built */}
+      {/* Daily Challenge Modal */}
       {dailyChallengeOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setDailyChallengeOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
-            <p className="text-center text-base font-bold text-slate-100">Daily Challenge</p>
-            <p className="mt-2 text-center text-sm text-slate-500">Coming soon.</p>
-            <button
-              onClick={() => setDailyChallengeOpen(false)}
-              className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
-            >
-              OK
-            </button>
-          </div>
-        </div>
+        <DailyChallengeModal onClose={() => setDailyChallengeOpen(false)} />
       )}
 
       {/* Daily Recap Modal — auto-show oder manuell */}
