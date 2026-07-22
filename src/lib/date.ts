@@ -73,6 +73,15 @@ export function formatRelativeDay(value: string | Date): string {
   return formatDate(value);
 }
 
+/** Uhrzeit in Europe/Berlin formatieren. Format: "HH:mm" (berücksichtigt Sommer-/Winterzeit). */
+export function formatBerlinTime(value: Date): string {
+  return value.toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Berlin',
+  });
+}
+
 /** Wert für <input type="datetime-local"> (lokale Zeit). */
 export function toDateTimeLocalValue(date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');

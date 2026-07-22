@@ -4,11 +4,12 @@
 // Re-Render des Modal-Baums mehr.
 // Phase 3D: Deine Leistung, Satzliste, Live-Rangliste, Verlauf.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useCountdown } from '@/hooks/useCountdown';
+import { formatBerlinTime } from '@/lib/date';
 import type { DailyChallengeSet } from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
@@ -460,6 +461,253 @@ function PlaceholderCard({ title, subtitle }: { title: string; subtitle?: string
   );
 }
 
+// ── Leistungs-Statistik ────────────────────────────────────────────────────
+
+interface ChallengeStats {
+  totalRepetitions: number;
+  setCount: number;
+  maxSet: number;
+  minSet: number;
+  averageSet: number;
+}
+
+function computeStats(sets: DailyChallengeSet[]): ChallengeStats | null {
+  if (sets.length === 0) return null;
+  const reps = sets.map(s => s.repetitions);
+  const total = reps.reduce((a, b) => a + b, 0);
+  return {
+    totalRepetitions: total,
+    setCount:         sets.length,
+    maxSet:           Math.max(...reps),
+    minSet:           Math.min(...reps),
+    averageSet:       total / sets.length,
+  };
+}
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="tabular-nums text-lg font-bold leading-none text-slate-100">{value}</p>
+      <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+// ── Leistungskarte ─────────────────────────────────────────────────────────
+
+interface PerformanceCardProps {
+  hasJoined: boolean;
+  mySets: DailyChallengeSet[];
+  isLoadingMySets: boolean;
+  setsError: string | null;
+  refreshMySets: () => Promise<void>;
+}
+
+function PerformanceCard({
+  hasJoined,
+  mySets,
+  isLoadingMySets,
+  setsError,
+  refreshMySets,
+}: PerformanceCardProps) {
+  // Statistik nur neu berechnen wenn sich mySets ändert – kein Countdown-Einfluss
+  const stats = useMemo(() => computeStats(mySets), [mySets]);
+
+  if (setsError) {
+    return (
+      <Card>
+        <CardTitle>Deine Leistung</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">
+          Deine Leistung konnte nicht geladen werden.
+        </p>
+        <button
+          onClick={() => void refreshMySets()}
+          className="mt-3 rounded-xl border border-ink-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
+        >
+          Erneut versuchen
+        </button>
+      </Card>
+    );
+  }
+
+  // Skeleton nur beim initialen Laden (kein Flash bei Hintergrund-Refresh)
+  if (isLoadingMySets && mySets.length === 0) {
+    return (
+      <Card>
+        <div className="animate-pulse space-y-3">
+          <div className="h-3.5 w-28 rounded-md bg-ink-700" />
+          <div className="h-8 w-16 rounded-md bg-ink-700" />
+          <div className="h-3 w-40 rounded-md bg-ink-700" />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
+            <div className="h-10 rounded-md bg-ink-700" />
+            <div className="h-10 rounded-md bg-ink-700" />
+            <div className="h-10 rounded-md bg-ink-700" />
+            <div className="h-10 rounded-md bg-ink-700" />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!hasJoined) {
+    return (
+      <Card>
+        <CardTitle>Deine Leistung</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">
+          Nimm heute teil, um deine Challenge-Leistung zu sehen.
+        </p>
+      </Card>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <Card>
+        <CardTitle>Deine Leistung</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">Noch kein Satz eingetragen.</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Deine Statistik erscheint nach deinem ersten Satz.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardTitle>Deine Leistung</CardTitle>
+      {/* Gesamtwiederholungen – prominentester Wert */}
+      <p className="mt-1.5 tabular-nums text-3xl font-bold tracking-tight text-slate-100">
+        {stats.totalRepetitions}
+      </p>
+      <p className="text-xs text-slate-500">Wiederholungen gesamt</p>
+      {/* 2×2-Raster */}
+      <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-ink-800 pt-3.5">
+        <StatCell label="Sätze"          value={String(stats.setCount)} />
+        <StatCell label="Bester Satz"    value={String(stats.maxSet)}   />
+        <StatCell label="Kleinster Satz" value={String(stats.minSet)}   />
+        <StatCell
+          label="Ø pro Satz"
+          value={stats.averageSet.toLocaleString('de-DE', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })}
+        />
+      </div>
+    </Card>
+  );
+}
+
+// ── Satzliste ──────────────────────────────────────────────────────────────
+
+interface MySetsCardProps {
+  hasJoined: boolean;
+  mySets: DailyChallengeSet[];
+  isLoadingMySets: boolean;
+  setsError: string | null;
+  refreshMySets: () => Promise<void>;
+}
+
+function MySetsCard({
+  hasJoined,
+  mySets,
+  isLoadingMySets,
+  setsError,
+  refreshMySets,
+}: MySetsCardProps) {
+  // Neueste Sätze zuerst – stabile Sortierung nach createdAt DESC
+  const sortedSets = useMemo(
+    () => [...mySets].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    [mySets],
+  );
+
+  if (setsError) {
+    return (
+      <Card>
+        <CardTitle>Deine Sätze</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">
+          Deine Sätze konnten nicht geladen werden.
+        </p>
+        <button
+          onClick={() => void refreshMySets()}
+          className="mt-3 rounded-xl border border-ink-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
+        >
+          Erneut versuchen
+        </button>
+      </Card>
+    );
+  }
+
+  // Skeleton nur beim initialen Laden
+  if (isLoadingMySets && mySets.length === 0) {
+    return (
+      <Card>
+        <div className="animate-pulse">
+          <div className="mb-3 h-3.5 w-20 rounded-md bg-ink-700" />
+          {[0, 1, 2].map(i => (
+            <div key={i} className="flex items-center justify-between border-t border-ink-800 py-3">
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-14 rounded-md bg-ink-700" />
+                <div className="h-3 w-20 rounded-md bg-ink-700" />
+              </div>
+              <div className="h-7 w-9 rounded-md bg-ink-700" />
+            </div>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  if (!hasJoined) {
+    return (
+      <Card>
+        <CardTitle>Deine Sätze</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">
+          Nach deiner Teilnahme werden deine Sätze hier angezeigt.
+        </p>
+      </Card>
+    );
+  }
+
+  if (sortedSets.length === 0) {
+    return (
+      <Card>
+        <CardTitle>Deine Sätze</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">Noch kein Satz eingetragen.</p>
+      </Card>
+    );
+  }
+
+  const total = sortedSets.length;
+
+  return (
+    <Card>
+      <CardTitle>Deine Sätze</CardTitle>
+      <ul className="mt-1.5 divide-y divide-ink-800">
+        {sortedSets.map((set, i) => {
+          // Satznummer: neueste = total, älteste = 1
+          const setNumber = total - i;
+          return (
+            <li key={set.id} className="flex items-center justify-between py-2.5">
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Satz {setNumber}</p>
+                <p className="mt-0.5 tabular-nums text-xs text-slate-500">
+                  {formatBerlinTime(set.createdAt)} Uhr
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="tabular-nums text-lg font-bold leading-none text-slate-100">
+                  {set.repetitions}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">Wdh.</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
 // ── Tab-Pill ───────────────────────────────────────────────────────────────
 
 function TabPill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -491,10 +739,13 @@ interface HeuteTabProps {
   onCountdownEnd: () => void;
   isJoining: boolean;
   isLoggingSet: boolean;
+  isLoadingMySets: boolean;
   actionError: string | null;
+  setsError: string | null;
   mySets: DailyChallengeSet[];
   joinChallenge: () => Promise<void>;
   logSet: (reps: number) => Promise<{ ok: boolean; secondsRemaining?: number }>;
+  refreshMySets: () => Promise<void>;
 }
 
 function HeuteTab({
@@ -508,10 +759,13 @@ function HeuteTab({
   onCountdownEnd,
   isJoining,
   isLoggingSet,
+  isLoadingMySets,
   actionError,
+  setsError,
   mySets,
   joinChallenge,
   logSet,
+  refreshMySets,
 }: HeuteTabProps) {
   // actionError aus joinChallenge soll nicht in SatzEingabeCard erscheinen.
   // SatzEingabeCard verwendet intern hasTried-Guard — hier wird die gleiche
@@ -555,17 +809,23 @@ function HeuteTab({
         </>
       )}
 
-      <PlaceholderCard
-        title="Deine Leistung"
-        subtitle="Gesamtwiederholungen, Satzanzahl und bester Satz des heutigen Tages."
+      <PerformanceCard
+        hasJoined={hasJoined}
+        mySets={mySets}
+        isLoadingMySets={isLoadingMySets}
+        setsError={setsError}
+        refreshMySets={refreshMySets}
       />
       <PlaceholderCard
         title="Live-Rangliste"
         subtitle="Echtzeit-Rangliste aller Teilnehmer von heute."
       />
-      <PlaceholderCard
-        title="Deine Satze"
-        subtitle="Alle heute gespeicherten Satze mit Uhrzeit und Wiederholungen."
+      <MySetsCard
+        hasJoined={hasJoined}
+        mySets={mySets}
+        isLoadingMySets={isLoadingMySets}
+        setsError={setsError}
+        refreshMySets={refreshMySets}
       />
     </div>
   );
@@ -599,11 +859,14 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     serverNow,
     isJoining,
     isLoggingSet,
+    isLoadingMySets,
     actionError,
+    setsError,
     mySets,
     joinChallenge,
     logSet,
     refreshStatus,
+    refreshMySets,
   } = useDailyChallenge();
 
   const [activeTab, setActiveTab] = useState<Tab>('heute');
@@ -662,10 +925,13 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             onCountdownEnd={() => void refreshStatus()}
             isJoining={isJoining}
             isLoggingSet={isLoggingSet}
+            isLoadingMySets={isLoadingMySets}
             actionError={actionError}
+            setsError={setsError}
             mySets={mySets}
             joinChallenge={joinChallenge}
             logSet={logSet}
+            refreshMySets={refreshMySets}
           />
         ) : (
           <VerlaufTab />
