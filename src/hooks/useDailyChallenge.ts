@@ -90,6 +90,8 @@ export function useDailyChallenge() {
   // Schutz vor Doppelklick-Races
   const isLoadingDayRef           = useRef(false);
   const isLoadingParticipantRef   = useRef(false);
+  // Realtime-Event-Debounce: verhindert N parallele Refreshes bei N schnellen INSERTs
+  const realtimeDebounceRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const isActive      = status?.isActive  ?? false;
@@ -410,8 +412,14 @@ export function useDailyChallenge() {
           filter: `exercise_id=eq.${exerciseId}`,
         },
         () => {
-          void refreshLeaderboard();
-          void refreshMySets();
+          // Debounce: bei mehreren schnellen INSERTs in Folge nur einmal refreshen.
+          // Ohne Debounce würden N Events → N parallele Requests auslösen.
+          if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+          realtimeDebounceRef.current = setTimeout(() => {
+            realtimeDebounceRef.current = null;
+            void refreshLeaderboard();
+            void refreshMySets();
+          }, 300);
         }
       )
       .subscribe();
@@ -419,6 +427,12 @@ export function useDailyChallenge() {
     channelRef.current = channel;
 
     return () => {
+      // Pending debounce-Timer abbrechen, damit kein veralteter Refresh nach
+      // Unmount oder Channel-Neuaufbau ausgeführt wird.
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+        realtimeDebounceRef.current = null;
+      }
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };

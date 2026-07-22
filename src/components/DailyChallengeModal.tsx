@@ -13,7 +13,13 @@ import { formatBerlinTime } from '@/lib/date';
 import { LeaderboardCard } from '@/components/DailyChallengeLeaderboard';
 import { HistoryList } from '@/components/DailyChallengeHistory';
 import { HistoryDayView, HistoryParticipantView } from '@/components/DailyChallengeHistoryDetail';
-import type { DailyChallengeHistoryDay, DailyChallengeLeaderboardEntry, DailyChallengeSet } from '@/lib/dailyChallenge.types';
+import type {
+  DailyChallengeHistoryDay,
+  DailyChallengeLeaderboardEntry,
+  DailyChallengeSet,
+  DailyChallengeDayDetails,
+  DailyChallengeParticipantDetails,
+} from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 
@@ -840,18 +846,17 @@ type HistoryView = 'list' | 'day' | 'participant';
 interface VerlaufTabProps {
   historyView: HistoryView;
   selectedChallengeDate: string | null;
-  selectedParticipantId: string | null;
   // Verlaufsliste
   history: DailyChallengeHistoryDay[];
   isLoadingHistory: boolean;
   historyError: string | null;
   refreshHistory: () => Promise<void>;
   // Tagesdetail
-  dayDetails: import('@/lib/dailyChallenge.types').DailyChallengeDayDetails | null;
+  dayDetails: DailyChallengeDayDetails | null;
   isLoadingDayDetails: boolean;
   dayDetailsError: string | null;
   // Teilnehmerdetail
-  participantDetails: import('@/lib/dailyChallenge.types').DailyChallengeParticipantDetails | null;
+  participantDetails: DailyChallengeParticipantDetails | null;
   isLoadingParticipantDetails: boolean;
   participantDetailsError: string | null;
   // Navigation-Handler
@@ -1015,6 +1020,11 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // Stabiler Callback für den Countdown-End-Handler:
+  // Inline-Arrow würde bei jedem Modal-Re-Render eine neue Referenz erzeugen
+  // und den useEffect in useCountdown unnötig neu auslösen.
+  const handleCountdownEnd = useCallback(() => { void refreshStatus(); }, [refreshStatus]);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -1066,7 +1076,7 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             startsAt={startsAt}
             endsAt={endsAt}
             serverNow={serverNow}
-            onCountdownEnd={() => void refreshStatus()}
+            onCountdownEnd={handleCountdownEnd}
             isJoining={isJoining}
             isLoggingSet={isLoggingSet}
             isLoadingMySets={isLoadingMySets}
@@ -1085,7 +1095,6 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
           <VerlaufTab
             historyView={historyView}
             selectedChallengeDate={selectedChallengeDate}
-            selectedParticipantId={selectedParticipantId}
             history={history}
             isLoadingHistory={isLoadingHistory}
             historyError={historyError}
