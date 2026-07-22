@@ -81,6 +81,7 @@ export function useDailyChallenge() {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const isLoggingRef              = useRef(false);   // parallele logSet-Aufrufe verhindern
+  const isJoiningRef              = useRef(false);   // parallele joinChallenge-Aufrufe verhindern
   const currentChallengeDateRef   = useRef<string | null>(null);
   const channelRef                = useRef<RealtimeChannel | null>(null);
   const hiddenAtRef               = useRef<number | null>(null);
@@ -306,6 +307,8 @@ export function useDailyChallenge() {
   // ── joinChallenge ─────────────────────────────────────────────────────────
   const joinChallenge = useCallback(async () => {
     if (!exerciseId || !user) return;
+    if (isJoiningRef.current) return;
+    isJoiningRef.current = true;
     setIsJoining(true);
     setActionError(null);
     try {
@@ -329,6 +332,7 @@ export function useDailyChallenge() {
       setActionError(msg);
       toast.error(msg);
     } finally {
+      isJoiningRef.current = false;
       setIsJoining(false);
     }
   }, [exerciseId, user, refreshStatus, refreshLeaderboard, toast]);

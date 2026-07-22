@@ -197,6 +197,12 @@ function TeilnahmeCard({
         <div
           className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setConfirmOpen(false)}
+          onKeyDown={e => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              setConfirmOpen(false);
+            }
+          }}
         >
           <div
             className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
@@ -284,7 +290,7 @@ function SatzEingabeCard({
   // Cooldown aus mySets ableiten (Initialzustand + nach neuem Satz)
   useEffect(() => {
     if (mySets.length === 0) return;
-    const last = mySets[mySets.length - 1];
+    const last = mySets[0]; // index 0 = neuester Satz (RPC liefert DESC)
     const endsAt = last.createdAt.getTime() + 30_000;
     if (endsAt > Date.now()) {
       setCooldownEndsAt(endsAt);
