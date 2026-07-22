@@ -218,9 +218,11 @@ export function useDailyChallenge() {
   }, [exerciseId, user, refreshStatus, refreshLeaderboard, toast]);
 
   // ── logSet ────────────────────────────────────────────────────────────────
-  const logSet = useCallback(async (repetitions: number) => {
-    if (!exerciseId || !user) return;
-    if (isLoggingRef.current) return; // parallele Aufrufe blockieren
+  // Gibt { ok: true } bei Erfolg zurück, { ok: false, secondsRemaining? } bei Fehler.
+  // Die Komponente nutzt ok um den Cooldown zu starten und die Erfolgsmeldung zu zeigen.
+  const logSet = useCallback(async (repetitions: number): Promise<{ ok: boolean; secondsRemaining?: number }> => {
+    if (!exerciseId || !user) return { ok: false };
+    if (isLoggingRef.current) return { ok: false }; // parallele Aufrufe blockieren
     isLoggingRef.current = true;
     setIsLoggingSet(true);
     setActionError(null);
@@ -233,22 +235,25 @@ export function useDailyChallenge() {
       if (data?.error) {
         const code = data.error as string;
         let msg = DC_ERROR_MESSAGES[code] ?? DC_ERROR_MESSAGES.UNKNOWN;
-        // Cooldown: verbleibende Sekunden in der Fehlermeldung anzeigen
+        let secondsRemaining: number | undefined;
         if (code === 'COOLDOWN_ACTIVE' && data.seconds_remaining != null) {
+          secondsRemaining = data.seconds_remaining;
           msg = `Noch ${data.seconds_remaining}s warten.`;
         }
         setActionError(msg);
         toast.error(msg);
-        return;
+        return { ok: false, secondsRemaining };
       }
       // Erfolg
       const total = data?.total_repetitions ?? '–';
       toast.success(`+${repetitions} Wdh. gespeichert! Gesamt heute: ${total}`);
       await Promise.all([refreshLeaderboard(), refreshMySets()]);
+      return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
       setActionError(msg);
       toast.error(msg);
+      return { ok: false };
     } finally {
       isLoggingRef.current = false;
       setIsLoggingSet(false);
