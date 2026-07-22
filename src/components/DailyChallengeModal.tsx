@@ -11,7 +11,8 @@ import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useCountdown } from '@/hooks/useCountdown';
 import { formatBerlinTime } from '@/lib/date';
 import { LeaderboardCard } from '@/components/DailyChallengeLeaderboard';
-import type { DailyChallengeLeaderboardEntry, DailyChallengeSet } from '@/lib/dailyChallenge.types';
+import { HistoryList } from '@/components/DailyChallengeHistory';
+import type { DailyChallengeHistoryDay, DailyChallengeLeaderboardEntry, DailyChallengeSet } from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 
@@ -833,13 +834,21 @@ function HeuteTab({
 
 // ── Verlauf-Tab ────────────────────────────────────────────────────────────
 
-function VerlaufTab() {
+interface VerlaufTabProps {
+  history: DailyChallengeHistoryDay[];
+  isLoadingHistory: boolean;
+  historyError: string | null;
+  refreshHistory: () => Promise<void>;
+}
+
+function VerlaufTab({ history, isLoadingHistory, historyError, refreshHistory }: VerlaufTabProps) {
   return (
-    <div className="flex flex-col gap-3">
-      <Card>
-        <p className="text-sm text-slate-500">Der Challenge-Verlauf wird hier angezeigt.</p>
-      </Card>
-    </div>
+    <HistoryList
+      history={history}
+      isLoadingHistory={isLoadingHistory}
+      historyError={historyError}
+      refreshHistory={refreshHistory}
+    />
   );
 }
 
@@ -866,14 +875,28 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     actionError,
     setsError,
     leaderboardError,
+    history,
+    isLoadingHistory,
+    historyError,
     joinChallenge,
     logSet,
     refreshStatus,
     refreshMySets,
     refreshLeaderboard,
+    refreshHistory,
   } = useDailyChallenge();
 
   const [activeTab, setActiveTab] = useState<Tab>('heute');
+
+  // Lazy History-Loading: einmalig beim ersten Wechsel zum Verlauf-Tab.
+  // Ref statt State, damit der Effekt keinen Re-Render auslöst.
+  const hasRequestedHistoryRef = useRef(false);
+  useEffect(() => {
+    if (activeTab !== 'verlauf') return;
+    if (hasRequestedHistoryRef.current) return;
+    hasRequestedHistoryRef.current = true;
+    void refreshHistory();
+  }, [activeTab, refreshHistory]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -942,7 +965,12 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             refreshLeaderboard={refreshLeaderboard}
           />
         ) : (
-          <VerlaufTab />
+          <VerlaufTab
+            history={history}
+            isLoadingHistory={isLoadingHistory}
+            historyError={historyError}
+            refreshHistory={refreshHistory}
+          />
         )}
       </div>
     </div>
