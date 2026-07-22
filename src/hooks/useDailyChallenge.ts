@@ -3,8 +3,11 @@
 // Architektur-Entscheidungen:
 //  • Kein React Query — analog zu useLeaderboard / useWorkoutLogger
 //  • Übung kommt aus ExerciseContext (aktuelle Übung des Users)
-//  • Countdown läuft lokal, wird bei Tagesgrenze (05:00 / 00:00) mit dem
-//    Server re-synchronisiert (via refreshStatus)
+//  • Countdown isoliert in DailyChallengeCountdown (useCountdown-Hook);
+//    dieser Hook enthält kein eigenes setInterval mehr → kein sekündlicher
+//    Re-Render des gesamten Modals
+//  • Status wird bei Tagesgrenze via onEnd-Callback aus useCountdown
+//    still im Hintergrund aktualisiert (kein Skeleton-Flash)
 //  • Realtime-Subscription (INSERT auf daily_challenge_entries) → Rangliste
 //    + Sätze neu laden. Benötigt: ALTER PUBLICATION supabase_realtime ADD
 //    TABLE daily_challenge_entries; (TODO Phase 4 falls noch nicht gesetzt)
@@ -61,19 +64,11 @@ export function useDailyChallenge() {
   const [isLoggingSet, setIsLoggingSet]           = useState(false);
   const [actionError, setActionError]             = useState<string | null>(null);
 
-  // ── Countdown (lokal getaktet, per Status-Load re-synchronisiert) ─────────
-  const [secondsUntilStart, setSecondsUntilStart] = useState(0);
-  const [secondsUntilEnd, setSecondsUntilEnd]     = useState(0);
-
   // ── Refs ──────────────────────────────────────────────────────────────────
   const isLoggingRef              = useRef(false);   // parallele logSet-Aufrufe verhindern
   const currentChallengeDateRef   = useRef<string | null>(null);
-  const countdownTimerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef                = useRef<RealtimeChannel | null>(null);
   const hiddenAtRef               = useRef<number | null>(null);
-
-  // Stable ref auf refreshStatus (für Countdown-Closures)
-  const refreshStatusRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const isActive      = status?.isActive  ?? false;
@@ -106,8 +101,6 @@ export function useDailyChallenge() {
       currentChallengeDateRef.current = mapped.challengeDate;
 
       setStatus(mapped);
-      setSecondsUntilStart(mapped.secondsUntilStart);
-      setSecondsUntilEnd(mapped.secondsUntilEnd);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Status konnte nicht geladen werden.';
       setStatusError(msg);
@@ -115,11 +108,6 @@ export function useDailyChallenge() {
       setIsLoadingStatus(false);
     }
   }, [exerciseId, user]);
-
-  // Ref aktuell halten (für Countdown-Timer-Closures, die keinen Stale-State sehen dürfen)
-  useEffect(() => {
-    refreshStatusRef.current = refreshStatus;
-  }, [refreshStatus]);
 
   // ── refreshLeaderboard ────────────────────────────────────────────────────
   const refreshLeaderboard = useCallback(async () => {
@@ -274,33 +262,6 @@ export function useDailyChallenge() {
     if (hasJoined) void refreshMySets();
   }, [challengeDate, hasJoined, user, refreshLeaderboard, refreshMySets]);
 
-  // Countdown-Ticker: lokal runterzählen, bei 0 Status neu laden
-  useEffect(() => {
-    if (countdownTimerRef.current !== null) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-    if (!status) return;
-
-    countdownTimerRef.current = setInterval(() => {
-      setSecondsUntilStart(s => {
-        if (s <= 1) { void refreshStatusRef.current(); return 0; }
-        return s - 1;
-      });
-      setSecondsUntilEnd(e => {
-        if (e <= 1) { void refreshStatusRef.current(); return 0; }
-        return e - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (countdownTimerRef.current !== null) {
-        clearInterval(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-    };
-  }, [status]); // status als Dependency: bei neuem Status Seed-Werte neu setzen
-
   // Realtime-Subscription auf daily_challenge_entries (INSERT)
   // → Rangliste + Sätze automatisch aktuell halten wenn Challenge läuft
   // Voraussetzung: ALTER PUBLICATION supabase_realtime ADD TABLE daily_challenge_entries;
@@ -364,8 +325,6 @@ export function useDailyChallenge() {
     startsAt:  status?.startsAt  ?? null,
     endsAt:    status?.endsAt    ?? null,
     serverNow: status?.serverNow ?? null,
-    secondsUntilStart,
-    secondsUntilEnd,
 
     // Daten
     leaderboard,

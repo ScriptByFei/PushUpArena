@@ -1,11 +1,14 @@
-// DailyChallengeModal – Phase 3C: Satzeingabe + Cooldown.
+// DailyChallengeModal – Phase 3C+: Satzeingabe + Cooldown + isolierter Countdown.
 // Hook-Instanz: einmal in DailyChallengeModal, Daten als Props weiter.
+// Countdown in eigener DailyChallengeCountdown-Komponente → kein sekündlicher
+// Re-Render des Modal-Baums mehr.
 // Phase 3D: Deine Leistung, Satzliste, Live-Rangliste, Verlauf.
 
 import { useEffect, useRef, useState } from 'react';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
+import { useCountdown } from '@/hooks/useCountdown';
 import type { DailyChallengeSet } from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
@@ -16,6 +19,27 @@ function formatCountdown(totalSeconds: number): string {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   return [h, m, sec].map(n => String(n).padStart(2, '0')).join(':');
+}
+
+// ── Isolierter Countdown ───────────────────────────────────────────────────
+// Nur diese Komponente löst jede Sekunde einen Re-Render aus.
+// Alle Geschwister (TeilnahmeCard, SatzEingabeCard, …) bleiben stabil.
+
+function DailyChallengeCountdown({
+  targetTime,
+  serverNow,
+  onEnd,
+}: {
+  targetTime: Date | null;
+  serverNow: Date | null;
+  onEnd?: () => void;
+}) {
+  const seconds = useCountdown(targetTime, serverNow, onEnd);
+  return (
+    <p className="mt-1.5 font-mono tabular-nums text-3xl font-bold tracking-tight text-slate-100">
+      {formatCountdown(seconds)}
+    </p>
+  );
 }
 
 /** Frontend-Validierung der Wiederholungszahl; gibt Fehlermeldung oder null zurück. */
@@ -61,20 +85,26 @@ function CardSkeleton() {
 
 function StatusCard({
   isActive,
-  secondsUntilStart,
-  secondsUntilEnd,
+  startsAt,
+  endsAt,
+  serverNow,
+  onCountdownEnd,
 }: {
   isActive: boolean;
-  secondsUntilStart: number;
-  secondsUntilEnd: number;
+  startsAt: Date | null;
+  endsAt: Date | null;
+  serverNow: Date | null;
+  onCountdownEnd: () => void;
 }) {
-  const countdown = isActive ? secondsUntilEnd : secondsUntilStart;
+  const targetTime = isActive ? endsAt : startsAt;
   return (
     <Card>
       <CardTitle>{isActive ? 'Challenge läuft' : 'Challenge pausiert'}</CardTitle>
-      <p className="mt-1.5 font-mono text-3xl font-bold tracking-tight text-slate-100">
-        {formatCountdown(countdown)}
-      </p>
+      <DailyChallengeCountdown
+        targetTime={targetTime}
+        serverNow={serverNow}
+        onEnd={onCountdownEnd}
+      />
       <p className="mt-1.5 text-xs text-slate-500">
         {isActive
           ? 'Täglich von 05:00 bis 00:00 Uhr'
@@ -450,12 +480,15 @@ function TabPill({ label, active, onClick }: { label: string; active: boolean; o
 // ── Heute-Tab ──────────────────────────────────────────────────────────────
 
 interface HeuteTabProps {
+  // hasStatus = false solange der initiale Statusabruf noch läuft (status === null)
+  hasStatus: boolean;
   isActive: boolean;
   hasJoined: boolean;
   challengeDate: string | null;
-  isLoadingStatus: boolean;
-  secondsUntilStart: number;
-  secondsUntilEnd: number;
+  startsAt: Date | null;
+  endsAt: Date | null;
+  serverNow: Date | null;
+  onCountdownEnd: () => void;
   isJoining: boolean;
   isLoggingSet: boolean;
   actionError: string | null;
@@ -465,12 +498,14 @@ interface HeuteTabProps {
 }
 
 function HeuteTab({
+  hasStatus,
   isActive,
   hasJoined,
   challengeDate,
-  isLoadingStatus,
-  secondsUntilStart,
-  secondsUntilEnd,
+  startsAt,
+  endsAt,
+  serverNow,
+  onCountdownEnd,
   isJoining,
   isLoggingSet,
   actionError,
@@ -481,9 +516,13 @@ function HeuteTab({
   // actionError aus joinChallenge soll nicht in SatzEingabeCard erscheinen.
   // SatzEingabeCard verwendet intern hasTried-Guard — hier wird die gleiche
   // actionError-Referenz weitergegeben; die Karte filtert selbst.
+  //
+  // Skeleton nur beim initialen Laden (hasStatus = false).
+  // Hintergrund-Refreshes (onCountdownEnd) aktualisieren status still →
+  // kein Skeleton-Flash, kein Unmount von TeilnahmeCard.
   return (
     <div className="flex flex-col gap-3">
-      {isLoadingStatus ? (
+      {!hasStatus ? (
         <>
           <CardSkeleton />
           <CardSkeleton />
@@ -492,8 +531,10 @@ function HeuteTab({
         <>
           <StatusCard
             isActive={isActive}
-            secondsUntilStart={secondsUntilStart}
-            secondsUntilEnd={secondsUntilEnd}
+            startsAt={startsAt}
+            endsAt={endsAt}
+            serverNow={serverNow}
+            onCountdownEnd={onCountdownEnd}
           />
           <TeilnahmeCard
             isActive={isActive}
@@ -546,19 +587,23 @@ function VerlaufTab() {
 
 export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
   // Einzige Hook-Instanz — alle Kinder erhalten Daten als Props.
+  // Kein secondsUntilStart/End hier: Countdown läuft isoliert in
+  // DailyChallengeCountdown und löst keinen Modal-Re-Render aus.
   const {
+    status,
     isActive,
     hasJoined,
     challengeDate,
-    isLoadingStatus,
-    secondsUntilStart,
-    secondsUntilEnd,
+    startsAt,
+    endsAt,
+    serverNow,
     isJoining,
     isLoggingSet,
     actionError,
     mySets,
     joinChallenge,
     logSet,
+    refreshStatus,
   } = useDailyChallenge();
 
   const [activeTab, setActiveTab] = useState<Tab>('heute');
@@ -607,12 +652,14 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
       >
         {activeTab === 'heute' ? (
           <HeuteTab
+            hasStatus={status !== null}
             isActive={isActive}
             hasJoined={hasJoined}
             challengeDate={challengeDate}
-            isLoadingStatus={isLoadingStatus}
-            secondsUntilStart={secondsUntilStart}
-            secondsUntilEnd={secondsUntilEnd}
+            startsAt={startsAt}
+            endsAt={endsAt}
+            serverNow={serverNow}
+            onCountdownEnd={() => void refreshStatus()}
             isJoining={isJoining}
             isLoggingSet={isLoggingSet}
             actionError={actionError}
