@@ -422,7 +422,9 @@ export function useDailyChallenge() {
           realtimeDebounceRef.current = setTimeout(() => {
             realtimeDebounceRef.current = null;
             void refreshLeaderboard();
-            void refreshMySets();
+            // refreshMySets() wird NICHT hier aufgerufen:
+            // – Bei eigenen Inserts: logSet() ruft refreshMySets() bereits direkt auf.
+            // – Bei fremden Inserts: mySets des aktuellen Nutzers ändert sich nicht.
           }, 300);
         }
       )
@@ -440,7 +442,7 @@ export function useDailyChallenge() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [isActive, hasJoined, exerciseId, challengeDate, refreshLeaderboard, refreshMySets]);
+  }, [isActive, hasJoined, exerciseId, challengeDate, refreshLeaderboard]);
 
   // Sichtbarkeits-Änderung: nach langer Pause Status neu laden
   useEffect(() => {

@@ -616,11 +616,7 @@ function MySetsCard({
   setsError,
   refreshMySets,
 }: MySetsCardProps) {
-  // Neueste Sätze zuerst – stabile Sortierung nach createdAt DESC
-  const sortedSets = useMemo(
-    () => [...mySets].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
-    [mySets],
-  );
+  // RPC liefert Sätze bereits ORDER BY created_at DESC – keine eigene Sortierung nötig.
 
   if (setsError) {
     return (
@@ -670,7 +666,7 @@ function MySetsCard({
     );
   }
 
-  if (sortedSets.length === 0) {
+  if (mySets.length === 0) {
     return (
       <Card>
         <CardTitle>Deine Sätze</CardTitle>
@@ -679,13 +675,13 @@ function MySetsCard({
     );
   }
 
-  const total = sortedSets.length;
+  const total = mySets.length;
 
   return (
     <Card>
       <CardTitle>Deine Sätze</CardTitle>
       <ul className="mt-1.5 divide-y divide-ink-800">
-        {sortedSets.map((set, i) => {
+        {mySets.map((set, i) => {
           // Satznummer: neueste = total, älteste = 1
           const setNumber = total - i;
           return (
