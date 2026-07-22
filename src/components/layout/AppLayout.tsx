@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
@@ -26,6 +27,12 @@ const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 // Swipe-Reihenfolge = Bottom-Nav-Reihenfolge
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
 
+const pageVariants = {
+  enter: (dir: number) => ({ x: dir >= 0 ? '100%' : '-100%' }),
+  center: { x: 0 },
+  exit: (dir: number) => ({ x: dir >= 0 ? '-100%' : '100%' }),
+};
+
 export function AppLayout() {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? 'PushupArena';
@@ -35,6 +42,17 @@ export function AppLayout() {
   const hiddenAtRef = useRef<number | null>(null);
   const swipeStartX = useRef<number | null>(null);
   const swipeStartY = useRef<number | null>(null);
+  const swipeDirection = useRef<number>(1);
+  const prevPathname = useRef(pathname);
+
+  useEffect(() => {
+    const prevIdx = SWIPE_ROUTES.indexOf(prevPathname.current);
+    const currIdx = SWIPE_ROUTES.indexOf(pathname);
+    if (prevIdx !== -1 && currIdx !== -1) {
+      swipeDirection.current = currIdx >= prevIdx ? 1 : -1;
+    }
+    prevPathname.current = pathname;
+  }, [pathname]);
   const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
   const { enrolledExercises } = useExercise();
   const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats' && pathname !== '/achievements';
@@ -164,11 +182,24 @@ export function AppLayout() {
       </header>
 
       <main
-        className="flex-1 px-4 pb-32 pt-3"
+        className="relative flex-1 overflow-hidden"
         onTouchStart={handleSwipeStart}
         onTouchEnd={handleSwipeEnd}
       >
-        <Outlet />
+        <AnimatePresence initial={false} custom={swipeDirection.current} mode="popLayout">
+          <motion.div
+            key={pathname}
+            custom={swipeDirection.current}
+            variants={pageVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: 'spring', stiffness: 350, damping: 35, mass: 0.8 }}
+            className="absolute inset-0 overflow-y-auto px-4 pb-32 pt-3"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <BottomNav />
