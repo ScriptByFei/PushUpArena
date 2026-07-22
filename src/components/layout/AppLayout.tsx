@@ -82,6 +82,8 @@ export function AppLayout() {
   }, [navigate]);
 
   const handleSwipeStart = (e: React.TouchEvent) => {
+    const noSwipe = (e.target as Element).closest('[data-no-swipe]');
+    if (noSwipe) return;
     swipeStartX.current = e.touches[0].clientX;
     swipeStartY.current = e.touches[0].clientY;
   };

@@ -454,7 +454,7 @@ export default function Friends() {
               </button>
             )}
           </div>
-          <div className={`flex gap-3 ${showAllDiscover ? 'flex-wrap' : 'overflow-x-auto pb-2'}`}>
+          <div data-no-swipe="true" className={`flex gap-3 ${showAllDiscover ? 'flex-wrap' : 'overflow-x-auto pb-2'}`}>
             {shownDiscover.map(u => {
               const outReq = outgoing.find(o => o.receiver.id === u.id);
               return (
