@@ -444,7 +444,17 @@ export function useDailyChallenge() {
     };
   }, [isActive, hasJoined, exerciseId, challengeDate, refreshLeaderboard]);
 
-  // Sichtbarkeits-Änderung: nach langer Pause Status neu laden
+  // Sichtbarkeits-Änderung: Status neu laden nach langer Pause ODER Tageswechsel.
+  //
+  // Problem ohne Tageswechsel-Erkennung:
+  //   App wird z. B. um 23:58 versteckt und um 00:02 wieder sichtbar (4 Min).
+  //   Der 5-Minuten-Throttle würde keinen Refresh auslösen. Das Countdown-
+  //   setInterval ist auf iOS Safari im Hintergrund stark gedrosselt und hat
+  //   onEnd ggf. noch nicht gefeuert. UI zeigt fälschlich noch "Challenge läuft".
+  //
+  // Fix: Berliner Datum lokal berechnen (Intl, DST-korrekt) und mit dem zuletzt
+  // gespeicherten challengeDate vergleichen. Abweichung = Tageswechsel →
+  // sofortiger Refresh, unabhängig vom Throttle.
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {
@@ -452,7 +462,20 @@ export function useDailyChallenge() {
       } else if (document.visibilityState === 'visible') {
         const hiddenAt = hiddenAtRef.current;
         hiddenAtRef.current = null;
-        if (hiddenAt !== null && Date.now() - hiddenAt > VISIBILITY_REFETCH_MS) {
+        if (hiddenAt === null) return;
+
+        const hiddenTooLong = Date.now() - hiddenAt > VISIBILITY_REFETCH_MS;
+
+        // Berliner Datum lokal schätzen (sv-SE liefert YYYY-MM-DD).
+        // Dient nur als Indikator für Tageswechsel — Serverzeit bleibt maßgeblich.
+        const berlinDateNow = new Date().toLocaleDateString('sv-SE', {
+          timeZone: 'Europe/Berlin',
+        });
+        const dayChanged =
+          currentChallengeDateRef.current !== null &&
+          currentChallengeDateRef.current !== berlinDateNow;
+
+        if (hiddenTooLong || dayChanged) {
           void refreshStatus();
         }
       }
