@@ -4,7 +4,7 @@
 // Re-Render des Modal-Baums mehr.
 // Phase 3D: Deine Leistung, Satzliste, Live-Rangliste, Verlauf.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -195,6 +195,9 @@ function TeilnahmeCard({
 
       {confirmOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-join-title"
           className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setConfirmOpen(false)}
           onKeyDown={e => {
@@ -209,7 +212,7 @@ function TeilnahmeCard({
             onClick={e => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
-            <p className="text-center text-base font-bold text-slate-100">Daily Challenge starten?</p>
+            <p id="confirm-join-title" className="text-center text-base font-bold text-slate-100">Daily Challenge starten?</p>
             <p className="mt-2 mb-6 text-center text-sm text-slate-400">
               Nach der Teilnahme werden deine Sätze dauerhaft für den heutigen Challenge-Tag gespeichert.
             </p>
@@ -425,7 +428,7 @@ function SatzEingabeCard({
           placeholder="z. B. 25"
           aria-describedby={hasError ? 'reps-error' : undefined}
           aria-invalid={hasError || undefined}
-          className="input disabled:opacity-50"
+          className="input-base disabled:opacity-50"
         />
 
         {/* Validierungs- oder Serverfehler */}
@@ -708,9 +711,19 @@ function MySetsCard({
 
 // ── Tab-Pill ───────────────────────────────────────────────────────────────
 
-function TabPill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function TabPill({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
       className={`mb-3 rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
         active
@@ -1052,13 +1065,13 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-extrabold text-slate-100">Daily Challenge</h2>
           <button
             onClick={onClose}
-            className="rounded-xl p-1.5 text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
+            className="rounded-xl p-2 text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
             aria-label="Schließen"
           >
             <CloseIcon />
           </button>
         </div>
-        <div className="flex gap-1">
+        <div role="tablist" aria-label="Challenge-Ansicht" className="flex gap-1">
           <TabPill label="Heute"   active={activeTab === 'heute'}   onClick={() => setActiveTab('heute')}   />
           <TabPill label="Verlauf" active={activeTab === 'verlauf'} onClick={() => setActiveTab('verlauf')} />
         </div>

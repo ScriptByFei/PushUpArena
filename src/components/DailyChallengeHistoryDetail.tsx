@@ -452,25 +452,32 @@ export function HistoryParticipantView({
               </div>
             </div>
 
-            {/* Stats-Raster */}
+            {/* Stats-Raster: Zahlen 3-spaltig, Uhrzeiten 2-spaltig um Overflow zu vermeiden */}
             <div className="mt-4 grid grid-cols-3 gap-x-4 gap-y-3">
-              <StatCell label="Wdh. gesamt"  value={participant.totalRepetitions} />
-              <StatCell label="Sätze"         value={participant.setCount} />
-              <StatCell label="Bester Satz"   value={participant.maxSet} />
+              <StatCell label="Wdh. gesamt"   value={participant.totalRepetitions} />
+              <StatCell label="Sätze"          value={participant.setCount} />
+              <StatCell label="Bester Satz"    value={participant.maxSet} />
               <StatCell label="Kleinster Satz" value={participant.minSet} />
               <StatCell
                 label="Ø Satz"
                 value={participant.avgSet != null ? participant.avgSet.toFixed(1) : null}
               />
-              <StatCell
-                label="Erster Satz"
-                value={participant.firstSetAt ? `${formatBerlinTime(participant.firstSetAt)} Uhr` : null}
-              />
             </div>
-            {participant.lastSetAt && (
-              <p className="mt-3 text-xs text-slate-600">
-                Letzter Satz: {formatBerlinTime(participant.lastSetAt)} Uhr
-              </p>
+            {(participant.firstSetAt || participant.lastSetAt) && (
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-ink-800 pt-3">
+                {participant.firstSetAt && (
+                  <StatCell
+                    label="Erster Satz"
+                    value={`${formatBerlinTime(participant.firstSetAt)} Uhr`}
+                  />
+                )}
+                {participant.lastSetAt && (
+                  <StatCell
+                    label="Letzter Satz"
+                    value={`${formatBerlinTime(participant.lastSetAt)} Uhr`}
+                  />
+                )}
+              </div>
             )}
           </Card>
 
