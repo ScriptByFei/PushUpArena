@@ -118,8 +118,15 @@ export function AppLayout() {
 
   return (
     <div
-      className="mx-auto flex min-h-screen max-w-md flex-col"
-      style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}
+      className="mx-auto flex h-full max-w-md flex-col"
+      style={{
+        touchAction: 'pan-y',
+        overscrollBehavior: 'none',
+        /* Safe-area insets — previously on body, now here so the body can be
+           position:fixed (which prevents the iOS back-swipe entirely). */
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header

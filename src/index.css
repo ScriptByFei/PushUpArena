@@ -7,27 +7,36 @@
     color-scheme: dark;
   }
 
-  html,
-  body,
-  #root {
+  html {
     height: 100%;
     width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    overscroll-behavior-x: none;
-    /* Prevents iOS WebKit from allowing horizontal rubber-band drag.
-       Individual components that need horizontal scroll (e.g. discover cards)
-       override with touch-action: pan-x pan-y on their own element. */
+    overflow: hidden;
+    overscroll-behavior: none;
     touch-action: pan-y;
   }
 
   body {
+    /* position:fixed + inset:0 is the most reliable technique for preventing
+       the iOS rubber-band / system back-swipe in a PWA.  The body becomes a
+       fixed, viewport-sized box that the OS cannot scroll.  All actual page
+       scrolling happens in the overflow-y-auto motion.div inside AppLayout.  */
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: pan-y;
     @apply bg-ink-950 text-slate-100 antialiased;
     font-feature-settings: 'cv11', 'ss01';
-    /* Safe-Area für PWA / Notch */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
-    position: relative;
     margin: 0;
+    /* Safe-area padding removed from body — handled by AppLayout container */
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: pan-y;
   }
 
   * {
