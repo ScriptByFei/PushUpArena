@@ -81,7 +81,7 @@ function DrawerNavItem({
     <button
       onClick={() => {
         onClose();
-        if (!active) navigate(to);
+        if (!active) navigate(to, { replace: true });
       }}
       className={
         'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ' +
@@ -236,7 +236,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
 
   const handleProfileClick = useCallback(() => {
     onClose();
-    if (pathname !== '/profile') navigate('/profile');
+    if (pathname !== '/profile') navigate('/profile', { replace: true });
   }, [onClose, navigate, pathname]);
 
   const displayName = profile?.display_name ?? profile?.username ?? 'Profil';

@@ -23,6 +23,7 @@ function SideItem({ to, label, Icon }: NavItem) {
     <NavLink
       to={to}
       end={to === '/'}
+      replace
       aria-label={label}
       className="flex h-16 flex-col items-center justify-center gap-1"
     >

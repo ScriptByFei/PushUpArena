@@ -105,7 +105,7 @@ export function AppLayout() {
           hiddenAtRef.current !== null &&
           Date.now() - hiddenAtRef.current > BACKGROUND_THRESHOLD_MS
         ) {
-          navigate('/');
+          navigate('/', { replace: true });
         }
         hiddenAtRef.current = null;
       }

@@ -38,7 +38,7 @@ export function FABSheet({ onClose }: FABSheetProps) {
 
   function openVerlauf() {
     onClose();
-    navigate('/track');
+    navigate('/track', { replace: true });
   }
 
   return (
