@@ -44,10 +44,9 @@ void initOneSignal();
   // leftmost 16 px below the header; 50 px zone is safe.
 
   const EDGE_WIDTH  = 50;  // px from left edge considered back-gesture zone
-  const HEADER_H    = 80;  // px from top that should NOT be intercepted
 
-  let _startX       = 0;
-  let _startY       = 0;
+  let _startX        = 0;
+  let _startY        = 0;
   let _blockingHoriz = false;
 
   window.addEventListener('touchstart', (e) => {
@@ -56,9 +55,16 @@ void initOneSignal();
     _startY = t.clientY;
     _blockingHoriz = false;
 
-    // Immediately block if touch begins in the left-edge back-gesture zone
-    // and is below the header (hamburger icon is in the header — don't block it)
-    if (t.clientX < EDGE_WIDTH && t.clientY > HEADER_H) {
+    // Never block touches that land on the header — the hamburger button lives
+    // there and preventDefault() would silence the click event.
+    // Using contains() is device-independent (no hardcoded pixel offset).
+    const headerEl = document.querySelector('header');
+    if (headerEl?.contains(e.target as Node)) return;
+
+    // Immediately claim touches in the left-edge zone so iOS cannot start the
+    // system back-swipe animation.  The AppLayout drawer gesture handler still
+    // receives touchmove / touchend and can drive the NavDrawer panel.
+    if (t.clientX < EDGE_WIDTH) {
       _blockingHoriz = true;
       e.preventDefault();
     }

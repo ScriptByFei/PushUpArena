@@ -94,6 +94,100 @@ export function AppLayout() {
     setRecapManualOpen(true);
   }, [forceLoad]);
 
+  /* ── NavDrawer swipe gesture (open from left edge / drag to close) ─── */
+
+  useEffect(() => {
+    const EDGE_WIDTH = 50; // px — must match main.tsx touchstart guard zone
+
+    let active        = false;
+    let axisLocked: 'h' | 'v' | null = null;
+    let startX        = 0;
+    let startY        = 0;
+    let lastTouchX    = 0;
+    let lastTouchTime = 0;
+    let velX          = 0; // px / ms — positive = right
+
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      startX = lastTouchX = t.clientX;
+      startY = t.clientY;
+      lastTouchTime = e.timeStamp;
+      velX = 0;
+      axisLocked = null;
+
+      const isOpen      = drawerOpenRef.current;
+      const drawerWidth = drawerNavRef.current?.getWidth() ?? 340;
+
+      // Open: touch must start in the left-edge zone when drawer is closed.
+      // Close: touch can start anywhere over the open panel / backdrop.
+      active = isOpen
+        ? t.clientX < drawerWidth + 20
+        : t.clientX < EDGE_WIDTH;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!active || e.touches.length !== 1) return;
+      const t  = e.touches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+
+      // Velocity — rolling sample
+      const dt = e.timeStamp - lastTouchTime;
+      if (dt > 0) velX = (t.clientX - lastTouchX) / dt;
+      lastTouchX    = t.clientX;
+      lastTouchTime = e.timeStamp;
+
+      // Axis lock on first significant movement
+      if (!axisLocked) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        axisLocked = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      }
+      if (axisLocked !== 'h') { active = false; return; } // vertical → cancel
+
+      const width  = drawerNavRef.current?.getWidth() ?? 340;
+      const isOpen = drawerOpenRef.current;
+
+      if (!isOpen) {
+        // Opening: map finger from startX → panel from -width → 0
+        const x = Math.min(0, Math.max(-width, dx - width));
+        drawerNavRef.current?.setDragX(x);
+      } else {
+        // Closing: panel follows finger leftward from 0
+        const x = Math.min(0, dx);
+        drawerNavRef.current?.setDragX(x);
+      }
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      if (!active) return;
+      active = false;
+      if (axisLocked !== 'h') return;
+
+      const dx     = e.changedTouches[0].clientX - startX;
+      const isOpen = drawerOpenRef.current;
+
+      if (!isOpen) {
+        // Finger moved right far enough or fast enough → open
+        if (dx > 60 || velX > 0.4) openDrawer();
+        else closeDrawer();
+      } else {
+        // Finger moved left far enough or fast enough → close
+        if (dx < -60 || velX < -0.4) closeDrawer();
+        else openDrawer(); // snap back to fully open
+      }
+    };
+
+    document.addEventListener('touchstart', onStart,  { passive: true  });
+    document.addEventListener('touchmove',  onMove,   { passive: true  });
+    document.addEventListener('touchend',   onEnd,    { passive: true  });
+
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchmove',  onMove);
+      document.removeEventListener('touchend',   onEnd);
+    };
+  }, [openDrawer, closeDrawer]);
+
   /* ── Background return-home ──────────────────────────────────────────── */
 
   useEffect(() => {

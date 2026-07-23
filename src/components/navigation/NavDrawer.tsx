@@ -34,6 +34,10 @@ export interface NavDrawerHandle {
   snapOpen: () => void;
   /** Spring-animate panel to fully-closed position (x = -width). */
   snapClose: () => void;
+  /** Set panel position directly (no animation) — used while drag is in progress. */
+  setDragX: (x: number) => void;
+  /** Return current panel pixel width. */
+  getWidth: () => number;
 }
 
 /* ---------- Props ---------- */
@@ -180,20 +184,32 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   });
 
   // ─── Spring config ──────────────────────────────────────────────────────────
-  // Same parameters as page transitions for visual consistency.
   const getSpring = () =>
     prefersReducedRef.current
       ? { duration: 0 }
       : { type: 'spring' as const, stiffness: 350, damping: 35, mass: 0.8 };
 
+  // Store the running animation so we can cancel it before a direct setDragX.
+  const animCtrl = useRef<ReturnType<typeof animate> | null>(null);
+
   // ─── Imperative handle exposed to AppLayout ──────────────────────────────────
   useImperativeHandle(ref, () => ({
     snapOpen() {
-      animate(panelX, 0, getSpring());
+      animCtrl.current?.stop();
+      animCtrl.current = animate(panelX, 0, getSpring());
     },
     snapClose() {
+      animCtrl.current?.stop();
       const width = panelRef.current?.offsetWidth ?? 340;
-      animate(panelX, -width, getSpring());
+      animCtrl.current = animate(panelX, -width, getSpring());
+    },
+    /** Drive the panel with a finger — cancels any running spring first. */
+    setDragX(x: number) {
+      animCtrl.current?.stop();
+      panelX.set(x);
+    },
+    getWidth() {
+      return panelRef.current?.offsetWidth ?? 340;
     },
   }));
 
