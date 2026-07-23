@@ -33,14 +33,6 @@ const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 /** Routes that support left→right page-swipe navigation (matches BottomNav order). */
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
 
-/**
- * Routes where edge-swipe to open the drawer is safe.
- * Top-level routes only — avoids conflict with iOS back gesture on nested routes.
- */
-const EDGE_SWIPE_ROUTES = new Set([
-  '/', '/friends', '/leaderboard', '/activity', '/profile',
-  '/achievements', '/global-stats', '/settings',
-]);
 
 /* ─── Gesture constants ──────────────────────────────────────────────────── */
 
@@ -224,11 +216,9 @@ export function AppLayout() {
   //   • setPointerCapture: once the drawer gesture locks, all subsequent pointer
   //     events are routed to the root div, so the finger moving over BottomNav
   //     NavLinks never synthesises a click on them.
-  //   • Edge-zone guard in pending-page: even if gestureMode somehow ends up as
-  //     pending-page for a touch that began in the left edge zone, the lock
-  //     phase clamps it to 'vertical' instead of 'page-swipe'.
-  //   • Double-guard in handlePointerUp: page-swipe navigation is blocked both
-  //     by the lock-phase check above and by touchStartX > EDGE_SWIPE_WIDTH.
+  //   • Drawer gesture only activates on Dashboard (pathname === '/'). On all
+  //     other tabs an edge-zone touch goes to pending-page, not pending-edge,
+  //     so left-edge swipes correctly trigger tab navigation.
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!e.isPrimary) return; // ignore secondary fingers / multi-touch
@@ -246,7 +236,7 @@ export function AppLayout() {
 
     if (drawerOpenRef.current) {
       gestureMode.current = 'pending-close';
-    } else if (clientX <= EDGE_SWIPE_WIDTH && EDGE_SWIPE_ROUTES.has(pathname)) {
+    } else if (clientX <= EDGE_SWIPE_WIDTH && pathname === '/') {
       gestureMode.current = 'pending-edge';
     } else {
       const noSwipe = (e.target as Element).closest('[data-no-swipe]');
@@ -299,12 +289,6 @@ export function AppLayout() {
     if (mode === 'pending-page') {
       if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return;
       if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
-      // Belt-and-suspenders: if the touch started in the edge zone it must NEVER
-      // become a page-swipe — the drawer has exclusive ownership there.
-      if (touchStartX.current <= EDGE_SWIPE_WIDTH) {
-        gestureMode.current = 'vertical';
-        return;
-      }
       gestureMode.current = 'page-swipe';
       return;
     }
@@ -370,10 +354,7 @@ export function AppLayout() {
 
     if (mode === 'page-swipe') {
       const dy = e.clientY - touchStartY.current;
-      // Guard: a gesture that originated in the left edge zone must never trigger
-      // a tab change, even if the state machine somehow reached page-swipe.
       if (
-        touchStartX.current > EDGE_SWIPE_WIDTH &&
         Math.abs(dx) >= 60 &&
         Math.abs(dy) <= 80
       ) {
