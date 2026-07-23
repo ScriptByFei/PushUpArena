@@ -71,7 +71,11 @@ export function AppLayout() {
   const closeDrawer = useCallback(() => {
     drawerNavRef.current?.snapClose();
     setDrawerOpen(false);
-    menuButtonRef.current?.focus();
+    // blur() in a rAF so it runs after React flushes the state update and
+    // the browser has re-painted — prevents a stale focus-ring on iOS/Safari.
+    requestAnimationFrame(() => {
+      menuButtonRef.current?.blur();
+    });
   }, []);
 
   const toggleDrawer = useCallback(() => {
@@ -257,7 +261,8 @@ export function AppLayout() {
               className={
                 'grid place-items-center rounded-lg text-slate-400 transition ' +
                 'hover:bg-ink-800 active:bg-ink-700 ' +
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+                'focus:outline-none ' +
+                'focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950'
               }
               style={{ width: 40, height: 48 }}
             >
