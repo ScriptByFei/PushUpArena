@@ -11,6 +11,7 @@ import { useExercise } from '@/context/ExerciseContext';
 import { ArenaFeed } from '@/components/ArenaFeed';
 import { DailyChallengeModal } from '@/components/DailyChallengeModal';
 import { NavDrawer, type NavDrawerHandle } from '@/components/navigation/NavDrawer';
+import { useNavBadges } from '@/hooks/useNavBadges';
 
 /* ─── Page metadata ──────────────────────────────────────────────────────── */
 
@@ -81,6 +82,8 @@ export function AppLayout() {
     recap, open: recapOpen, dismiss: dismissRecap,
     forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate,
   } = useDailyRecap();
+
+  const { challengeIsActive, feedNewCount, clearFeedBadge } = useNavBadges();
 
   const { enrolledExercises } = useExercise();
   const showChip =
@@ -402,9 +405,12 @@ export function AppLayout() {
         ref={drawerNavRef}
         open={drawerOpen}
         onClose={closeDrawer}
-        onOpenFeed={() => setFeedOpen(true)}
+        onOpenFeed={() => { setFeedOpen(true); clearFeedBadge(); }}
         onOpenRecap={handleOpenRecap}
         onOpenDailyChallenge={() => setDailyChallengeOpen(true)}
+        challengeIsActive={challengeIsActive}
+        feedNewCount={feedNewCount}
+        hasUnreadRecap={recapOpen}
       />
     </div>
   );

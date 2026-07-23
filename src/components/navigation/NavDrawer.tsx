@@ -1,4 +1,5 @@
 import {
+  AnimatePresence,
   animate,
   motion,
   useMotionValue,
@@ -15,7 +16,6 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { useDrawerStats } from '@/context/DrawerStatsContext';
 import { Avatar } from '@/components/ui/Avatar';
 import {
   BoltIcon,
@@ -50,6 +50,10 @@ export interface NavDrawerProps {
   onOpenFeed: () => void;
   onOpenRecap: () => void;
   onOpenDailyChallenge: () => void;
+  /** Badge signals — all optional; default to falsy / 0 */
+  challengeIsActive?: boolean;
+  feedNewCount?: number;
+  hasUnreadRecap?: boolean;
 }
 
 /* ---------- Constants ---------- */
@@ -72,12 +76,14 @@ function DrawerNavItem({
   icon,
   pathname,
   onClose,
+  trailing,
 }: {
   to: string;
   label: string;
   icon: React.ReactNode;
   pathname: string;
   onClose: () => void;
+  trailing?: React.ReactNode;
 }) {
   const navigate = useNavigate();
   const active = isRouteActive(pathname, to);
@@ -88,15 +94,24 @@ function DrawerNavItem({
         if (!active) navigate(to, { replace: true });
       }}
       className={
-        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ' +
+        'group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] ' +
+        'text-[13.5px] font-medium transition-colors duration-150 ' +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400 ' +
         (active
-          ? 'bg-brand-600/20 text-brand-300'
-          : 'text-slate-400 hover:bg-ink-800 hover:text-slate-100')
+          ? 'bg-brand-600/10 text-brand-300'
+          : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200')
       }
     >
-      {icon}
-      {label}
+      <span
+        className={
+          'shrink-0 transition-opacity duration-150 ' +
+          (active ? 'opacity-100' : 'opacity-50 group-hover:opacity-80')
+        }
+      >
+        {icon}
+      </span>
+      <span className="flex-1 truncate text-left">{label}</span>
+      {trailing}
     </button>
   );
 }
@@ -105,29 +120,64 @@ function DrawerActionItem({
   label,
   icon,
   onClick,
+  trailing,
 }: {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
+  trailing?: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
       className={
-        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition ' +
-        'hover:bg-ink-800 hover:text-slate-100 ' +
+        'group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] ' +
+        'text-[13.5px] font-medium transition-colors duration-150 ' +
+        'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200 ' +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
       }
     >
-      {icon}
-      {label}
+      <span className="shrink-0 opacity-50 transition-opacity duration-150 group-hover:opacity-80">
+        {icon}
+      </span>
+      <span className="flex-1 truncate text-left">{label}</span>
+      {trailing}
     </button>
   );
 }
 
+/* ---------- Badge helpers ---------- */
+
+/** Small count pill — e.g. "3" or "9+" */
+function NavBadge({ count }: { count: number }) {
+  return (
+    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-500/15 px-1.5 text-[10px] font-semibold tabular-nums text-brand-400">
+      {count > 9 ? '9+' : count}
+    </span>
+  );
+}
+
+/** Pulsing red dot — live challenge indicator */
+function LiveDot() {
+  return (
+    <span className="relative flex h-[7px] w-[7px]">
+      <span
+        className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-50"
+        style={{ animationDuration: '2.5s' }}
+      />
+      <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-red-400/80" />
+    </span>
+  );
+}
+
+/** Static dot — unread recap indicator */
+function UnreadDot() {
+  return <span className="h-[7px] w-[7px] rounded-full bg-brand-400/50" />;
+}
+
 function GlobalStatsIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <g opacity="0.7" stroke="currentColor" strokeWidth="1.25">
         <circle cx="12" cy="11" r="8.5" />
         <line x1="3.5" y1="11" x2="20.5" y2="11" />
@@ -145,13 +195,15 @@ function GlobalStatsIcon() {
 /* ---------- Main component ---------- */
 
 export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function NavDrawer(
-  { open, onClose, onOpenFeed, onOpenRecap, onOpenDailyChallenge },
+  {
+    open, onClose, onOpenFeed, onOpenRecap, onOpenDailyChallenge,
+    challengeIsActive = false, feedNewCount = 0, hasUnreadRecap = false,
+  },
   ref,
 ) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { profile } = useProfile();
-  const { stats, statsLoading, dailyRank, rankLoading } = useDrawerStats();
   const { pathname } = useLocation();
   const panelRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -159,6 +211,18 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   // Store in ref so stable callbacks can read the latest value
   const prefersReducedRef = useRef(prefersReduced);
   prefersReducedRef.current = prefersReduced;
+
+  // ─── Nav stagger variants ────────────────────────────────────────────────────
+  // Container orchestrates stagger; items slide in from x:-6 with fade.
+  // On close the items snap back instantly (duration:0) — panel slides out anyway.
+  const navContainerV = {
+    open:   { transition: prefersReduced ? {} : { staggerChildren: 0.025, delayChildren: 0.07 } },
+    closed: {},
+  };
+  const navItemV = {
+    open:   { opacity: 1, x: 0,  transition: { duration: prefersReduced ? 0 : 0.2, ease: 'easeOut' as const } },
+    closed: { opacity: 0, x: -6, transition: { duration: 0 } },
+  };
 
   // ─── MotionValues ───────────────────────────────────────────────────────────
   // panelX: 0 = fully open, -width = fully closed. Starts far off-screen.
@@ -258,12 +322,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   const displayName = profile?.display_name ?? profile?.username ?? 'Profil';
   const avatarUrl = profile?.avatar_url;
 
-  /** Formats streak as "1 Tag Streak" / "37 Tage Streak" / "Keine aktive Streak" */
-  function streakLabel(n: number): string {
-    if (n === 0) return 'Keine aktive Streak';
-    return `${n} ${n === 1 ? 'Tag' : 'Tage'} Streak`;
-  }
-
   // ─── Render ─────────────────────────────────────────────────────────────────
   //
   // Both backdrop and panel live inside a single `position:fixed; inset:0;
@@ -320,153 +378,221 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           'rounded-r-2xl border-r border-ink-700 bg-ink-900 shadow-2xl'
         }
       >
-        {/* ── Profile header ──────────────────────────────────────────────────
-             Clickable area (avatar + name + stats) navigates to /profile.
-             Close button is a separate tap target.                           */}
-        <div className="flex items-start justify-between gap-2 px-3 pb-3">
-          <button
+        {/* ── Profile header — minimal ────────────────────────────────────────
+             Avatar + username only. ~80px tall. No stats, no card.
+             Entrance: avatar fades in, name slides from left (220ms).      */}
+        <div
+          className="flex items-center gap-3 px-4 pb-4 pt-3"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          {/* Avatar — fades in on open */}
+          <motion.div
+            initial={false}
+            animate={open ? { opacity: 1 } : { opacity: 0 }}
+            transition={prefersReduced ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+            className="shrink-0"
+          >
+            <button
+              onClick={handleProfileClick}
+              aria-label="Profil öffnen"
+              className="rounded-full transition active:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400"
+              style={{ filter: 'drop-shadow(0 1px 8px rgba(0,0,0,0.45))' }}
+            >
+              <Avatar
+                url={avatarUrl}
+                name={displayName}
+                size={56}
+                className="ring-[1.5px] ring-brand-500/50"
+              />
+            </button>
+          </motion.div>
+
+          {/* Name + greeting — slides in from left */}
+          <motion.button
+            initial={false}
+            animate={open ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
+            transition={
+              prefersReduced
+                ? { duration: 0 }
+                : { duration: 0.22, delay: 0.05, ease: 'easeOut' }
+            }
             onClick={handleProfileClick}
             aria-label="Profil öffnen"
             className={
-              'flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-left transition ' +
-              'hover:bg-ink-800 active:bg-ink-700 ' +
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+              'min-w-0 flex-1 text-left transition active:opacity-70 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400 ' +
+              'rounded-lg'
             }
-            style={{ minHeight: 44 }}
           >
-            {/* Avatar — 52 px, falls back to /default-avatar.webp via Avatar component */}
-            <Avatar
-              url={avatarUrl}
-              name={displayName}
-              size={52}
-              className="ring-2 ring-brand-500/30"
-            />
+            <p className="truncate text-[16px] font-semibold leading-tight text-slate-100">
+              {displayName}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-snug text-slate-500">
+              Bereit für dein Training?
+            </p>
+          </motion.button>
 
-            {/* Text column */}
-            <div className="min-w-0 flex-1">
-              {/* Display name */}
-              <p className="truncate text-sm font-bold text-slate-100 leading-snug">
-                {displayName}
-              </p>
-
-              {/* Rank · Score */}
-              <p className="mt-0.5 truncate text-[11px] text-slate-400 leading-snug">
-                {rankLoading || statsLoading ? (
-                  <span className="inline-block h-3 w-28 animate-pulse rounded bg-ink-700" />
-                ) : (
-                  <>
-                    {dailyRank !== null
-                      ? `Platz ${dailyRank}`
-                      : 'Noch nicht platziert'}
-                    {' · '}
-                    {stats.total_amount.toLocaleString('de-DE')} Punkte
-                  </>
-                )}
-              </p>
-
-              {/* Streak */}
-              <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
-                {statsLoading ? (
-                  <span className="inline-block h-3 w-20 animate-pulse rounded bg-ink-700" />
-                ) : (
-                  streakLabel(stats.current_streak)
-                )}
-              </p>
-            </div>
-          </button>
-
-          {/* Close button — independent from profile click */}
+          {/* Close button — circular, subtle */}
           <button
             onClick={onClose}
             aria-label="Navigation schließen"
             className={
-              'mt-1 grid shrink-0 place-items-center rounded-lg text-slate-400 transition ' +
-              'hover:bg-ink-800 hover:text-slate-200 ' +
+              'shrink-0 grid place-items-center rounded-full transition ' +
+              'bg-white/[0.06] text-slate-400 ' +
+              'hover:bg-white/[0.11] hover:text-slate-200 ' +
+              'active:bg-white/[0.15] ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
-            style={{ width: 36, height: 36 }}
+            style={{ width: 32, height: 32 }}
           >
-            <XIcon className="h-5 w-5" />
+            <XIcon className="h-[15px] w-[15px]" />
           </button>
         </div>
 
-        <div className="mx-4 mb-2 h-px bg-ink-700" />
-
         {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
-        <div className="flex-1 overflow-y-auto px-2" data-no-swipe>
-          <section aria-label="Hauptmenü">
-            <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-              Navigation
-            </p>
+        <div className="flex-1 overflow-y-auto px-2 pb-2" data-no-swipe>
+          {/* Stagger container — propagates 'open'/'closed' variant to children */}
+          <motion.div initial="closed" animate={open ? 'open' : 'closed'} variants={navContainerV}>
 
-            <DrawerNavItem
-              to="/"
-              label="Dashboard"
-              icon={<HomeIcon className="h-5 w-5" />}
-              pathname={pathname}
-              onClose={onClose}
-            />
-            <DrawerActionItem
-              label="Arena Feed"
-              icon={
-                <img src="/arena-feed-icon.webp" alt="" className="h-5 w-5 object-contain" />
-              }
-              onClick={() => { onClose(); onOpenFeed(); }}
-            />
-            <DrawerActionItem
-              label="Arena Rückblick"
-              icon={<RecapIcon className="h-5 w-5" />}
-              onClick={() => { onClose(); onOpenRecap(); }}
-            />
-            <DrawerActionItem
-              label="Daily Live Challenge"
-              icon={<BoltIcon className="h-5 w-5" />}
-              onClick={() => { onClose(); onOpenDailyChallenge(); }}
-            />
-            <DrawerNavItem
-              to="/achievements"
-              label="Erfolge"
-              icon={<TrophyIcon className="h-5 w-5" />}
-              pathname={pathname}
-              onClose={onClose}
-            />
-            <DrawerNavItem
-              to="/global-stats"
-              label="Globale Statistiken"
-              icon={<GlobalStatsIcon />}
-              pathname={pathname}
-              onClose={onClose}
-            />
-          </section>
+            <section aria-label="Hauptmenü">
+              <p className="px-3 pb-1.5 pt-4 text-[9.5px] font-medium uppercase tracking-[0.13em] text-slate-600/80">
+                Navigation
+              </p>
 
-          <div className="mx-2 my-3 h-px bg-ink-800" />
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerNavItem
+                  to="/"
+                  label="Dashboard"
+                  icon={<HomeIcon className="h-[18px] w-[18px]" />}
+                  pathname={pathname}
+                  onClose={onClose}
+                />
+              </motion.div>
 
-          <section aria-label="Konto">
-            <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-              Konto
-            </p>
-            <DrawerNavItem
-              to="/settings"
-              label="Einstellungen"
-              icon={<SettingsIcon className="h-5 w-5" />}
-              pathname={pathname}
-              onClose={onClose}
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerActionItem
+                  label="Arena Feed"
+                  icon={<img src="/arena-feed-icon.webp" alt="" className="h-[18px] w-[18px] object-contain opacity-80" />}
+                  onClick={() => { onClose(); onOpenFeed(); }}
+                  trailing={
+                    <AnimatePresence>
+                      {feedNewCount > 0 && (
+                        <motion.span
+                          key="feed-badge"
+                          initial={{ opacity: 0, scale: 0.6 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.6 }}
+                          transition={{ duration: 0.18 }}
+                        >
+                          <NavBadge count={feedNewCount} />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  }
+                />
+              </motion.div>
+
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerActionItem
+                  label="Arena Rückblick"
+                  icon={<RecapIcon className="h-[18px] w-[18px]" />}
+                  onClick={() => { onClose(); onOpenRecap(); }}
+                  trailing={
+                    hasUnreadRecap ? (
+                      <motion.span
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <UnreadDot />
+                      </motion.span>
+                    ) : undefined
+                  }
+                />
+              </motion.div>
+
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerActionItem
+                  label="Daily Live Challenge"
+                  icon={<BoltIcon className="h-[18px] w-[18px]" />}
+                  onClick={() => { onClose(); onOpenDailyChallenge(); }}
+                  trailing={
+                    challengeIsActive ? (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <LiveDot />
+                      </motion.span>
+                    ) : undefined
+                  }
+                />
+              </motion.div>
+
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerNavItem
+                  to="/achievements"
+                  label="Erfolge"
+                  icon={<TrophyIcon className="h-[18px] w-[18px]" />}
+                  pathname={pathname}
+                  onClose={onClose}
+                />
+              </motion.div>
+
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerNavItem
+                  to="/global-stats"
+                  label="Globale Statistiken"
+                  icon={<GlobalStatsIcon />}
+                  pathname={pathname}
+                  onClose={onClose}
+                />
+              </motion.div>
+            </section>
+
+            {/* Divider */}
+            <div
+              className="mx-3 my-3 h-px"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
             />
-          </section>
+
+            <section aria-label="Konto">
+              <p className="px-3 pb-1.5 pt-1 text-[9.5px] font-medium uppercase tracking-[0.13em] text-slate-600/80">
+                Konto
+              </p>
+              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+                <DrawerNavItem
+                  to="/settings"
+                  label="Einstellungen"
+                  icon={<SettingsIcon className="h-[18px] w-[18px]" />}
+                  pathname={pathname}
+                  onClose={onClose}
+                />
+              </motion.div>
+            </section>
+
+          </motion.div>
         </div>
 
         {/* Footer: sign out */}
-        <div className="mx-4 mt-2 border-t border-ink-700 pt-3">
+        <div
+          className="mx-4 mt-1 pt-3"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        >
           {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
           <button
             onClick={handleSignOut}
             className={
-              'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 transition ' +
-              'hover:bg-red-500/10 ' +
+              'group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] ' +
+              'text-[13.5px] font-medium transition-colors duration-150 ' +
+              'text-red-400/70 hover:bg-red-500/[0.08] hover:text-red-400 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
           >
-            <LogoutIcon className="h-5 w-5" />
+            <span className="shrink-0 opacity-60 transition-opacity duration-150 group-hover:opacity-90">
+              <LogoutIcon className="h-[18px] w-[18px]" />
+            </span>
             Abmelden
           </button>
         </div>
