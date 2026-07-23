@@ -352,6 +352,9 @@ export function AppLayout() {
     <div
       ref={rootRef}
       className="mx-auto flex min-h-screen max-w-md flex-col"
+      // pan-y: browser handles vertical scroll natively and does NOT fire
+      // pointercancel for horizontal movements — required for drawer swipe.
+      style={{ touchAction: 'pan-y' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
