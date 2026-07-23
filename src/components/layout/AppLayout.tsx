@@ -44,10 +44,10 @@ const AXIS_LOCK_THRESHOLD = 8;
 const H_DOMINANCE = 1.2;
 
 /** Fraction of drawer width needed to commit open/close. */
-const OPEN_THRESHOLD = 0.3;
+const OPEN_THRESHOLD = 0.15;
 
 /** Minimum swipe velocity (px/ms) to commit open/close. */
-const VELOCITY_THRESHOLD = 0.45;
+const VELOCITY_THRESHOLD = 0.25;
 
 /* ─── Gesture mode ───────────────────────────────────────────────────────── */
 
@@ -217,11 +217,13 @@ export function AppLayout() {
     let startX            = 0;
     let startY            = 0;
     let startTime         = 0;
+    let lastDx            = 0; // last known horizontal offset, used by onCancel
 
     const reset = () => {
       mode       = 'idle';
       axisLocked = false;
       axisHoriz  = false;
+      lastDx     = 0;
     };
 
     // ── Handlers ───────────────────────────────────────────────────────
@@ -273,6 +275,8 @@ export function AppLayout() {
       // Horizontal confirmed — block browser default (back/fwd nav, overscroll)
       e.preventDefault();
 
+      lastDx = dx; // track for onCancel
+
       const drawer = drawerNavRef.current;
       const w      = drawer?.getWidth() ?? 340;
 
@@ -280,7 +284,7 @@ export function AppLayout() {
         // Closing drag: left moves panel off-screen
         drawer?.setDragX(Math.max(-w, Math.min(0, dx)));
       } else {
-        // Opening drag from left edge: right pulls panel on-screen
+        // Opening drag: right pulls panel on-screen
         drawer?.setDragX(Math.max(-w, Math.min(0, -w + dx)));
       }
     };
@@ -327,12 +331,22 @@ export function AppLayout() {
 
     const onCancel = (e: PointerEvent) => {
       if (!e.isPrimary) return;
-      const savedMode = mode;
+      const savedMode      = mode;
+      const savedAxisHoriz = axisHoriz;
+      const savedDx        = lastDx;
+      const savedTime      = startTime;
       reset();
-      // Restore drawer to stable state on cancel
       if (savedMode === 'drawer') {
-        if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
-        else drawerNavRef.current?.snapClose();
+        if (savedAxisHoriz) {
+          // A horizontal drag was in progress — commit or snap using the same
+          // logic as onUp so that a hard-enough swipe still opens the drawer
+          // even when iOS fires pointercancel instead of pointerup.
+          finishDrawer(savedDx, performance.now() - savedTime);
+        } else {
+          // No horizontal axis locked — just restore the stable state.
+          if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
+          else drawerNavRef.current?.snapClose();
+        }
       }
     };
 
@@ -447,8 +461,8 @@ export function AppLayout() {
             animate="center"
             exit="exit"
             transition={pageTransition}
-            className="absolute inset-0 overflow-y-auto px-4 pb-32 pt-3"
-            style={{ touchAction: 'pan-y' }}
+            className="absolute inset-0 overflow-x-hidden overflow-y-auto px-4 pb-32 pt-3"
+            style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}
           >
             <Outlet />
           </motion.div>
