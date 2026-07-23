@@ -137,7 +137,7 @@ export function AppLayout() {
               className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
               style={{ width: 40, height: 48 }}
             >
-              <img src="/daily-challenge-icon.webp" alt="" style={{ width: 30, height: 30, display: 'block', objectFit: 'contain' }} />
+              <img src="/daily-challenge-icon.webp" alt="" style={{ width: 36, height: 36, display: 'block', objectFit: 'contain' }} />
             </button>
           </div>
 
