@@ -261,11 +261,13 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Backdrop — always in DOM; pointer-events managed imperatively above */}
+      {/* Backdrop — always in DOM; pointer-events managed imperatively above.
+           touch-action: pan-y ensures the browser passes horizontal drag events
+           to JS instead of firing pointercancel (needed for close-swipe). */}
       <div
         ref={backdropRef}
         className="fixed inset-0 z-[45]"
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: 'none', touchAction: 'pan-y' }}
         onClick={onClose}
         aria-hidden="true"
       >
@@ -283,6 +285,9 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           x: panelX,
           visibility: 'hidden',  // initial; motionValueEvent updates this
           pointerEvents: 'none', // initial; motionValueEvent updates this
+          // pan-y: browser passes horizontal swipes to JS → close-swipe works
+          // without the browser intercepting the gesture and firing pointercancel.
+          touchAction: 'pan-y',
           paddingTop: 'max(16px, env(safe-area-inset-top))',
           paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
         }}

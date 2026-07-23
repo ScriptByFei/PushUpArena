@@ -38,7 +38,7 @@ const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
 
 /** px from left edge to activate drawer-open gesture (Dashboard only). */
-const EDGE_ZONE = 20;
+const EDGE_ZONE = 40;
 
 /** Dead zone (px) before committing to a gesture axis. */
 const AXIS_LOCK_THRESHOLD = 8;
