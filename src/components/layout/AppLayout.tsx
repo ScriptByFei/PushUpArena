@@ -96,6 +96,9 @@ export function AppLayout() {
   const touchStartX           = useRef(0);
   const touchStartY           = useRef(0);
   const touchStartTime        = useRef(0);
+  /** Last pointer position tracked on every pointermove — used in pointercancel fallback. */
+  const lastPointerX          = useRef(0);
+  const lastPointerY          = useRef(0);
   /**
    * Set to true as soon as the gesture locks to drawer-open or drawer-close.
    * Prevents the page-swipe handler from firing if both gesture paths are
@@ -233,6 +236,8 @@ export function AppLayout() {
     touchStartX.current    = clientX;
     touchStartY.current    = clientY;
     touchStartTime.current = Date.now();
+    lastPointerX.current   = clientX;
+    lastPointerY.current   = clientY;
 
     if (drawerOpenRef.current) {
       gestureMode.current = 'pending-close';
@@ -248,8 +253,21 @@ export function AppLayout() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!e.isPrimary) return;
+
+    // Always track last known position — used by pointercancel fallback navigation.
+    lastPointerX.current = e.clientX;
+    lastPointerY.current = e.clientY;
+
     const mode = gestureMode.current;
-    if (mode === 'idle' || mode === 'vertical' || mode === 'page-swipe') return;
+
+    // Once committed to a page-swipe, suppress browser scroll/default so the
+    // browser does not fire pointercancel and does not try to scroll the page.
+    if (mode === 'page-swipe') {
+      e.preventDefault();
+      return;
+    }
+
+    if (mode === 'idle' || mode === 'vertical') return;
 
     const dx   = e.clientX - touchStartX.current;
     const dy   = e.clientY - touchStartY.current;
@@ -289,7 +307,12 @@ export function AppLayout() {
     if (mode === 'pending-page') {
       if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return;
       if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
+      // Lock the pointer to the root div. This prevents child elements (calendar
+      // day buttons, chart bar buttons) from stealing the pointer, and tells the
+      // browser this gesture belongs to JS — preventing pointercancel.
       gestureMode.current = 'page-swipe';
+      rootRef.current?.setPointerCapture(e.pointerId);
+      e.preventDefault();
       return;
     }
 
@@ -373,8 +396,30 @@ export function AppLayout() {
 
   const handlePointerCancel = (e: React.PointerEvent) => {
     if (!e.isPrimary) return;
+    const mode = gestureMode.current;
     gestureMode.current           = 'idle';
     isDrawerGestureActive.current = false;
+
+    // If pointercancel fires after we already committed to a page-swipe, attempt
+    // navigation using the last known pointer position (pointercancel clientX/Y
+    // may be 0 on some browsers). This handles cases where the browser fires
+    // pointercancel instead of pointerup on content-heavy pages.
+    if (mode === 'page-swipe') {
+      const dx = lastPointerX.current - touchStartX.current;
+      const dy = lastPointerY.current - touchStartY.current;
+      if (Math.abs(dx) >= 60 && Math.abs(dy) <= 80) {
+        const idx = SWIPE_ROUTES.indexOf(pathname);
+        if (idx !== -1) {
+          const next = dx < 0 ? idx + 1 : idx - 1;
+          if (next >= 0 && next < SWIPE_ROUTES.length) {
+            swipeDirection.current = dx < 0 ? 1 : -1;
+            navigate(SWIPE_ROUTES[next]);
+          }
+        }
+      }
+      return;
+    }
+
     // Restore drawer to its last stable position
     if (drawerOpenRef.current) {
       drawerNavRef.current?.snapOpen();
