@@ -100,10 +100,16 @@ export function AppLayout() {
 
   /* ── Gesture refs ────────────────────────────────────────────────────── */
 
-  const gestureMode      = useRef<GestureMode>('idle');
-  const touchStartX      = useRef(0);
-  const touchStartY      = useRef(0);
-  const touchStartTime   = useRef(0);
+  const gestureMode           = useRef<GestureMode>('idle');
+  const touchStartX           = useRef(0);
+  const touchStartY           = useRef(0);
+  const touchStartTime        = useRef(0);
+  /**
+   * Set to true as soon as the gesture locks to drawer-open or drawer-close.
+   * Prevents the page-swipe handler from firing if both gesture paths are
+   * somehow racing (e.g. multi-touch, edge-zone boundary ambiguity).
+   */
+  const isDrawerGestureActive = useRef(false);
 
   /* ── React state ─────────────────────────────────────────────────────── */
 
@@ -198,28 +204,38 @@ export function AppLayout() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [navigate]);
 
-  // Native (passive:false) touchmove listener so we can preventDefault during
-  // drawer-drag and prevent the page from scrolling simultaneously.
+  // Native passive:false touchmove listener — prevents scroll during drawer drag
+  // on iOS Safari where pointermove.preventDefault() alone is not sufficient.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const handler = (e: TouchEvent) => {
-      const mode = gestureMode.current;
-      if (mode === 'drawer-open' || mode === 'drawer-close') {
-        e.preventDefault();
-      }
+      if (isDrawerGestureActive.current) e.preventDefault();
     };
     el.addEventListener('touchmove', handler, { passive: false });
     return () => el.removeEventListener('touchmove', handler);
   }, []); // stable: only reads refs
 
-  /* ── Gesture handlers ────────────────────────────────────────────────── */
+  /* ── Gesture handlers (Pointer Events) ──────────────────────────────── */
+  //
+  // Pointer Events replace the previous Touch handlers. Key improvements:
+  //   • e.isPrimary guard: secondary pointers (multi-touch) cannot interrupt
+  //     an in-progress gesture or overwrite gestureMode.
+  //   • setPointerCapture: once the drawer gesture locks, all subsequent pointer
+  //     events are routed to the root div, so the finger moving over BottomNav
+  //     NavLinks never synthesises a click on them.
+  //   • Edge-zone guard in pending-page: even if gestureMode somehow ends up as
+  //     pending-page for a touch that began in the left edge zone, the lock
+  //     phase clamps it to 'vertical' instead of 'page-swipe'.
+  //   • Double-guard in handlePointerUp: page-swipe navigation is blocked both
+  //     by the lock-phase check above and by touchStartX > EDGE_SWIPE_WIDTH.
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const { clientX, clientY } = touch;
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!e.isPrimary) return; // ignore secondary fingers / multi-touch
+    const { clientX, clientY } = e;
 
-    gestureMode.current = 'idle';
+    gestureMode.current          = 'idle';
+    isDrawerGestureActive.current = false;
 
     // Ignore touches in the BottomNav area
     if (clientY > window.innerHeight - BOTTOM_NAV_EXCLUSION) return;
@@ -229,50 +245,66 @@ export function AppLayout() {
     touchStartTime.current = Date.now();
 
     if (drawerOpenRef.current) {
-      // Drawer is open — any horizontal drag left should close it
       gestureMode.current = 'pending-close';
     } else if (clientX <= EDGE_SWIPE_WIDTH && EDGE_SWIPE_ROUTES.has(pathname)) {
-      // Left edge on a top-level route — could open drawer
       gestureMode.current = 'pending-edge';
     } else {
       const noSwipe = (e.target as Element).closest('[data-no-swipe]');
       if (!noSwipe) {
-        // Regular content area — could be page swipe or vertical scroll
         gestureMode.current = 'pending-page';
       }
     }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!e.isPrimary) return;
     const mode = gestureMode.current;
     if (mode === 'idle' || mode === 'vertical' || mode === 'page-swipe') return;
 
-    const touch  = e.touches[0];
-    const dx     = touch.clientX - touchStartX.current;
-    const dy     = touch.clientY - touchStartY.current;
-    const absDx  = Math.abs(dx);
-    const absDy  = Math.abs(dy);
+    const dx   = e.clientX - touchStartX.current;
+    const dy   = e.clientY - touchStartY.current;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
 
     // ── Direction-lock phase ──
+
     if (mode === 'pending-edge') {
-      if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return; // still in dead zone
+      if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return; // dead zone
       if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
-      if (dx > 0) { gestureMode.current = 'drawer-open'; }
-      else { gestureMode.current = 'vertical'; }
+      if (dx > 0) {
+        gestureMode.current           = 'drawer-open';
+        isDrawerGestureActive.current = true;
+        // Capture all subsequent pointer events — prevents synthetic clicks on
+        // BottomNav NavLinks if the finger lifts over that area.
+        rootRef.current?.setPointerCapture(e.pointerId);
+      } else {
+        gestureMode.current = 'vertical';
+      }
       return;
     }
 
     if (mode === 'pending-close') {
       if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return;
       if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
-      if (dx < 0) { gestureMode.current = 'drawer-close'; }
-      else { gestureMode.current = 'vertical'; }
+      if (dx < 0) {
+        gestureMode.current           = 'drawer-close';
+        isDrawerGestureActive.current = true;
+        rootRef.current?.setPointerCapture(e.pointerId);
+      } else {
+        gestureMode.current = 'vertical';
+      }
       return;
     }
 
     if (mode === 'pending-page') {
       if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return;
       if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
+      // Belt-and-suspenders: if the touch started in the edge zone it must NEVER
+      // become a page-swipe — the drawer has exclusive ownership there.
+      if (touchStartX.current <= EDGE_SWIPE_WIDTH) {
+        gestureMode.current = 'vertical';
+        return;
+      }
       gestureMode.current = 'page-swipe';
       return;
     }
@@ -281,39 +313,45 @@ export function AppLayout() {
     const w = drawerNavRef.current?.getWidth() ?? 340;
 
     if (mode === 'drawer-open') {
-      // Finger started at EDGE_SWIPE_WIDTH px; treat that as the origin
-      const raw  = -w + dx; // maps dx=0 → fully closed, dx=w → fully open
+      const raw     = -w + dx; // dx=0 → fully closed, dx=w → fully open
       const clamped = Math.max(-w, Math.min(0, raw));
       drawerNavRef.current?.setDragX(clamped);
+      e.preventDefault(); // prevent scroll (belt alongside native touchmove handler)
     }
 
     if (mode === 'drawer-close') {
-      // Drawer is open (x = 0); dx < 0 moves it toward closed
       const clamped = Math.max(-w, Math.min(0, dx));
       drawerNavRef.current?.setDragX(clamped);
+      e.preventDefault();
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!e.isPrimary) return;
     const mode = gestureMode.current;
-    gestureMode.current = 'idle';
+    gestureMode.current           = 'idle';
+    isDrawerGestureActive.current = false;
 
-    if (mode === 'idle' || mode === 'vertical' || mode === 'pending-edge' || mode === 'pending-close' || mode === 'pending-page') {
-      // No committed gesture — let native tap / click proceed
-      return;
+    if (
+      mode === 'idle' ||
+      mode === 'vertical' ||
+      mode === 'pending-edge' ||
+      mode === 'pending-close' ||
+      mode === 'pending-page'
+    ) {
+      return; // uncommitted gesture — let native tap/click proceed normally
     }
 
-    const endX    = e.changedTouches[0].clientX;
-    const dx      = endX - touchStartX.current;
-    const dt      = Math.max(1, Date.now() - touchStartTime.current);
+    const dx       = e.clientX - touchStartX.current;
+    const dt       = Math.max(1, Date.now() - touchStartTime.current);
     const velocity = Math.abs(dx) / dt; // px/ms
-    const w       = drawerNavRef.current?.getWidth() ?? 340;
+    const w        = drawerNavRef.current?.getWidth() ?? 340;
 
     if (mode === 'drawer-open') {
       const progress     = Math.max(0, Math.min(w, dx));
       const openFraction = progress / w;
       if (openFraction >= OPEN_THRESHOLD || velocity >= VELOCITY_THRESHOLD) {
-        openDrawer();  // snapOpen() + setDrawerOpen(true) + NavDrawer focus trap fires
+        openDrawer(); // snapOpen() + setDrawerOpen(true)
       } else {
         drawerNavRef.current?.snapClose(); // cancel — snap back off-screen
       }
@@ -323,7 +361,7 @@ export function AppLayout() {
     if (mode === 'drawer-close') {
       const closeFraction = Math.abs(Math.min(0, dx)) / w;
       if (closeFraction >= OPEN_THRESHOLD || velocity >= VELOCITY_THRESHOLD) {
-        closeDrawerNoFocus(); // snapClose() + setDrawerOpen(false) without focus move
+        closeDrawerNoFocus(); // snapClose() + setDrawerOpen(false)
       } else {
         drawerNavRef.current?.snapOpen(); // cancel — snap back open
       }
@@ -331,19 +369,36 @@ export function AppLayout() {
     }
 
     if (mode === 'page-swipe') {
-      const endY = e.changedTouches[0].clientY;
-      const dy   = endY - touchStartY.current;
-      if (Math.abs(dx) >= 60 && Math.abs(dy) <= 80) {
+      const dy = e.clientY - touchStartY.current;
+      // Guard: a gesture that originated in the left edge zone must never trigger
+      // a tab change, even if the state machine somehow reached page-swipe.
+      if (
+        touchStartX.current > EDGE_SWIPE_WIDTH &&
+        Math.abs(dx) >= 60 &&
+        Math.abs(dy) <= 80
+      ) {
         const idx = SWIPE_ROUTES.indexOf(pathname);
         if (idx !== -1) {
           const next = dx < 0 ? idx + 1 : idx - 1;
           if (next >= 0 && next < SWIPE_ROUTES.length) {
-            // Set direction before navigate so the entering page reads the right value
+            // Set direction before navigate so entering page reads the right value
             swipeDirection.current = dx < 0 ? 1 : -1;
             navigate(SWIPE_ROUTES[next]);
           }
         }
       }
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (!e.isPrimary) return;
+    gestureMode.current           = 'idle';
+    isDrawerGestureActive.current = false;
+    // Restore drawer to its last stable position
+    if (drawerOpenRef.current) {
+      drawerNavRef.current?.snapOpen();
+    } else {
+      drawerNavRef.current?.snapClose();
     }
   };
 
@@ -353,9 +408,10 @@ export function AppLayout() {
     <div
       ref={rootRef}
       className="mx-auto flex min-h-screen max-w-md flex-col"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
     >
       {/* ── Header ───────────────────────────────────────────────────────
            Zone L (40 px): hamburger only
