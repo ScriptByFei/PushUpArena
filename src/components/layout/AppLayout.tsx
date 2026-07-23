@@ -289,13 +289,15 @@ export function AppLayout() {
       }
     };
 
-    const finishDrawer = (dx: number, dt: number) => {
+    // wasAxisHoriz is passed in so that reset() can be called before this
+    // function without clearing the axis state we need to make a decision.
+    const finishDrawer = (dx: number, dt: number, wasAxisHoriz: boolean) => {
       const drawer = drawerNavRef.current;
       const w      = drawer?.getWidth() ?? 340;
       const vel    = Math.abs(dx) / Math.max(1, dt);
 
-      if (!axisLocked || !axisHoriz) {
-        // No horizontal commit → snap back to stable state
+      if (!wasAxisHoriz) {
+        // Tap or vertical gesture — no horizontal commit. Restore stable state.
         if (drawerOpenRef.current) drawer?.snapOpen();
         else drawer?.snapClose();
         return;
@@ -322,32 +324,24 @@ export function AppLayout() {
 
     const onUp = (e: PointerEvent) => {
       if (!e.isPrimary) return;
-      const savedMode = mode;
-      const dx        = e.clientX - startX;
-      const dt        = performance.now() - startTime;
+      const savedMode      = mode;
+      const savedAxisHoriz = axisHoriz; // capture BEFORE reset clears it
+      const dx             = e.clientX - startX;
+      const dt             = performance.now() - startTime;
       reset();
-      if (savedMode === 'drawer') finishDrawer(dx, dt);
+      if (savedMode === 'drawer') finishDrawer(dx, dt, savedAxisHoriz);
     };
 
     const onCancel = (e: PointerEvent) => {
       if (!e.isPrimary) return;
       const savedMode      = mode;
-      const savedAxisHoriz = axisHoriz;
+      const savedAxisHoriz = axisHoriz; // capture BEFORE reset clears it
       const savedDx        = lastDx;
-      const savedTime      = startTime;
+      const savedDt        = performance.now() - startTime;
       reset();
-      if (savedMode === 'drawer') {
-        if (savedAxisHoriz) {
-          // A horizontal drag was in progress — commit or snap using the same
-          // logic as onUp so that a hard-enough swipe still opens the drawer
-          // even when iOS fires pointercancel instead of pointerup.
-          finishDrawer(savedDx, performance.now() - savedTime);
-        } else {
-          // No horizontal axis locked — just restore the stable state.
-          if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
-          else drawerNavRef.current?.snapClose();
-        }
-      }
+      // Use same commit logic as onUp — iOS sometimes fires pointercancel
+      // instead of pointerup; we still want to honour a valid swipe.
+      if (savedMode === 'drawer') finishDrawer(savedDx, savedDt, savedAxisHoriz);
     };
 
     // ── Register ───────────────────────────────────────────────────────
