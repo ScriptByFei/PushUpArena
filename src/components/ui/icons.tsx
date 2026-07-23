@@ -204,3 +204,9 @@ export const MedalIcon = (p: IconProps) => (
     <path d="M12 12v2l1 1" />
   </svg>
 );
+
+export const MenuIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M3 6h18M3 12h18M3 18h18" />
+  </svg>
+);

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
-import { SettingsIcon, BellIcon, BellOffIcon } from '@/components/ui/icons';
+import { SettingsIcon, BellIcon, BellOffIcon, MenuIcon } from '@/components/ui/icons';
 import { usePush } from '@/context/PushContext';
 import { DailyRecapModal } from '@/components/DailyRecapModal';
 import { useDailyRecap } from '@/hooks/useDailyRecap';
@@ -10,6 +10,7 @@ import { ExerciseChip } from '@/components/ExerciseChip';
 import { useExercise } from '@/context/ExerciseContext';
 import { ArenaFeed } from '@/components/ArenaFeed';
 import { DailyChallengeModal } from '@/components/DailyChallengeModal';
+import { NavDrawer } from '@/components/navigation/NavDrawer';
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -45,6 +46,16 @@ export function AppLayout() {
   const swipeStartY = useRef<number | null>(null);
   const swipeDirection = useRef<number>(1);
   const prevPathname = useRef(pathname);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  /* Drawer-State */
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    // Fokus nach Schließen zurück zum Auslöser
+    menuButtonRef.current?.focus();
+  }, []);
+  const toggleDrawer = useCallback(() => setDrawerOpen((prev) => !prev), []);
 
   useEffect(() => {
     const prevIdx = SWIPE_ROUTES.indexOf(prevPathname.current);
@@ -61,6 +72,12 @@ export function AppLayout() {
   const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
   const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false);
+
+  /* Stable-Callback für Recap-Öffnung (wird auch von NavDrawer genutzt) */
+  const handleOpenRecap = useCallback(async () => {
+    await forceLoad();
+    setRecapManualOpen(true);
+  }, [forceLoad]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -82,6 +99,8 @@ export function AppLayout() {
   }, [navigate]);
 
   const handleSwipeStart = (e: React.TouchEvent) => {
+    // Drawer offen → keine neue Swipe-Geste starten
+    if (drawerOpen) return;
     const noSwipe = (e.target as Element).closest('[data-no-swipe]');
     if (noSwipe) return;
     swipeStartX.current = e.touches[0].clientX;
@@ -89,6 +108,8 @@ export function AppLayout() {
   };
 
   const handleSwipeEnd = (e: React.TouchEvent) => {
+    // Drawer offen → keinen Route-Wechsel auslösen
+    if (drawerOpen) return;
     if (swipeStartX.current === null || swipeStartY.current === null) return;
     const dx = e.changedTouches[0].clientX - swipeStartX.current;
     const dy = e.changedTouches[0].clientY - swipeStartY.current;
@@ -113,8 +134,21 @@ export function AppLayout() {
         {/* Hauptzeile — symmetrisch: linke und rechte Zone je 96 px */}
         <div className="relative flex items-center" style={{ height: 48 }}>
 
-          {/* Zone L — Feed + Recap + Daily Challenge */}
+          {/* Zone L — Menü + Feed + Recap + Daily Challenge */}
           <div className="flex shrink-0 items-center gap-0 pl-0">
+            {/* Drawer-Toggle */}
+            <button
+              ref={menuButtonRef}
+              id="nav-drawer-trigger"
+              onClick={toggleDrawer}
+              aria-label="Navigation öffnen"
+              aria-expanded={drawerOpen}
+              aria-controls="nav-drawer"
+              className="grid place-items-center rounded-lg text-slate-400 transition hover:bg-ink-800 active:bg-ink-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400"
+              style={{ width: 40, height: 48 }}
+            >
+              <MenuIcon className="h-[18px] w-[18px]" />
+            </button>
             <button
               onClick={() => setFeedOpen(true)}
               aria-label="Arena-Feed"
@@ -124,7 +158,7 @@ export function AppLayout() {
               <img src="/arena-feed-icon.webp" alt="" style={{ width: 36, height: 36, display: 'block', objectFit: 'contain' }} />
             </button>
             <button
-              onClick={async () => { await forceLoad(); setRecapManualOpen(true); }}
+              onClick={handleOpenRecap}
               aria-label="Tages-Recap"
               className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
               style={{ width: 40, height: 48 }}
@@ -256,6 +290,15 @@ export function AppLayout() {
           </div>
         </div>
       )}
+      {/* Navigation Drawer */}
+      <NavDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        onOpenFeed={() => setFeedOpen(true)}
+        onOpenRecap={handleOpenRecap}
+        onOpenDailyChallenge={() => setDailyChallengeOpen(true)}
+      />
+
       {/* Kein Recap verfügbar (manuell geöffnet) */}
       {recapManualOpen && !recap && !navLoading && (
         <div
