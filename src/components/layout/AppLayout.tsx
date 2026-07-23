@@ -502,6 +502,11 @@ export function AppLayout() {
             exit="exit"
             transition={{ type: 'spring', stiffness: 350, damping: 35, mass: 0.8 }}
             className="absolute inset-0 overflow-y-auto px-4 pb-32 pt-3"
+            // pan-y: browser handles vertical scroll natively but does NOT fire
+            // pointercancel for horizontal gestures — they stay in JS hands,
+            // which fixes page-swipe being silently swallowed on content-heavy
+            // pages (Aktivität) after the move to Pointer Events.
+            style={{ touchAction: 'pan-y' }}
           >
             <Outlet />
           </motion.div>
