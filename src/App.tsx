@@ -38,6 +38,7 @@ import { ExerciseProvider } from '@/context/ExerciseContext';
 import { EnrollmentModal } from '@/components/EnrollmentModal';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
 import { PushProvider } from '@/context/PushContext';
+import { DrawerStatsProvider } from '@/context/DrawerStatsContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { InstallHintProvider } from '@/components/InstallHint';
 
@@ -102,11 +103,13 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ExerciseProvider>
-              <PushProvider>
-                <AppLayout />
-                <EnrollmentModal />
-                <OnboardingFlow />
-              </PushProvider>
+              <DrawerStatsProvider>
+                <PushProvider>
+                  <AppLayout />
+                  <EnrollmentModal />
+                  <OnboardingFlow />
+                </PushProvider>
+              </DrawerStatsProvider>
             </ExerciseProvider>
           </ProtectedRoute>
         }

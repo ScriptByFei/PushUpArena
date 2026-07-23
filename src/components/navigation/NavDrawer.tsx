@@ -15,6 +15,8 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useDrawerStats } from '@/context/DrawerStatsContext';
+import { Avatar } from '@/components/ui/Avatar';
 import {
   BoltIcon,
   HomeIcon,
@@ -22,7 +24,6 @@ import {
   RecapIcon,
   SettingsIcon,
   TrophyIcon,
-  UserIcon,
   XIcon,
 } from '@/components/ui/icons';
 
@@ -147,8 +148,10 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   { open, onClose, onOpenFeed, onOpenRecap, onOpenDailyChallenge },
   ref,
 ) {
+  const navigate = useNavigate();
   const { signOut } = useAuth();
   const { profile } = useProfile();
+  const { stats, statsLoading, dailyRank, rankLoading } = useDrawerStats();
   const { pathname } = useLocation();
   const panelRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -241,8 +244,19 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
     await signOut();
   }, [onClose, signOut]);
 
-  const displayName = profile?.display_name ?? profile?.username ?? null;
+  const handleProfileClick = useCallback(() => {
+    onClose();
+    if (pathname !== '/profile') navigate('/profile');
+  }, [onClose, navigate, pathname]);
+
+  const displayName = profile?.display_name ?? profile?.username ?? 'Profil';
   const avatarUrl = profile?.avatar_url;
+
+  /** Formats streak as "1 Tag Streak" / "37 Tage Streak" / "Keine aktive Streak" */
+  function streakLabel(n: number): string {
+    if (n === 0) return 'Keine aktive Streak';
+    return `${n} ${n === 1 ? 'Tag' : 'Tage'} Streak`;
+  }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -277,32 +291,67 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           'rounded-r-2xl border-r border-ink-700 bg-ink-900 shadow-2xl'
         }
       >
-        {/* Profile header */}
-        <div className="flex items-center justify-between px-4 pb-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink-700 ring-2 ring-brand-500/30">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <UserIcon className="h-5 w-5 text-slate-400" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-100">
-                {displayName ?? '—'}
+        {/* ── Profile header ──────────────────────────────────────────────────
+             Clickable area (avatar + name + stats) navigates to /profile.
+             Close button is a separate tap target.                           */}
+        <div className="flex items-start justify-between gap-2 px-3 pb-3">
+          <button
+            onClick={handleProfileClick}
+            aria-label="Profil öffnen"
+            className={
+              'flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-left transition ' +
+              'hover:bg-ink-800 active:bg-ink-700 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+            }
+            style={{ minHeight: 44 }}
+          >
+            {/* Avatar — 52 px, falls back to /default-avatar.webp via Avatar component */}
+            <Avatar
+              url={avatarUrl}
+              name={displayName}
+              size={52}
+              className="ring-2 ring-brand-500/30"
+            />
+
+            {/* Text column */}
+            <div className="min-w-0 flex-1">
+              {/* Display name */}
+              <p className="truncate text-sm font-bold text-slate-100 leading-snug">
+                {displayName}
               </p>
-              {profile?.username && (
-                <p className="truncate text-xs text-slate-500">@{profile.username}</p>
-              )}
+
+              {/* Rank · Score */}
+              <p className="mt-0.5 truncate text-[11px] text-slate-400 leading-snug">
+                {rankLoading || statsLoading ? (
+                  <span className="inline-block h-3 w-28 animate-pulse rounded bg-ink-700" />
+                ) : (
+                  <>
+                    {dailyRank !== null
+                      ? `Platz ${dailyRank}`
+                      : 'Noch nicht platziert'}
+                    {' · '}
+                    {stats.total_amount.toLocaleString('de-DE')} Punkte
+                  </>
+                )}
+              </p>
+
+              {/* Streak */}
+              <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+                {statsLoading ? (
+                  <span className="inline-block h-3 w-20 animate-pulse rounded bg-ink-700" />
+                ) : (
+                  streakLabel(stats.current_streak)
+                )}
+              </p>
             </div>
-          </div>
+          </button>
+
+          {/* Close button — independent from profile click */}
           <button
             onClick={onClose}
             aria-label="Navigation schließen"
             className={
-              'ml-2 grid shrink-0 place-items-center rounded-lg text-slate-400 transition ' +
+              'mt-1 grid shrink-0 place-items-center rounded-lg text-slate-400 transition ' +
               'hover:bg-ink-800 hover:text-slate-200 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
@@ -312,7 +361,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           </button>
         </div>
 
-        <div className="mx-4 mb-3 h-px bg-ink-700" />
+        <div className="mx-4 mb-2 h-px bg-ink-700" />
 
         {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
         <div className="flex-1 overflow-y-auto px-2" data-no-swipe>

@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect, type ReactNode, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useExercise } from '@/context/ExerciseContext';
-import { useStats } from '@/hooks/useStats';
 import { useGoals } from '@/hooks/useGoals';
+import { useDrawerStats } from '@/context/DrawerStatsContext';
 import { useToast } from '@/context/ToastContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardTitle } from '@/components/ui/Card';
@@ -98,7 +98,7 @@ function StreakInfoSheet({ restDaysThisWeek, onClose }: { restDaysThisWeek: numb
 
 export default function Dashboard() {
   const { exercise, loading: exLoading, error: exError, reload } = useExercise();
-  const { stats, loading: statsLoading, refetch: refetchStats } = useStats(exercise?.id);
+  const { stats, statsLoading, refetch: refetchStats } = useDrawerStats();
   const { goal, loading: goalLoading } = useGoals(exercise?.id);
   const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();

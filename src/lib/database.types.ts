@@ -243,6 +243,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      get_my_daily_rank: {
+        Args: { p_exercise: string };
+        Returns: { daily_rank: number; today_amount: number }[];
+      };
       get_my_stats: {
         Args: { p_exercise: string };
         Returns: {
@@ -454,6 +458,7 @@ export type Achievement = Database['public']['Tables']['achievements']['Row'];
 export type UserAchievement = Database['public']['Tables']['user_achievements']['Row'];
 
 export type MyStats = Database['public']['Functions']['get_my_stats']['Returns'][number];
+export type MyDailyRank = Database['public']['Functions']['get_my_daily_rank']['Returns'][number];
 export type LeaderboardRow = Database['public']['Functions']['get_friend_leaderboard']['Returns'][number];
 export type GlobalLeaderboardRow = LeaderboardRow & { is_friend: boolean; has_pending_request: boolean };
 export type Team = Database['public']['Tables']['teams']['Row'];
