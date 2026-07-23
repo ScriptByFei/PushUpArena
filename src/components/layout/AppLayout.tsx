@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-// Note: useCallback is still used for drawer helpers (openDrawer, closeDrawer, etc.)
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
@@ -33,34 +32,8 @@ const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 
 /**
  * Route order used to determine slide direction for BottomNav tap animations.
- * Tab-swipe navigation has been removed; only the NavDrawer is swipeable.
  */
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
-
-/** Dead zone (px) before committing to a gesture axis. */
-const AXIS_LOCK_THRESHOLD = 8;
-
-/** |dx| must exceed |dy| × this factor to lock horizontal. */
-const H_DOMINANCE = 1.2;
-
-/** Fraction of drawer width needed to commit open/close. */
-const OPEN_THRESHOLD = 0.15;
-
-/** Minimum swipe velocity (px/ms) to commit open/close. */
-const VELOCITY_THRESHOLD = 0.25;
-
-/* ─── Gesture mode ───────────────────────────────────────────────────────── */
-
-/**
- * Determined ONCE at pointerdown; never changed during a gesture.
- * - "drawer": may open or close the nav drawer
- * - "none":   ignore this gesture entirely
- * - "idle":   default / post-reset state
- *
- * Page-swipe between tabs has been intentionally removed. Navigation between
- * the five main tabs is done exclusively via the BottomNav.
- */
-type GestureMode = 'idle' | 'drawer' | 'none';
 
 /* ─── Page animation variants ────────────────────────────────────────────── */
 
@@ -86,18 +59,14 @@ export function AppLayout() {
 
   /* ── Permanent refs ──────────────────────────────────────────────────── */
 
-  const rootRef       = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerNavRef  = useRef<NavDrawerHandle>(null);
 
-  /** Mirrors `drawerOpen` state so stable gesture callbacks can read it. */
+  /** Mirrors `drawerOpen` state so stable callbacks can read it without stale closures. */
   const drawerOpenRef = useRef(false);
   const hiddenAtRef   = useRef<number | null>(null);
 
   /* ── Slide direction: computed synchronously during render ───────────── */
-  //
-  // Stored in a ref so AnimatePresence reads the updated value in the same
-  // render that processes the new pathname — avoids useEffect lag.
 
   const prevPathnameRef   = useRef(pathname);
   const swipeDirectionRef = useRef(1);
@@ -111,13 +80,6 @@ export function AppLayout() {
     prevPathnameRef.current = pathname;
   }
 
-  /**
-   * Mirrors pathname in a ref so the native gesture effect (empty deps)
-   * always reads the current route without a stale closure.
-   */
-  const pathnameRef = useRef(pathname);
-  pathnameRef.current = pathname;
-
   /* ── React state ─────────────────────────────────────────────────────── */
 
   const [drawerOpen, setDrawerOpen]                 = useState(false);
@@ -129,7 +91,7 @@ export function AppLayout() {
   // Keep ref in sync with state on every render
   drawerOpenRef.current = drawerOpen;
 
-  /* ── Drawer helpers ──────────────────────────────────────────────────── */
+  /* ── Drawer helpers (icon-only — no swipe) ───────────────────────────── */
 
   const openDrawer = useCallback(() => {
     drawerNavRef.current?.snapOpen();
@@ -140,12 +102,6 @@ export function AppLayout() {
     drawerNavRef.current?.snapClose();
     setDrawerOpen(false);
     menuButtonRef.current?.focus();
-  }, []);
-
-  /** Snap-close without focus change (gesture-initiated close). */
-  const closeDrawerNoFocus = useCallback(() => {
-    drawerNavRef.current?.snapClose();
-    setDrawerOpen(false);
   }, []);
 
   const toggleDrawer = useCallback(() => {
@@ -192,192 +148,10 @@ export function AppLayout() {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [navigate]);
 
-  /* ── Drawer gesture via native DOM events ───────────────────────────────
-   *
-   * We use addEventListener directly (not React synthetic events) with
-   * { passive: false } on pointermove so that e.preventDefault() is
-   * guaranteed to work. React's synthetic event system may mark pointermove
-   * as passive in certain versions, which silently ignores preventDefault
-   * and lets the browser fire pointercancel — breaking the gesture.
-   *
-   * All gesture state lives in local variables inside the effect closure.
-   * Data that changes across renders is accessed via refs (drawerOpenRef,
-   * drawerNavRef, pathnameRef, setDrawerOpen).
-   * ─────────────────────────────────────────────────────────────────────── */
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    // ── Local gesture state ────────────────────────────────────────────
-    type Mode = 'idle' | 'drawer';
-    let mode: Mode        = 'idle';
-    let axisLocked        = false;
-    let axisHoriz         = false;
-    let startX            = 0;
-    let startY            = 0;
-    let startTime         = 0;
-    let lastDx            = 0; // last known horizontal offset, used by onCancel
-
-    const reset = () => {
-      mode       = 'idle';
-      axisLocked = false;
-      axisHoriz  = false;
-      lastDx     = 0;
-    };
-
-    // ── Handlers ───────────────────────────────────────────────────────
-    const onDown = (e: PointerEvent) => {
-      if (!e.isPrimary) return;
-
-      reset();
-      startX    = e.clientX;
-      startY    = e.clientY;
-      startTime = performance.now();
-
-      // Never intercept touches that land on the BottomNav (<nav>),
-      // the floating FAB above it, or any full-screen modal/overlay
-      // ([data-no-drawer]) — those must not trigger the drawer gesture.
-      const target = e.target as Element;
-      if (target.closest('nav')) return;
-      if (target.closest('[data-no-drawer]')) return;
-
-      if (drawerOpenRef.current) {
-        // Drawer is open — track potential close gesture (leftward swipe).
-        mode = 'drawer';
-      } else if (pathnameRef.current === '/') {
-        // Dashboard, drawer closed — track potential open gesture (rightward swipe).
-        // No edge-zone restriction: tab-swipe is gone so any right-swipe is safe.
-        // This also avoids iOS intercepting left-edge touches as "go back".
-        mode = 'drawer';
-      }
-    };
-
-    const onMove = (e: PointerEvent) => {
-      if (!e.isPrimary || mode === 'idle') return;
-
-      const dx    = e.clientX - startX;
-      const dy    = e.clientY - startY;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      // Axis decision
-      if (!axisLocked) {
-        if (Math.max(absDx, absDy) < AXIS_LOCK_THRESHOLD) return;
-        if (absDx > absDy * H_DOMINANCE) {
-          // Wrong-direction guard: opening requires rightward, closing requires leftward.
-          if (!drawerOpenRef.current && dx < 0) { reset(); return; } // left swipe on Dashboard → ignore
-          if (drawerOpenRef.current  && dx > 0) { reset(); return; } // right swipe when open → ignore
-          axisLocked = true;
-          axisHoriz  = true;
-          root.setPointerCapture(e.pointerId);
-        } else {
-          reset();
-          return;
-        }
-      }
-
-      if (!axisHoriz) return;
-
-      // Horizontal confirmed — block browser default (back/fwd nav, overscroll)
-      e.preventDefault();
-
-      lastDx = dx; // track for onCancel
-
-      const drawer = drawerNavRef.current;
-      const w      = drawer?.getWidth() ?? 340;
-
-      if (drawerOpenRef.current) {
-        // Closing drag: left moves panel off-screen
-        drawer?.setDragX(Math.max(-w, Math.min(0, dx)));
-      } else {
-        // Opening drag: right pulls panel on-screen
-        drawer?.setDragX(Math.max(-w, Math.min(0, -w + dx)));
-      }
-    };
-
-    // wasAxisHoriz is passed in so that reset() can be called before this
-    // function without clearing the axis state we need to make a decision.
-    const finishDrawer = (dx: number, dt: number, wasAxisHoriz: boolean) => {
-      const drawer = drawerNavRef.current;
-      const w      = drawer?.getWidth() ?? 340;
-      const vel    = Math.abs(dx) / Math.max(1, dt);
-
-      if (!wasAxisHoriz) {
-        // Tap or vertical gesture — no horizontal commit. Restore stable state.
-        if (drawerOpenRef.current) drawer?.snapOpen();
-        else drawer?.snapClose();
-        return;
-      }
-
-      if (drawerOpenRef.current) {
-        const fraction = Math.abs(Math.min(0, dx)) / w;
-        if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
-          drawer?.snapClose();
-          setDrawerOpen(false);
-        } else {
-          drawer?.snapOpen();
-        }
-      } else {
-        const fraction = Math.max(0, Math.min(w, dx)) / w;
-        if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
-          drawer?.snapOpen();
-          setDrawerOpen(true);
-        } else {
-          drawer?.snapClose();
-        }
-      }
-    };
-
-    const onUp = (e: PointerEvent) => {
-      if (!e.isPrimary) return;
-      const savedMode      = mode;
-      const savedAxisHoriz = axisHoriz; // capture BEFORE reset clears it
-      const dx             = e.clientX - startX;
-      const dt             = performance.now() - startTime;
-      reset();
-      if (savedMode === 'drawer') finishDrawer(dx, dt, savedAxisHoriz);
-    };
-
-    const onCancel = (e: PointerEvent) => {
-      if (!e.isPrimary) return;
-      const savedMode      = mode;
-      const savedAxisHoriz = axisHoriz; // capture BEFORE reset clears it
-      const savedDx        = lastDx;
-      const savedDt        = performance.now() - startTime;
-      reset();
-      // Use same commit logic as onUp — iOS sometimes fires pointercancel
-      // instead of pointerup; we still want to honour a valid swipe.
-      if (savedMode === 'drawer') finishDrawer(savedDx, savedDt, savedAxisHoriz);
-    };
-
-    // ── Register ───────────────────────────────────────────────────────
-    root.addEventListener('pointerdown',   onDown);
-    root.addEventListener('pointermove',   onMove,   { passive: false });
-    root.addEventListener('pointerup',     onUp);
-    root.addEventListener('pointercancel', onCancel);
-
-    return () => {
-      root.removeEventListener('pointerdown',   onDown);
-      root.removeEventListener('pointermove',   onMove);
-      root.removeEventListener('pointerup',     onUp);
-      root.removeEventListener('pointercancel', onCancel);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Intentionally empty — all dynamic data read via refs
-
   /* ── Render ──────────────────────────────────────────────────────────── */
 
   return (
-    <div
-      ref={rootRef}
-      className="mx-auto flex min-h-screen max-w-md flex-col"
-      // pan-y: browser handles vertical scroll natively and does NOT fire
-      // pointercancel for horizontal movements — required for drawer swipe.
-      // Gesture handlers are registered via native addEventListener (not
-      // React props) so pointermove can be { passive: false }.
-      style={{ touchAction: 'pan-y' }}
-    >
+    <div className="mx-auto flex min-h-screen max-w-md flex-col">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/80 backdrop-blur"
@@ -494,7 +268,6 @@ export function AppLayout() {
 
       {recapManualOpen && !recap && !navLoading && (
         <div
-          data-no-drawer="true"
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setRecapManualOpen(false)}
         >
@@ -519,7 +292,6 @@ export function AppLayout() {
 
       {bellConfirmOpen && (
         <div
-          data-no-drawer="true"
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setBellConfirmOpen(false)}
         >
@@ -552,7 +324,7 @@ export function AppLayout() {
         </div>
       )}
 
-      {/* Navigation Drawer — always mounted; animation via MotionValues in NavDrawer */}
+      {/* Navigation Drawer — opened/closed exclusively via the menu icon */}
       <NavDrawer
         ref={drawerNavRef}
         open={drawerOpen}

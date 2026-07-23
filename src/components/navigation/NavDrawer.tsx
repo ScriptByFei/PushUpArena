@@ -34,10 +34,6 @@ export interface NavDrawerHandle {
   snapOpen: () => void;
   /** Spring-animate panel to fully-closed position (x = -width). */
   snapClose: () => void;
-  /** Set raw x offset in px while dragging (0 = open, -width = closed). */
-  setDragX: (px: number) => void;
-  /** Actual rendered panel width in px. */
-  getWidth: () => number;
 }
 
 /* ---------- Props ---------- */
@@ -199,12 +195,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
       const width = panelRef.current?.offsetWidth ?? 340;
       animate(panelX, -width, getSpring());
     },
-    setDragX(px: number) {
-      panelX.set(px);
-    },
-    getWidth() {
-      return panelRef.current?.offsetWidth ?? 340;
-    },
   }));
 
   // ─── Focus trap (active when open prop is true) ──────────────────────────────
@@ -261,13 +251,11 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Backdrop — always in DOM; pointer-events managed imperatively above.
-           touch-action: pan-y ensures the browser passes horizontal drag events
-           to JS instead of firing pointercancel (needed for close-swipe). */}
+      {/* Backdrop — always in DOM; pointer-events managed imperatively above. */}
       <div
         ref={backdropRef}
         className="fixed inset-0 z-[45]"
-        style={{ pointerEvents: 'none', touchAction: 'pan-y' }}
+        style={{ pointerEvents: 'none' }}
         onClick={onClose}
         aria-hidden="true"
       >
@@ -285,9 +273,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           x: panelX,
           visibility: 'hidden',  // initial; motionValueEvent updates this
           pointerEvents: 'none', // initial; motionValueEvent updates this
-          // pan-y: browser passes horizontal swipes to JS → close-swipe works
-          // without the browser intercepting the gesture and firing pointercancel.
-          touchAction: 'pan-y',
           paddingTop: 'max(16px, env(safe-area-inset-top))',
           paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
         }}
