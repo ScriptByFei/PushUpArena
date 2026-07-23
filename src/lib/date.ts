@@ -73,6 +73,21 @@ export function formatRelativeDay(value: string | Date): string {
   return formatDate(value);
 }
 
+/**
+ * Formatiert ein reines YYYY-MM-DD Challenge-Datum sicher auf Deutsch.
+ * Verwendet new Date(year, month-1, day) statt new Date(string), um UTC-
+ * Verschiebung zu vermeiden (z. B. "2026-07-21T00:00Z" → "20. Juli" in UTC+2).
+ * Beispiel: "21. Juli 2026"
+ */
+export function formatChallengeDateLong(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('de-DE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 /** Uhrzeit in Europe/Berlin formatieren. Format: "HH:mm" (berücksichtigt Sommer-/Winterzeit). */
 export function formatBerlinTime(value: Date): string {
   return value.toLocaleTimeString('de-DE', {
