@@ -457,7 +457,7 @@ export default function Friends() {
           <div
             data-no-swipe="true"
             className={`flex gap-3 ${showAllDiscover ? 'flex-wrap' : 'overflow-x-auto pb-2'}`}
-            style={{ touchAction: 'auto' }}
+            style={{ touchAction: 'pan-x pan-y', overscrollBehaviorX: 'contain' }}
           >
             {shownDiscover.map(u => {
               const outReq = outgoing.find(o => o.receiver.id === u.id);

@@ -1051,6 +1051,7 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      data-no-drawer="true"
       className="fixed inset-0 z-50 flex flex-col bg-ink-950"
       role="dialog"
       aria-modal="true"

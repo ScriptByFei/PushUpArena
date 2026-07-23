@@ -618,6 +618,7 @@ export function DailyRecapModal({
 
   return (
     <div
+      data-no-drawer="true"
       className={`fixed inset-0 z-50 flex flex-col bg-[#08080f] transition-opacity duration-200 ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}

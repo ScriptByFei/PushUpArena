@@ -235,6 +235,13 @@ export function AppLayout() {
       startY    = e.clientY;
       startTime = performance.now();
 
+      // Never intercept touches that land on the BottomNav (<nav>),
+      // the floating FAB above it, or any full-screen modal/overlay
+      // ([data-no-drawer]) — those must not trigger the drawer gesture.
+      const target = e.target as Element;
+      if (target.closest('nav')) return;
+      if (target.closest('[data-no-drawer]')) return;
+
       if (drawerOpenRef.current) {
         // Drawer is open — track potential close gesture (leftward swipe).
         mode = 'drawer';
@@ -487,6 +494,7 @@ export function AppLayout() {
 
       {recapManualOpen && !recap && !navLoading && (
         <div
+          data-no-drawer="true"
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setRecapManualOpen(false)}
         >
@@ -511,6 +519,7 @@ export function AppLayout() {
 
       {bellConfirmOpen && (
         <div
+          data-no-drawer="true"
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setBellConfirmOpen(false)}
         >
