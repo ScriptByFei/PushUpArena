@@ -12,10 +12,6 @@ import { ArenaFeed } from '@/components/ArenaFeed';
 import { DailyChallengeModal } from '@/components/DailyChallengeModal';
 import { NavDrawer, type NavDrawerHandle } from '@/components/navigation/NavDrawer';
 
-/* ─── Dev flag ───────────────────────────────────────────────────────────── */
-
-const DEV = import.meta.env.DEV;
-
 /* ─── Page metadata ──────────────────────────────────────────────────────── */
 
 const titles: Record<string, string> = {
@@ -34,10 +30,13 @@ const titles: Record<string, string> = {
 /** Re-navigate home after this long in the background. */
 const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 
-/** Routes that support left↔right page-swipe navigation (BottomNav order). */
+/**
+ * Route order used to determine slide direction for BottomNav tap animations.
+ * Tab-swipe navigation has been removed; only the NavDrawer is swipeable.
+ */
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
 
-/** px from left edge to activate drawer-open mode (Dashboard only). */
+/** px from left edge to activate drawer-open gesture (Dashboard only). */
 const EDGE_ZONE = 20;
 
 /** Dead zone (px) before committing to a gesture axis. */
@@ -46,32 +45,24 @@ const AXIS_LOCK_THRESHOLD = 8;
 /** |dx| must exceed |dy| × this factor to lock horizontal. */
 const H_DOMINANCE = 1.2;
 
-/** Minimum swipe distance (px) to trigger page navigation on release. */
-const SWIPE_DISTANCE_THRESHOLD = 70;
-
-/** Minimum swipe velocity (px/ms) to trigger page navigation on release. */
-const SWIPE_VELOCITY_THRESHOLD = 0.45;
-
 /** Fraction of drawer width needed to commit open/close. */
 const OPEN_THRESHOLD = 0.3;
 
-/**
- * CSS selector for elements that must never initiate a page-swipe.
- * Includes both the standard interactive set and legacy data-no-swipe attribute.
- */
-const INTERACTIVE =
-  'button, a, input, textarea, select, label, [role="button"], [data-no-page-swipe], [data-no-swipe]';
+/** Minimum swipe velocity (px/ms) to commit open/close. */
+const VELOCITY_THRESHOLD = 0.45;
 
 /* ─── Gesture mode ───────────────────────────────────────────────────────── */
 
 /**
  * Determined ONCE at pointerdown; never changed during a gesture.
  * - "drawer": may open or close the nav drawer
- * - "page":   may navigate to the previous or next SWIPE_ROUTE
- * - "none":   pointer landed on an interactive element → ignore entirely
+ * - "none":   ignore this gesture entirely
  * - "idle":   default / post-reset state
+ *
+ * Page-swipe between tabs has been intentionally removed. Navigation between
+ * the five main tabs is done exclusively via the BottomNav.
  */
-type GestureMode = 'idle' | 'drawer' | 'page' | 'none';
+type GestureMode = 'idle' | 'drawer' | 'none';
 
 /* ─── Page animation variants ────────────────────────────────────────────── */
 
@@ -85,23 +76,6 @@ const pageTransition = {
   duration: 0.18,
   ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
 };
-
-/* ─── Helper: detect horizontally-scrollable ancestor ───────────────────── */
-
-function hasHScrollAncestor(target: Element, boundary: Element): boolean {
-  let node: Element | null = target;
-  while (node && node !== boundary) {
-    const { overflowX } = window.getComputedStyle(node);
-    if (
-      (overflowX === 'auto' || overflowX === 'scroll') &&
-      node.scrollWidth > node.clientWidth
-    ) {
-      return true;
-    }
-    node = node.parentElement;
-  }
-  return false;
-}
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
@@ -122,10 +96,10 @@ export function AppLayout() {
   const drawerOpenRef = useRef(false);
   const hiddenAtRef   = useRef<number | null>(null);
 
-  /* ── Swipe direction: computed synchronously during render ───────────── */
+  /* ── Slide direction: computed synchronously during render ───────────── */
   //
-  // Stored in a ref so AnimatePresence reads the updated value at the same
-  // render that processes the new pathname — no async useEffect lag.
+  // Stored in a ref so AnimatePresence reads the updated value in the same
+  // render that processes the new pathname — avoids useEffect lag.
 
   const prevPathnameRef   = useRef(pathname);
   const swipeDirectionRef = useRef(1);
@@ -143,33 +117,13 @@ export function AppLayout() {
 
   /** Current gesture mode; set once at pointerdown. */
   const gestureMode        = useRef<GestureMode>('idle');
-  /** Whether the gesture axis has been committed (horizontal or vertical). */
+  /** Whether the gesture axis has been committed. */
   const axisLocked         = useRef(false);
   /** True once axis is confirmed horizontal. */
   const axisIsHorizontal   = useRef(false);
   const startX             = useRef(0);
   const startY             = useRef(0);
   const startTime          = useRef(0);
-  /** Last tracked pointer position — used by pointercancel fallback. */
-  const lastX              = useRef(0);
-  const lastY              = useRef(0);
-
-  /**
-   * Navigation lock: set true immediately before navigate(); reset only at the
-   * START of the next pointerdown. Prevents double-navigation when both
-   * pointerup and pointercancel fire for the same gesture.
-   */
-  const navigationTriggeredRef = useRef(false);
-
-  /**
-   * Animation lock: set true when navigate() is called; cleared in
-   * onAnimationComplete of the entering page. Prevents a second swipe from
-   * starting while the transition is running.
-   */
-  const isAnimatingRef = useRef(false);
-
-  /** Incrementing ID for debug logging — unique per gesture. */
-  const gestureIdRef = useRef(0);
 
   /* ── React state ─────────────────────────────────────────────────────── */
 
@@ -247,67 +201,39 @@ export function AppLayout() {
 
   /* ── Central gesture reset ───────────────────────────────────────────── */
 
-  /**
-   * Resets all gesture tracking state. MUST be called after every gesture
-   * outcome (completion, cancellation, or abort). Does NOT reset
-   * `navigationTriggeredRef` — that lock persists until the next pointerdown.
-   */
   const resetGesture = useCallback(() => {
     gestureMode.current      = 'idle';
     axisLocked.current       = false;
     axisIsHorizontal.current = false;
   }, []);
 
-  /* ── Pointer event handlers ──────────────────────────────────────────── */
+  /* ── Pointer event handlers (drawer only) ────────────────────────────── */
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (!e.isPrimary) return;
 
-      // Beginning of a new gesture — clear the navigation lock
-      navigationTriggeredRef.current = false;
       resetGesture();
 
-      const { clientX, clientY, target } = e;
-
+      const { clientX, clientY } = e;
       startX.current    = clientX;
       startY.current    = clientY;
       startTime.current = performance.now();
-      lastX.current     = clientX;
-      lastY.current     = clientY;
 
-      if (DEV) {
-        gestureIdRef.current++;
-        console.debug('[Swipe] pointerdown', {
-          gestureId: gestureIdRef.current,
-          x: clientX,
-          y: clientY,
-          pathname,
-        });
-      }
-
-      // Never swipe on interactive elements
-      if ((target as Element).closest(INTERACTIVE)) {
-        gestureMode.current = 'none';
-        return;
-      }
-
-      // Never override horizontal scroll containers
-      if (rootRef.current && hasHScrollAncestor(target as Element, rootRef.current)) {
-        gestureMode.current = 'none';
-        return;
-      }
-
-      // Determine mode — fixed for the duration of this gesture
+      // Drawer is already open → allow closing gesture from anywhere
       if (drawerOpenRef.current) {
-        // Drawer is open → potential close gesture on any horizontal drag
         gestureMode.current = 'drawer';
-      } else if (clientX <= EDGE_ZONE && pathname === '/') {
-        // Left-edge touch on Dashboard only → potential drawer-open gesture
-        gestureMode.current = 'drawer';
-      } else {
-        gestureMode.current = 'page';
+        return;
       }
+
+      // Left-edge on Dashboard only → drawer-open gesture
+      if (clientX <= EDGE_ZONE && pathname === '/') {
+        gestureMode.current = 'drawer';
+        return;
+      }
+
+      // Everything else: no gesture
+      gestureMode.current = 'none';
     },
     [pathname, resetGesture],
   );
@@ -315,10 +241,6 @@ export function AppLayout() {
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!e.isPrimary) return;
-
-      // Always track last position for pointercancel fallback
-      lastX.current = e.clientX;
-      lastY.current = e.clientY;
 
       const mode = gestureMode.current;
       if (mode === 'none' || mode === 'idle') return;
@@ -331,23 +253,14 @@ export function AppLayout() {
       // ── Axis lock phase ───────────────────────────────────────────────
 
       if (!axisLocked.current) {
-        if (Math.max(absDx, absDy) < AXIS_LOCK_THRESHOLD) return; // dead zone
+        if (Math.max(absDx, absDy) < AXIS_LOCK_THRESHOLD) return;
 
         if (absDx > absDy * H_DOMINANCE) {
-          // Horizontal locked
           axisLocked.current       = true;
           axisIsHorizontal.current = true;
-          // Capture all subsequent events — prevents child elements from
-          // stealing the pointer and stops browser default gestures.
           rootRef.current?.setPointerCapture(e.pointerId);
-          if (DEV) {
-            console.debug('[Swipe] axis: horizontal', { gestureId: gestureIdRef.current });
-          }
         } else {
-          // Vertical — hand scroll back to the browser
-          if (DEV) {
-            console.debug('[Swipe] axis: vertical → abort', { gestureId: gestureIdRef.current });
-          }
+          // Vertical → abandon drawer gesture
           resetGesture();
           return;
         }
@@ -355,25 +268,23 @@ export function AppLayout() {
 
       if (!axisIsHorizontal.current) return;
 
-      // Horizontal drag confirmed — suppress browser default (back/fwd nav etc.)
       e.preventDefault();
 
-      // ── Active drag phase ─────────────────────────────────────────────
+      // ── Drawer drag ───────────────────────────────────────────────────
 
       if (mode === 'drawer') {
         const w = drawerNavRef.current?.getWidth() ?? 340;
         if (drawerOpenRef.current) {
-          // Closing drag: only dx < 0 moves the drawer
+          // Closing: drag left
           const clamped = Math.max(-w, Math.min(0, dx));
           drawerNavRef.current?.setDragX(clamped);
         } else {
-          // Opening drag from left edge: dx > 0 opens
+          // Opening: drag right from left edge
           const raw     = -w + dx;
           const clamped = Math.max(-w, Math.min(0, raw));
           drawerNavRef.current?.setDragX(clamped);
         }
       }
-      // 'page' mode: no live visual feedback — navigate on release
     },
     [resetGesture],
   );
@@ -382,22 +293,22 @@ export function AppLayout() {
     (e: React.PointerEvent) => {
       if (!e.isPrimary) return;
 
-      const mode  = gestureMode.current;
-      const dx    = e.clientX - startX.current;
-      const dt    = Math.max(1, performance.now() - startTime.current);
-      const vel   = Math.abs(dx) / dt;
+      const mode = gestureMode.current;
+      const dx   = e.clientX - startX.current;
+      const dt   = Math.max(1, performance.now() - startTime.current);
+      const vel  = Math.abs(dx) / dt;
 
       if (mode === 'drawer') {
         const w = drawerNavRef.current?.getWidth() ?? 340;
 
         if (!axisLocked.current || !axisIsHorizontal.current) {
-          // No committed direction → snap to stable state
+          // No committed horizontal direction → snap to current stable state
           if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
           else drawerNavRef.current?.snapClose();
         } else if (drawerOpenRef.current) {
           // Closing gesture
           const fraction = Math.abs(Math.min(0, dx)) / w;
-          if (fraction >= OPEN_THRESHOLD || vel >= SWIPE_VELOCITY_THRESHOLD) {
+          if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
             closeDrawerNoFocus();
           } else {
             drawerNavRef.current?.snapOpen();
@@ -405,45 +316,17 @@ export function AppLayout() {
         } else {
           // Opening gesture
           const fraction = Math.max(0, Math.min(w, dx)) / w;
-          if (fraction >= OPEN_THRESHOLD || vel >= SWIPE_VELOCITY_THRESHOLD) {
+          if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
             openDrawer();
           } else {
             drawerNavRef.current?.snapClose();
-          }
-        }
-      } else if (
-        mode === 'page' &&
-        axisLocked.current &&
-        axisIsHorizontal.current &&
-        !navigationTriggeredRef.current &&
-        !isAnimatingRef.current
-      ) {
-        const absDx = Math.abs(dx);
-        if (absDx >= SWIPE_DISTANCE_THRESHOLD || vel >= SWIPE_VELOCITY_THRESHOLD) {
-          const idx = SWIPE_ROUTES.indexOf(pathname);
-          if (idx !== -1) {
-            const dir  = dx < 0 ? 1 : -1; // left = forward, right = backward
-            const next = idx + (dx < 0 ? 1 : -1);
-            if (next >= 0 && next < SWIPE_ROUTES.length) {
-              navigationTriggeredRef.current = true;
-              isAnimatingRef.current         = true;
-              swipeDirectionRef.current      = dir;
-              if (DEV) {
-                console.debug('[Swipe] navigate', {
-                  gestureId: gestureIdRef.current,
-                  to: SWIPE_ROUTES[next],
-                  dir,
-                });
-              }
-              navigate(SWIPE_ROUTES[next]);
-            }
           }
         }
       }
 
       resetGesture();
     },
-    [pathname, navigate, openDrawer, closeDrawerNoFocus, resetGesture],
+    [openDrawer, closeDrawerNoFocus, resetGesture],
   );
 
   const handlePointerCancel = useCallback(
@@ -452,36 +335,7 @@ export function AppLayout() {
 
       const mode = gestureMode.current;
 
-      // Page swipe: attempt navigation using last tracked position.
-      // pointercancel clientX/Y may be 0 on some browsers; lastX/Y is reliable.
-      if (
-        mode === 'page' &&
-        axisLocked.current &&
-        axisIsHorizontal.current &&
-        !navigationTriggeredRef.current &&
-        !isAnimatingRef.current
-      ) {
-        const dx    = lastX.current - startX.current;
-        const dt    = Math.max(1, performance.now() - startTime.current);
-        const vel   = Math.abs(dx) / dt;
-        const absDx = Math.abs(dx);
-
-        if (absDx >= SWIPE_DISTANCE_THRESHOLD || vel >= SWIPE_VELOCITY_THRESHOLD) {
-          const idx = SWIPE_ROUTES.indexOf(pathname);
-          if (idx !== -1) {
-            const dir  = dx < 0 ? 1 : -1;
-            const next = idx + (dx < 0 ? 1 : -1);
-            if (next >= 0 && next < SWIPE_ROUTES.length) {
-              navigationTriggeredRef.current = true;
-              isAnimatingRef.current         = true;
-              swipeDirectionRef.current      = dir;
-              navigate(SWIPE_ROUTES[next]);
-            }
-          }
-        }
-      }
-
-      // Drawer: restore to stable state
+      // Restore drawer to last stable state on cancel
       if (mode === 'drawer') {
         if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
         else drawerNavRef.current?.snapClose();
@@ -489,7 +343,7 @@ export function AppLayout() {
 
       resetGesture();
     },
-    [pathname, navigate, resetGesture],
+    [resetGesture],
   );
 
   /* ── Render ──────────────────────────────────────────────────────────── */
@@ -498,18 +352,12 @@ export function AppLayout() {
     <div
       ref={rootRef}
       className="mx-auto flex min-h-screen max-w-md flex-col"
-      // pan-y: browser handles vertical scroll natively; horizontal pointer
-      // events are delivered to JS without pointercancel interference.
-      style={{ touchAction: 'pan-y' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
     >
-      {/* ── Header ────────────────────────────────────────────────────────
-           Zone L (40 px): hamburger
-           Zone C (flex): page title, absolutely centred
-           Zone R (~96 px): ExerciseChip (optional) + Bell + Settings       */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/80 backdrop-blur"
         style={{ paddingTop: 'max(4px, env(safe-area-inset-top))' }}
@@ -582,9 +430,7 @@ export function AppLayout() {
         </div>
       </header>
 
-      {/* ── Page content ──────────────────────────────────────────────────
-           AppLayout, Header, and BottomNav are stable across route changes.
-           Only the Outlet (page content) animates via AnimatePresence.      */}
+      {/* ── Page content ────────────────────────────────────────────────── */}
       <main className="relative flex-1 overflow-hidden">
         <AnimatePresence initial={false} custom={swipeDirectionRef.current} mode="popLayout">
           <motion.div
@@ -595,10 +441,6 @@ export function AppLayout() {
             animate="center"
             exit="exit"
             transition={pageTransition}
-            onAnimationComplete={() => {
-              // Release the animation lock so the next swipe can begin
-              isAnimatingRef.current = false;
-            }}
             className="absolute inset-0 overflow-y-auto px-4 pb-32 pt-3"
             style={{ touchAction: 'pan-y' }}
           >
