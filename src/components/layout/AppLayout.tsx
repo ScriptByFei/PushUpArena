@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+// Note: useCallback is still used for drawer helpers (openDrawer, closeDrawer, etc.)
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
@@ -113,17 +114,12 @@ export function AppLayout() {
     prevPathnameRef.current = pathname;
   }
 
-  /* ── Gesture refs — never trigger re-renders ─────────────────────────── */
-
-  /** Current gesture mode; set once at pointerdown. */
-  const gestureMode        = useRef<GestureMode>('idle');
-  /** Whether the gesture axis has been committed. */
-  const axisLocked         = useRef(false);
-  /** True once axis is confirmed horizontal. */
-  const axisIsHorizontal   = useRef(false);
-  const startX             = useRef(0);
-  const startY             = useRef(0);
-  const startTime          = useRef(0);
+  /**
+   * Mirrors pathname in a ref so the native gesture effect (empty deps)
+   * always reads the current route without a stale closure.
+   */
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   /* ── React state ─────────────────────────────────────────────────────── */
 
@@ -199,152 +195,157 @@ export function AppLayout() {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [navigate]);
 
-  /* ── Central gesture reset ───────────────────────────────────────────── */
+  /* ── Drawer gesture via native DOM events ───────────────────────────────
+   *
+   * We use addEventListener directly (not React synthetic events) with
+   * { passive: false } on pointermove so that e.preventDefault() is
+   * guaranteed to work. React's synthetic event system may mark pointermove
+   * as passive in certain versions, which silently ignores preventDefault
+   * and lets the browser fire pointercancel — breaking the gesture.
+   *
+   * All gesture state lives in local variables inside the effect closure.
+   * Data that changes across renders is accessed via refs (drawerOpenRef,
+   * drawerNavRef, pathnameRef, setDrawerOpen).
+   * ─────────────────────────────────────────────────────────────────────── */
 
-  const resetGesture = useCallback(() => {
-    gestureMode.current      = 'idle';
-    axisLocked.current       = false;
-    axisIsHorizontal.current = false;
-  }, []);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
 
-  /* ── Pointer event handlers (drawer only) ────────────────────────────── */
+    // ── Local gesture state ────────────────────────────────────────────
+    type Mode = 'idle' | 'drawer';
+    let mode: Mode        = 'idle';
+    let axisLocked        = false;
+    let axisHoriz         = false;
+    let startX            = 0;
+    let startY            = 0;
+    let startTime         = 0;
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
+    const reset = () => {
+      mode       = 'idle';
+      axisLocked = false;
+      axisHoriz  = false;
+    };
+
+    // ── Handlers ───────────────────────────────────────────────────────
+    const onDown = (e: PointerEvent) => {
       if (!e.isPrimary) return;
 
-      resetGesture();
+      reset();
+      startX    = e.clientX;
+      startY    = e.clientY;
+      startTime = performance.now();
 
-      const { clientX, clientY } = e;
-      startX.current    = clientX;
-      startY.current    = clientY;
-      startTime.current = performance.now();
-
-      // Drawer is already open → allow closing gesture from anywhere
       if (drawerOpenRef.current) {
-        gestureMode.current = 'drawer';
-        return;
+        mode = 'drawer';
+      } else if (e.clientX <= EDGE_ZONE && pathnameRef.current === '/') {
+        mode = 'drawer';
       }
+    };
 
-      // Left-edge on Dashboard only → drawer-open gesture
-      if (clientX <= EDGE_ZONE && pathname === '/') {
-        gestureMode.current = 'drawer';
-        return;
-      }
+    const onMove = (e: PointerEvent) => {
+      if (!e.isPrimary || mode === 'idle') return;
 
-      // Everything else: no gesture
-      gestureMode.current = 'none';
-    },
-    [pathname, resetGesture],
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!e.isPrimary) return;
-
-      const mode = gestureMode.current;
-      if (mode === 'none' || mode === 'idle') return;
-
-      const dx    = e.clientX - startX.current;
-      const dy    = e.clientY - startY.current;
+      const dx    = e.clientX - startX;
+      const dy    = e.clientY - startY;
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
 
-      // ── Axis lock phase ───────────────────────────────────────────────
-
-      if (!axisLocked.current) {
+      // Axis decision
+      if (!axisLocked) {
         if (Math.max(absDx, absDy) < AXIS_LOCK_THRESHOLD) return;
-
         if (absDx > absDy * H_DOMINANCE) {
-          axisLocked.current       = true;
-          axisIsHorizontal.current = true;
-          rootRef.current?.setPointerCapture(e.pointerId);
+          axisLocked = true;
+          axisHoriz  = true;
+          root.setPointerCapture(e.pointerId);
         } else {
-          // Vertical → abandon drawer gesture
-          resetGesture();
+          reset();
           return;
         }
       }
 
-      if (!axisIsHorizontal.current) return;
+      if (!axisHoriz) return;
 
+      // Horizontal confirmed — block browser default (back/fwd nav, overscroll)
       e.preventDefault();
 
-      // ── Drawer drag ───────────────────────────────────────────────────
+      const drawer = drawerNavRef.current;
+      const w      = drawer?.getWidth() ?? 340;
 
-      if (mode === 'drawer') {
-        const w = drawerNavRef.current?.getWidth() ?? 340;
-        if (drawerOpenRef.current) {
-          // Closing: drag left
-          const clamped = Math.max(-w, Math.min(0, dx));
-          drawerNavRef.current?.setDragX(clamped);
-        } else {
-          // Opening: drag right from left edge
-          const raw     = -w + dx;
-          const clamped = Math.max(-w, Math.min(0, raw));
-          drawerNavRef.current?.setDragX(clamped);
-        }
+      if (drawerOpenRef.current) {
+        // Closing drag: left moves panel off-screen
+        drawer?.setDragX(Math.max(-w, Math.min(0, dx)));
+      } else {
+        // Opening drag from left edge: right pulls panel on-screen
+        drawer?.setDragX(Math.max(-w, Math.min(0, -w + dx)));
       }
-    },
-    [resetGesture],
-  );
+    };
 
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!e.isPrimary) return;
+    const finishDrawer = (dx: number, dt: number) => {
+      const drawer = drawerNavRef.current;
+      const w      = drawer?.getWidth() ?? 340;
+      const vel    = Math.abs(dx) / Math.max(1, dt);
 
-      const mode = gestureMode.current;
-      const dx   = e.clientX - startX.current;
-      const dt   = Math.max(1, performance.now() - startTime.current);
-      const vel  = Math.abs(dx) / dt;
-
-      if (mode === 'drawer') {
-        const w = drawerNavRef.current?.getWidth() ?? 340;
-
-        if (!axisLocked.current || !axisIsHorizontal.current) {
-          // No committed horizontal direction → snap to current stable state
-          if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
-          else drawerNavRef.current?.snapClose();
-        } else if (drawerOpenRef.current) {
-          // Closing gesture
-          const fraction = Math.abs(Math.min(0, dx)) / w;
-          if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
-            closeDrawerNoFocus();
-          } else {
-            drawerNavRef.current?.snapOpen();
-          }
-        } else {
-          // Opening gesture
-          const fraction = Math.max(0, Math.min(w, dx)) / w;
-          if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
-            openDrawer();
-          } else {
-            drawerNavRef.current?.snapClose();
-          }
-        }
+      if (!axisLocked || !axisHoriz) {
+        // No horizontal commit → snap back to stable state
+        if (drawerOpenRef.current) drawer?.snapOpen();
+        else drawer?.snapClose();
+        return;
       }
 
-      resetGesture();
-    },
-    [openDrawer, closeDrawerNoFocus, resetGesture],
-  );
+      if (drawerOpenRef.current) {
+        const fraction = Math.abs(Math.min(0, dx)) / w;
+        if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
+          drawer?.snapClose();
+          setDrawerOpen(false);
+        } else {
+          drawer?.snapOpen();
+        }
+      } else {
+        const fraction = Math.max(0, Math.min(w, dx)) / w;
+        if (fraction >= OPEN_THRESHOLD || vel >= VELOCITY_THRESHOLD) {
+          drawer?.snapOpen();
+          setDrawerOpen(true);
+        } else {
+          drawer?.snapClose();
+        }
+      }
+    };
 
-  const handlePointerCancel = useCallback(
-    (e: React.PointerEvent) => {
+    const onUp = (e: PointerEvent) => {
       if (!e.isPrimary) return;
+      const savedMode = mode;
+      const dx        = e.clientX - startX;
+      const dt        = performance.now() - startTime;
+      reset();
+      if (savedMode === 'drawer') finishDrawer(dx, dt);
+    };
 
-      const mode = gestureMode.current;
-
-      // Restore drawer to last stable state on cancel
-      if (mode === 'drawer') {
+    const onCancel = (e: PointerEvent) => {
+      if (!e.isPrimary) return;
+      const savedMode = mode;
+      reset();
+      // Restore drawer to stable state on cancel
+      if (savedMode === 'drawer') {
         if (drawerOpenRef.current) drawerNavRef.current?.snapOpen();
         else drawerNavRef.current?.snapClose();
       }
+    };
 
-      resetGesture();
-    },
-    [resetGesture],
-  );
+    // ── Register ───────────────────────────────────────────────────────
+    root.addEventListener('pointerdown',   onDown);
+    root.addEventListener('pointermove',   onMove,   { passive: false });
+    root.addEventListener('pointerup',     onUp);
+    root.addEventListener('pointercancel', onCancel);
+
+    return () => {
+      root.removeEventListener('pointerdown',   onDown);
+      root.removeEventListener('pointermove',   onMove);
+      root.removeEventListener('pointerup',     onUp);
+      root.removeEventListener('pointercancel', onCancel);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty — all dynamic data read via refs
 
   /* ── Render ──────────────────────────────────────────────────────────── */
 
@@ -354,11 +355,9 @@ export function AppLayout() {
       className="mx-auto flex min-h-screen max-w-md flex-col"
       // pan-y: browser handles vertical scroll natively and does NOT fire
       // pointercancel for horizontal movements — required for drawer swipe.
+      // Gesture handlers are registered via native addEventListener (not
+      // React props) so pointermove can be { passive: false }.
       style={{ touchAction: 'pan-y' }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header
