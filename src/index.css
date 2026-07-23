@@ -11,6 +11,10 @@
   body,
   #root {
     height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   body {
@@ -18,6 +22,8 @@
     font-feature-settings: 'cv11', 'ss01';
     /* Safe-Area für PWA / Notch */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    position: relative;
+    margin: 0;
   }
 
   * {

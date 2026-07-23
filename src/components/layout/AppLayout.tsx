@@ -30,24 +30,6 @@ const titles: Record<string, string> = {
 /** Re-navigate home after this long in the background. */
 const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 
-/**
- * Route order used to determine slide direction for BottomNav tap animations.
- */
-const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
-
-/* ─── Page animation variants ────────────────────────────────────────────── */
-
-const pageVariants = {
-  enter: (dir: number) => ({ x: dir >= 0 ? '100%' : '-100%' }),
-  center: { x: 0 },
-  exit:  (dir: number) => ({ x: dir >= 0 ? '-100%' : '100%' }),
-};
-
-const pageTransition = {
-  duration: 0.18,
-  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-};
-
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 export function AppLayout() {
@@ -61,24 +43,8 @@ export function AppLayout() {
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerNavRef  = useRef<NavDrawerHandle>(null);
-
-  /** Mirrors `drawerOpen` state so stable callbacks can read it without stale closures. */
   const drawerOpenRef = useRef(false);
   const hiddenAtRef   = useRef<number | null>(null);
-
-  /* ── Slide direction: computed synchronously during render ───────────── */
-
-  const prevPathnameRef   = useRef(pathname);
-  const swipeDirectionRef = useRef(1);
-
-  if (pathname !== prevPathnameRef.current) {
-    const prevIdx = SWIPE_ROUTES.indexOf(prevPathnameRef.current);
-    const currIdx = SWIPE_ROUTES.indexOf(pathname);
-    if (prevIdx !== -1 && currIdx !== -1) {
-      swipeDirectionRef.current = currIdx >= prevIdx ? 1 : -1;
-    }
-    prevPathnameRef.current = pathname;
-  }
 
   /* ── React state ─────────────────────────────────────────────────────── */
 
@@ -151,7 +117,10 @@ export function AppLayout() {
   /* ── Render ──────────────────────────────────────────────────────────── */
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col">
+    <div
+      className="mx-auto flex min-h-screen max-w-md flex-col"
+      style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}
+    >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/80 backdrop-blur"
@@ -226,16 +195,19 @@ export function AppLayout() {
       </header>
 
       {/* ── Page content ────────────────────────────────────────────────── */}
+      {/*
+       * AnimatePresence with mode="wait" + fade-only transition.
+       * No horizontal translateX → no risk of triggering horizontal overflow
+       * or an accidental swipe sensation on page change.
+       */}
       <main className="relative flex-1 overflow-hidden">
-        <AnimatePresence initial={false} custom={swipeDirectionRef.current} mode="popLayout">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
-            custom={swipeDirectionRef.current}
-            variants={pageVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={pageTransition}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12, ease: 'easeInOut' }}
             className="absolute inset-0 overflow-x-hidden overflow-y-auto px-4 pb-32 pt-3"
             style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}
           >
