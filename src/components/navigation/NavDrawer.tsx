@@ -1,5 +1,17 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useMotionValueEvent,
+  useReducedMotion,
+} from 'framer-motion';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -14,32 +26,45 @@ import {
   XIcon,
 } from '@/components/ui/icons';
 
-/* ---------- Typen ---------- */
+/* ---------- Public imperative API ---------- */
+
+export interface NavDrawerHandle {
+  /** Spring-animate panel to fully-open position (x = 0). */
+  snapOpen: () => void;
+  /** Spring-animate panel to fully-closed position (x = -width). */
+  snapClose: () => void;
+  /** Set raw x offset in px while dragging (0 = open, -width = closed). */
+  setDragX: (px: number) => void;
+  /** Actual rendered panel width in px. */
+  getWidth: () => number;
+}
+
+/* ---------- Props ---------- */
 
 export interface NavDrawerProps {
+  /** Logical open state — used ONLY for focus-trap activation and aria-expanded. */
   open: boolean;
+  /** Called by keyboard (Escape), backdrop click, close button, nav-item selection. */
   onClose: () => void;
   onOpenFeed: () => void;
   onOpenRecap: () => void;
   onOpenDailyChallenge: () => void;
 }
 
-/* ---------- Konstanten ---------- */
+/* ---------- Constants ---------- */
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input, textarea, select, [tabindex]:not([tabindex="-1"])';
 
-/* ---------- Hilfsfunktionen ---------- */
+/* ---------- Helpers ---------- */
 
-/** Prüft, ob pathname zur Route `to` passt (end-Mode für Root). */
 function isRouteActive(pathname: string, to: string): boolean {
   if (to === '/') return pathname === '/';
   return pathname === to || pathname.startsWith(to + '/');
 }
 
-/* ---------- Sub-Komponenten ---------- */
+/* ---------- Sub-components ---------- */
 
-/** Navigations-Item für echte Routen. */
 function DrawerNavItem({
   to,
   label,
@@ -55,7 +80,6 @@ function DrawerNavItem({
 }) {
   const navigate = useNavigate();
   const active = isRouteActive(pathname, to);
-
   return (
     <button
       onClick={() => {
@@ -76,7 +100,6 @@ function DrawerNavItem({
   );
 }
 
-/** Aktions-Item für modal-basierte Features (keine Route). */
 function DrawerActionItem({
   label,
   icon,
@@ -101,7 +124,6 @@ function DrawerActionItem({
   );
 }
 
-/** SVG-Icon für Globale Statistiken (kein Pendant in icons.tsx). */
 function GlobalStatsIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -119,28 +141,75 @@ function GlobalStatsIcon() {
   );
 }
 
-/* ---------- Haupt-Komponente ---------- */
+/* ---------- Main component ---------- */
 
-export function NavDrawer({
-  open,
-  onClose,
-  onOpenFeed,
-  onOpenRecap,
-  onOpenDailyChallenge,
-}: NavDrawerProps) {
+export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function NavDrawer(
+  { open, onClose, onOpenFeed, onOpenRecap, onOpenDailyChallenge },
+  ref,
+) {
   const { signOut } = useAuth();
   const { profile } = useProfile();
   const { pathname } = useLocation();
   const panelRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const prefersReduced = useReducedMotion();
+  // Store in ref so stable callbacks can read the latest value
+  const prefersReducedRef = useRef(prefersReduced);
+  prefersReducedRef.current = prefersReduced;
 
-  /* Fokus-Falle: Tab-Zyklus innerhalb des Drawers + Escape */
+  // ─── MotionValues ───────────────────────────────────────────────────────────
+  // panelX: 0 = fully open, -width = fully closed. Starts far off-screen.
+  const panelX = useMotionValue(-400);
+  // overlayOpacity: 0 = invisible, 1 = fully opaque. Derived from panelX.
+  const overlayOpacity = useMotionValue(0);
+
+  // Keep backdrop opacity and DOM pointer-events in sync with panelX on every frame.
+  // We mutate the DOM directly to avoid per-frame React re-renders.
+  useMotionValueEvent(panelX, 'change', (x) => {
+    const width = panelRef.current?.offsetWidth ?? 340;
+    const opacity = Math.max(0, Math.min(1, (x + width) / width));
+    overlayOpacity.set(opacity);
+
+    if (backdropRef.current) {
+      backdropRef.current.style.pointerEvents = opacity > 0.01 ? 'auto' : 'none';
+    }
+    if (panelRef.current) {
+      const active = x > -width + 0.5;
+      panelRef.current.style.visibility = active ? 'visible' : 'hidden';
+      panelRef.current.style.pointerEvents = active ? 'auto' : 'none';
+    }
+  });
+
+  // ─── Spring config ──────────────────────────────────────────────────────────
+  // Same parameters as page transitions for visual consistency.
+  const getSpring = () =>
+    prefersReducedRef.current
+      ? { duration: 0 }
+      : { type: 'spring' as const, stiffness: 350, damping: 35, mass: 0.8 };
+
+  // ─── Imperative handle exposed to AppLayout ──────────────────────────────────
+  useImperativeHandle(ref, () => ({
+    snapOpen() {
+      animate(panelX, 0, getSpring());
+    },
+    snapClose() {
+      const width = panelRef.current?.offsetWidth ?? 340;
+      animate(panelX, -width, getSpring());
+    },
+    setDragX(px: number) {
+      panelX.set(px);
+    },
+    getWidth() {
+      return panelRef.current?.offsetWidth ?? 340;
+    },
+  }));
+
+  // ─── Focus trap (active when open prop is true) ──────────────────────────────
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
     if (!panel) return;
 
-    // Ersten fokussierbaren Element fokussieren
     panel.querySelector<HTMLElement>(FOCUSABLE)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
@@ -149,12 +218,10 @@ export function NavDrawer({
         return;
       }
       if (e.key !== 'Tab') return;
-
       const all = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (all.length === 0) return;
       const first = all[0];
       const last = all[all.length - 1];
-
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
@@ -168,11 +235,7 @@ export function NavDrawer({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  /* Framer-Motion-Transitions — identische Spring-Parameter wie Page-Transitions */
-  const springTransition = prefersReduced
-    ? { duration: 0 }
-    : { type: 'spring' as const, stiffness: 350, damping: 35, mass: 0.8 };
-
+  // ─── Sign-out ────────────────────────────────────────────────────────────────
   const handleSignOut = useCallback(async () => {
     onClose();
     await signOut();
@@ -181,184 +244,155 @@ export function NavDrawer({
   const displayName = profile?.display_name ?? profile?.username ?? null;
   const avatarUrl = profile?.avatar_url;
 
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop — blockiert Klicks auf Hintergrund */}
-          <motion.div
-            key="nav-backdrop"
-            className="fixed inset-0 z-[45] bg-black/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={prefersReduced ? { duration: 0 } : { duration: 0.18 }}
+    <>
+      {/* Backdrop — always in DOM; pointer-events managed imperatively above */}
+      <div
+        ref={backdropRef}
+        className="fixed inset-0 z-[45]"
+        style={{ pointerEvents: 'none' }}
+        onClick={onClose}
+        aria-hidden="true"
+      >
+        <motion.div className="h-full w-full bg-black/60" style={{ opacity: overlayOpacity }} />
+      </div>
+
+      {/* Drawer panel — always in DOM; x position driven by MotionValue */}
+      <motion.div
+        ref={panelRef}
+        id="nav-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+        style={{
+          x: panelX,
+          visibility: 'hidden',  // initial; motionValueEvent updates this
+          pointerEvents: 'none', // initial; motionValueEvent updates this
+          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+        }}
+        className={
+          'fixed left-0 top-0 z-[46] flex h-full w-[84vw] max-w-[340px] flex-col ' +
+          'rounded-r-2xl border-r border-ink-700 bg-ink-900 shadow-2xl'
+        }
+      >
+        {/* Profile header */}
+        <div className="flex items-center justify-between px-4 pb-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink-700 ring-2 ring-brand-500/30">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <UserIcon className="h-5 w-5 text-slate-400" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-100">
+                {displayName ?? '—'}
+              </p>
+              {profile?.username && (
+                <p className="truncate text-xs text-slate-500">@{profile.username}</p>
+              )}
+            </div>
+          </div>
+          <button
             onClick={onClose}
-            aria-hidden="true"
-          />
-
-          {/* Drawer-Panel */}
-          <motion.div
-            key="nav-panel"
-            ref={panelRef}
-            id="nav-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation"
+            aria-label="Navigation schließen"
             className={
-              'fixed left-0 top-0 z-[46] flex h-full w-[84vw] max-w-[340px] flex-col ' +
-              'rounded-r-2xl border-r border-ink-700 bg-ink-900 shadow-2xl'
+              'ml-2 grid shrink-0 place-items-center rounded-lg text-slate-400 transition ' +
+              'hover:bg-ink-800 hover:text-slate-200 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
-            style={{
-              paddingTop: 'max(16px, env(safe-area-inset-top))',
-              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
-            }}
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={springTransition}
+            style={{ width: 36, height: 36 }}
           >
-            {/* Profil-Header */}
-            <div className="flex items-center justify-between px-4 pb-4">
-              <div className="flex min-w-0 items-center gap-3">
-                {/* Avatar */}
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink-700 ring-2 ring-brand-500/30">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <UserIcon className="h-5 w-5 text-slate-400" />
-                    </div>
-                  )}
-                </div>
-                {/* Name */}
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-100">
-                    {displayName ?? '—'}
-                  </p>
-                  {profile?.username && (
-                    <p className="truncate text-xs text-slate-500">
-                      @{profile.username}
-                    </p>
-                  )}
-                </div>
-              </div>
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
 
-              {/* Schließen-Button */}
-              <button
-                onClick={onClose}
-                aria-label="Navigation schließen"
-                className={
-                  'ml-2 grid shrink-0 place-items-center rounded-lg text-slate-400 transition ' +
-                  'hover:bg-ink-800 hover:text-slate-200 ' +
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
-                }
-                style={{ width: 36, height: 36 }}
-              >
-                <XIcon className="h-5 w-5" />
-              </button>
-            </div>
+        <div className="mx-4 mb-3 h-px bg-ink-700" />
 
-            {/* Trennlinie */}
-            <div className="mx-4 mb-3 h-px bg-ink-700" />
+        {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
+        <div className="flex-1 overflow-y-auto px-2" data-no-swipe>
+          <section aria-label="Hauptmenü">
+            <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              Navigation
+            </p>
 
-            {/* Scrollbarer Navigationsbereich */}
-            <div className="flex-1 overflow-y-auto px-2" data-no-swipe>
-              {/* Primäre Navigation */}
-              <section aria-label="Hauptmenü">
-                <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                  Navigation
-                </p>
+            <DrawerNavItem
+              to="/"
+              label="Dashboard"
+              icon={<HomeIcon className="h-5 w-5" />}
+              pathname={pathname}
+              onClose={onClose}
+            />
+            <DrawerActionItem
+              label="Arena Feed"
+              icon={
+                <img src="/arena-feed-icon.webp" alt="" className="h-5 w-5 object-contain" />
+              }
+              onClick={() => { onClose(); onOpenFeed(); }}
+            />
+            <DrawerActionItem
+              label="Arena Rückblick"
+              icon={<RecapIcon className="h-5 w-5" />}
+              onClick={() => { onClose(); onOpenRecap(); }}
+            />
+            <DrawerActionItem
+              label="Daily Live Challenge"
+              icon={<BoltIcon className="h-5 w-5" />}
+              onClick={() => { onClose(); onOpenDailyChallenge(); }}
+            />
+            <DrawerNavItem
+              to="/achievements"
+              label="Erfolge"
+              icon={<TrophyIcon className="h-5 w-5" />}
+              pathname={pathname}
+              onClose={onClose}
+            />
+            <DrawerNavItem
+              to="/global-stats"
+              label="Globale Statistiken"
+              icon={<GlobalStatsIcon />}
+              pathname={pathname}
+              onClose={onClose}
+            />
+          </section>
 
-                <DrawerNavItem
-                  to="/"
-                  label="Dashboard"
-                  icon={<HomeIcon className="h-5 w-5" />}
-                  pathname={pathname}
-                  onClose={onClose}
-                />
+          <div className="mx-2 my-3 h-px bg-ink-800" />
 
-                <DrawerActionItem
-                  label="Arena Feed"
-                  icon={
-                    <img
-                      src="/arena-feed-icon.webp"
-                      alt=""
-                      className="h-5 w-5 object-contain"
-                    />
-                  }
-                  onClick={() => { onClose(); onOpenFeed(); }}
-                />
+          <section aria-label="Konto">
+            <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              Konto
+            </p>
+            <DrawerNavItem
+              to="/settings"
+              label="Einstellungen"
+              icon={<SettingsIcon className="h-5 w-5" />}
+              pathname={pathname}
+              onClose={onClose}
+            />
+          </section>
+        </div>
 
-                <DrawerActionItem
-                  label="Arena Rückblick"
-                  icon={<RecapIcon className="h-5 w-5" />}
-                  onClick={() => { onClose(); onOpenRecap(); }}
-                />
-
-                <DrawerActionItem
-                  label="Daily Live Challenge"
-                  icon={<BoltIcon className="h-5 w-5" />}
-                  onClick={() => { onClose(); onOpenDailyChallenge(); }}
-                />
-
-                <DrawerNavItem
-                  to="/achievements"
-                  label="Erfolge"
-                  icon={<TrophyIcon className="h-5 w-5" />}
-                  pathname={pathname}
-                  onClose={onClose}
-                />
-
-                <DrawerNavItem
-                  to="/global-stats"
-                  label="Globale Statistiken"
-                  icon={<GlobalStatsIcon />}
-                  pathname={pathname}
-                  onClose={onClose}
-                />
-              </section>
-
-              <div className="mx-2 my-3 h-px bg-ink-800" />
-
-              {/* Sekundäre Navigation */}
-              <section aria-label="Konto">
-                <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                  Konto
-                </p>
-
-                <DrawerNavItem
-                  to="/settings"
-                  label="Einstellungen"
-                  icon={<SettingsIcon className="h-5 w-5" />}
-                  pathname={pathname}
-                  onClose={onClose}
-                />
-              </section>
-            </div>
-
-            {/* Footer: Abmelden */}
-            <div className="mx-4 mt-2 border-t border-ink-700 pt-3">
-              {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-              <button
-                onClick={handleSignOut}
-                className={
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 transition ' +
-                  'hover:bg-red-500/10 ' +
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
-                }
-              >
-                <LogoutIcon className="h-5 w-5" />
-                Abmelden
-              </button>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+        {/* Footer: sign out */}
+        <div className="mx-4 mt-2 border-t border-ink-700 pt-3">
+          {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+          <button
+            onClick={handleSignOut}
+            className={
+              'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 transition ' +
+              'hover:bg-red-500/10 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+            }
+          >
+            <LogoutIcon className="h-5 w-5" />
+            Abmelden
+          </button>
+        </div>
+      </motion.div>
+    </>
   );
-}
+});

@@ -10,7 +10,9 @@ import { ExerciseChip } from '@/components/ExerciseChip';
 import { useExercise } from '@/context/ExerciseContext';
 import { ArenaFeed } from '@/components/ArenaFeed';
 import { DailyChallengeModal } from '@/components/DailyChallengeModal';
-import { NavDrawer } from '@/components/navigation/NavDrawer';
+import { NavDrawer, type NavDrawerHandle } from '@/components/navigation/NavDrawer';
+
+/* ─── Page metadata ──────────────────────────────────────────────────────── */
 
 const titles: Record<string, string> = {
   '/': 'Dashboard',
@@ -23,11 +25,51 @@ const titles: Record<string, string> = {
   '/settings': 'Einstellungen',
 };
 
-// Nach 5 Minuten im Hintergrund → beim Öffnen zurück zum Dashboard
+/* ─── Constants ──────────────────────────────────────────────────────────── */
+
+/** Re-navigate home after this long in the background. */
 const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
 
-// Swipe-Reihenfolge = Bottom-Nav-Reihenfolge
+/** Routes that support left→right page-swipe navigation (matches BottomNav order). */
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
+
+/**
+ * Routes where edge-swipe to open the drawer is safe.
+ * Top-level routes only — avoids conflict with iOS back gesture on nested routes.
+ */
+const EDGE_SWIPE_ROUTES = new Set([
+  '/', '/friends', '/leaderboard', '/activity', '/profile',
+  '/achievements', '/global-stats', '/settings',
+]);
+
+/* ─── Gesture constants ──────────────────────────────────────────────────── */
+
+/** px from left edge that activates pending-edge mode. */
+const EDGE_SWIPE_WIDTH = 20;
+/** Dead zone (px) before committing to a gesture direction. */
+const DIR_LOCK_DIST = 10;
+/** abs(dx) must exceed abs(dy) × this to lock horizontal. */
+const H_DOMINANCE = 1.2;
+/** Fraction of drawer width needed to commit open/close on release. */
+const OPEN_THRESHOLD = 0.3;
+/** px/ms flick speed to commit open/close regardless of distance. */
+const VELOCITY_THRESHOLD = 0.45;
+/** px from bottom of screen to ignore (BottomNav area). */
+const BOTTOM_NAV_EXCLUSION = 80;
+
+/* ─── Gesture state machine type ────────────────────────────────────────── */
+
+type GestureMode =
+  | 'idle'
+  | 'pending-edge'   // started in left edge zone, direction undecided
+  | 'pending-close'  // drawer open, direction undecided
+  | 'pending-page'   // normal area, closed drawer, direction undecided
+  | 'drawer-open'    // finger is dragging the drawer open
+  | 'drawer-close'   // finger is dragging the drawer closed
+  | 'page-swipe'     // horizontal page transition
+  | 'vertical';      // vertical scroll — hands off
+
+/* ─── Page animation variants ───────────────────────────────────────────── */
 
 const pageVariants = {
   enter: (dir: number) => ({ x: dir >= 0 ? '100%' : '-100%' }),
@@ -35,28 +77,102 @@ const pageVariants = {
   exit: (dir: number) => ({ x: dir >= 0 ? '-100%' : '100%' }),
 };
 
+/* ─── Component ──────────────────────────────────────────────────────────── */
+
 export function AppLayout() {
   const { pathname } = useLocation();
   const title = titles[pathname] ?? 'PushupArena';
   const { pushPermission, busy, togglePush } = usePush();
   const pushActive = pushPermission === 'granted';
   const navigate = useNavigate();
-  const hiddenAtRef = useRef<number | null>(null);
-  const swipeStartX = useRef<number | null>(null);
-  const swipeStartY = useRef<number | null>(null);
-  const swipeDirection = useRef<number>(1);
-  const prevPathname = useRef(pathname);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  /* Drawer-State */
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  /* ── Permanent refs ──────────────────────────────────────────────────── */
+
+  const rootRef          = useRef<HTMLDivElement>(null);
+  const menuButtonRef    = useRef<HTMLButtonElement>(null);
+  const drawerNavRef     = useRef<NavDrawerHandle>(null);
+
+  // Drawer open state mirrored in a ref so stable callbacks can read it
+  const drawerOpenRef    = useRef(false);
+  const hiddenAtRef      = useRef<number | null>(null);
+  const swipeDirection   = useRef<number>(1);
+  const prevPathname     = useRef(pathname);
+
+  /* ── Gesture refs ────────────────────────────────────────────────────── */
+
+  const gestureMode      = useRef<GestureMode>('idle');
+  const touchStartX      = useRef(0);
+  const touchStartY      = useRef(0);
+  const touchStartTime   = useRef(0);
+
+  /* ── React state ─────────────────────────────────────────────────────── */
+
+  const [drawerOpen, setDrawerOpen]               = useState(false);
+  const [recapManualOpen, setRecapManualOpen]     = useState(false);
+  const [bellConfirmOpen, setBellConfirmOpen]     = useState(false);
+  const [feedOpen, setFeedOpen]                   = useState(false);
+  const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false);
+
+  // Keep ref in sync with state on every render
+  drawerOpenRef.current = drawerOpen;
+
+  /* ── Drawer open / close ─────────────────────────────────────────────── */
+
+  /**
+   * Snap-open the drawer and update logical state.
+   * Animation is driven imperatively; no focus change (gesture-triggered open).
+   */
+  const openDrawer = useCallback(() => {
+    drawerNavRef.current?.snapOpen();
+    setDrawerOpen(true);
+  }, []);
+
+  /**
+   * Snap-close the drawer, update logical state, and return keyboard focus to
+   * the hamburger button (for keyboard / button initiated close).
+   */
   const closeDrawer = useCallback(() => {
+    drawerNavRef.current?.snapClose();
     setDrawerOpen(false);
-    // Fokus nach Schließen zurück zum Auslöser
     menuButtonRef.current?.focus();
   }, []);
-  const toggleDrawer = useCallback(() => setDrawerOpen((prev) => !prev), []);
 
+  /**
+   * Snap-close without moving focus (for touch gesture initiated close).
+   */
+  const closeDrawerNoFocus = useCallback(() => {
+    drawerNavRef.current?.snapClose();
+    setDrawerOpen(false);
+  }, []);
+
+  const toggleDrawer = useCallback(() => {
+    if (drawerOpenRef.current) closeDrawer();
+    else openDrawer();
+  }, [openDrawer, closeDrawer]);
+
+  /* ── Hooks that need stable layout ──────────────────────────────────── */
+
+  const {
+    recap, open: recapOpen, dismiss: dismissRecap,
+    forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate,
+  } = useDailyRecap();
+
+  const { enrolledExercises } = useExercise();
+  const showChip =
+    enrolledExercises.length > 1 &&
+    pathname !== '/' &&
+    pathname !== '/global-stats' &&
+    pathname !== '/achievements';
+
+  /** Stable callback — used by both NavDrawer and header (removed icon) */
+  const handleOpenRecap = useCallback(async () => {
+    await forceLoad();
+    setRecapManualOpen(true);
+  }, [forceLoad]);
+
+  /* ── Effects ─────────────────────────────────────────────────────────── */
+
+  // Track swipe direction for page-transition animation
   useEffect(() => {
     const prevIdx = SWIPE_ROUTES.indexOf(prevPathname.current);
     const currIdx = SWIPE_ROUTES.indexOf(pathname);
@@ -65,78 +181,194 @@ export function AppLayout() {
     }
     prevPathname.current = pathname;
   }, [pathname]);
-  const { recap, open: recapOpen, dismiss: dismissRecap, forceLoad, navLoading, medalCounts, availableDates, currentDateIdx, goToDate } = useDailyRecap();
-  const { enrolledExercises } = useExercise();
-  const showChip = enrolledExercises.length > 1 && pathname !== '/' && pathname !== '/global-stats' && pathname !== '/achievements';
-  const [recapManualOpen, setRecapManualOpen] = useState(false);
-  const [bellConfirmOpen, setBellConfirmOpen] = useState(false);
-  const [feedOpen, setFeedOpen] = useState(false);
-  const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false);
 
-  /* Stable-Callback für Recap-Öffnung (wird auch von NavDrawer genutzt) */
-  const handleOpenRecap = useCallback(async () => {
-    await forceLoad();
-    setRecapManualOpen(true);
-  }, [forceLoad]);
-
+  // Return home after extended background time
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         hiddenAtRef.current = Date.now();
       } else if (document.visibilityState === 'visible') {
-        if (
-          hiddenAtRef.current !== null &&
-          Date.now() - hiddenAtRef.current > BACKGROUND_THRESHOLD_MS
-        ) {
+        if (hiddenAtRef.current !== null && Date.now() - hiddenAtRef.current > BACKGROUND_THRESHOLD_MS) {
           navigate('/');
         }
         hiddenAtRef.current = null;
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [navigate]);
 
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    // Drawer offen → keine neue Swipe-Geste starten
-    if (drawerOpen) return;
-    const noSwipe = (e.target as Element).closest('[data-no-swipe]');
-    if (noSwipe) return;
-    swipeStartX.current = e.touches[0].clientX;
-    swipeStartY.current = e.touches[0].clientY;
+  // Native (passive:false) touchmove listener so we can preventDefault during
+  // drawer-drag and prevent the page from scrolling simultaneously.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const handler = (e: TouchEvent) => {
+      const mode = gestureMode.current;
+      if (mode === 'drawer-open' || mode === 'drawer-close') {
+        e.preventDefault();
+      }
+    };
+    el.addEventListener('touchmove', handler, { passive: false });
+    return () => el.removeEventListener('touchmove', handler);
+  }, []); // stable: only reads refs
+
+  /* ── Gesture handlers ────────────────────────────────────────────────── */
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const { clientX, clientY } = touch;
+
+    gestureMode.current = 'idle';
+
+    // Ignore touches in the BottomNav area
+    if (clientY > window.innerHeight - BOTTOM_NAV_EXCLUSION) return;
+
+    touchStartX.current    = clientX;
+    touchStartY.current    = clientY;
+    touchStartTime.current = Date.now();
+
+    if (drawerOpenRef.current) {
+      // Drawer is open — any horizontal drag left should close it
+      gestureMode.current = 'pending-close';
+    } else if (clientX <= EDGE_SWIPE_WIDTH && EDGE_SWIPE_ROUTES.has(pathname)) {
+      // Left edge on a top-level route — could open drawer
+      gestureMode.current = 'pending-edge';
+    } else {
+      const noSwipe = (e.target as Element).closest('[data-no-swipe]');
+      if (!noSwipe) {
+        // Regular content area — could be page swipe or vertical scroll
+        gestureMode.current = 'pending-page';
+      }
+    }
   };
 
-  const handleSwipeEnd = (e: React.TouchEvent) => {
-    // Drawer offen → keinen Route-Wechsel auslösen
-    if (drawerOpen) return;
-    if (swipeStartX.current === null || swipeStartY.current === null) return;
-    const dx = e.changedTouches[0].clientX - swipeStartX.current;
-    const dy = e.changedTouches[0].clientY - swipeStartY.current;
-    swipeStartX.current = null;
-    swipeStartY.current = null;
-    if (Math.abs(dx) < 60 || Math.abs(dy) > 80) return;
-    const idx = SWIPE_ROUTES.indexOf(pathname);
-    if (idx === -1) return;
-    const next = dx < 0 ? idx + 1 : idx - 1;
-    if (next >= 0 && next < SWIPE_ROUTES.length) navigate(SWIPE_ROUTES[next]);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const mode = gestureMode.current;
+    if (mode === 'idle' || mode === 'vertical' || mode === 'page-swipe') return;
+
+    const touch  = e.touches[0];
+    const dx     = touch.clientX - touchStartX.current;
+    const dy     = touch.clientY - touchStartY.current;
+    const absDx  = Math.abs(dx);
+    const absDy  = Math.abs(dy);
+
+    // ── Direction-lock phase ──
+    if (mode === 'pending-edge') {
+      if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return; // still in dead zone
+      if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
+      if (dx > 0) { gestureMode.current = 'drawer-open'; }
+      else { gestureMode.current = 'vertical'; }
+      return;
+    }
+
+    if (mode === 'pending-close') {
+      if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return;
+      if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
+      if (dx < 0) { gestureMode.current = 'drawer-close'; }
+      else { gestureMode.current = 'vertical'; }
+      return;
+    }
+
+    if (mode === 'pending-page') {
+      if (absDx < DIR_LOCK_DIST && absDy < DIR_LOCK_DIST) return;
+      if (absDy > absDx * H_DOMINANCE) { gestureMode.current = 'vertical'; return; }
+      gestureMode.current = 'page-swipe';
+      return;
+    }
+
+    // ── Active drag phase ──
+    const w = drawerNavRef.current?.getWidth() ?? 340;
+
+    if (mode === 'drawer-open') {
+      // Finger started at EDGE_SWIPE_WIDTH px; treat that as the origin
+      const raw  = -w + dx; // maps dx=0 → fully closed, dx=w → fully open
+      const clamped = Math.max(-w, Math.min(0, raw));
+      drawerNavRef.current?.setDragX(clamped);
+    }
+
+    if (mode === 'drawer-close') {
+      // Drawer is open (x = 0); dx < 0 moves it toward closed
+      const clamped = Math.max(-w, Math.min(0, dx));
+      drawerNavRef.current?.setDragX(clamped);
+    }
   };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const mode = gestureMode.current;
+    gestureMode.current = 'idle';
+
+    if (mode === 'idle' || mode === 'vertical' || mode === 'pending-edge' || mode === 'pending-close' || mode === 'pending-page') {
+      // No committed gesture — let native tap / click proceed
+      return;
+    }
+
+    const endX    = e.changedTouches[0].clientX;
+    const dx      = endX - touchStartX.current;
+    const dt      = Math.max(1, Date.now() - touchStartTime.current);
+    const velocity = Math.abs(dx) / dt; // px/ms
+    const w       = drawerNavRef.current?.getWidth() ?? 340;
+
+    if (mode === 'drawer-open') {
+      const progress     = Math.max(0, Math.min(w, dx));
+      const openFraction = progress / w;
+      if (openFraction >= OPEN_THRESHOLD || velocity >= VELOCITY_THRESHOLD) {
+        openDrawer();  // snapOpen() + setDrawerOpen(true) + NavDrawer focus trap fires
+      } else {
+        drawerNavRef.current?.snapClose(); // cancel — snap back off-screen
+      }
+      return;
+    }
+
+    if (mode === 'drawer-close') {
+      const closeFraction = Math.abs(Math.min(0, dx)) / w;
+      if (closeFraction >= OPEN_THRESHOLD || velocity >= VELOCITY_THRESHOLD) {
+        closeDrawerNoFocus(); // snapClose() + setDrawerOpen(false) without focus move
+      } else {
+        drawerNavRef.current?.snapOpen(); // cancel — snap back open
+      }
+      return;
+    }
+
+    if (mode === 'page-swipe') {
+      const endY = e.changedTouches[0].clientY;
+      const dy   = endY - touchStartY.current;
+      if (Math.abs(dx) >= 60 && Math.abs(dy) <= 80) {
+        const idx = SWIPE_ROUTES.indexOf(pathname);
+        if (idx !== -1) {
+          const next = dx < 0 ? idx + 1 : idx - 1;
+          if (next >= 0 && next < SWIPE_ROUTES.length) {
+            // Set direction before navigate so the entering page reads the right value
+            swipeDirection.current = dx < 0 ? 1 : -1;
+            navigate(SWIPE_ROUTES[next]);
+          }
+        }
+      }
+    }
+  };
+
+  /* ── Render ──────────────────────────────────────────────────────────── */
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col">
-      {/* Header:
-           Zeile 1: [Feed+Recap] ── [Titel absolut zentriert] ── [Glocke+Settings]
-           Zeile 2 (optional): [ExerciseChip zentriert] — nur wenn mehrere Übungen */}
+    <div
+      ref={rootRef}
+      className="mx-auto flex min-h-screen max-w-md flex-col"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* ── Header ───────────────────────────────────────────────────────
+           Zone L (40 px): hamburger only
+           Zone C (flex): page title, absolutely centred over full width
+           Zone R (~96 px): optional ExerciseChip + Bell + Settings         */}
       <header
         className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/80 backdrop-blur"
         style={{ paddingTop: 'max(4px, env(safe-area-inset-top))' }}
       >
-        {/* Hauptzeile — symmetrisch: linke und rechte Zone je 96 px */}
         <div className="relative flex items-center" style={{ height: 48 }}>
 
-          {/* Zone L — Menü + Feed + Recap + Daily Challenge */}
-          <div className="flex shrink-0 items-center gap-0 pl-0">
-            {/* Drawer-Toggle */}
+          {/* Zone L — hamburger only */}
+          <div className="flex shrink-0 items-center pl-0">
             <button
               ref={menuButtonRef}
               id="nav-drawer-trigger"
@@ -144,43 +376,23 @@ export function AppLayout() {
               aria-label="Navigation öffnen"
               aria-expanded={drawerOpen}
               aria-controls="nav-drawer"
-              className="grid place-items-center rounded-lg text-slate-400 transition hover:bg-ink-800 active:bg-ink-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400"
+              className={
+                'grid place-items-center rounded-lg text-slate-400 transition ' +
+                'hover:bg-ink-800 active:bg-ink-700 ' +
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+              }
               style={{ width: 40, height: 48 }}
             >
               <MenuIcon className="h-[18px] w-[18px]" />
             </button>
-            <button
-              onClick={() => setFeedOpen(true)}
-              aria-label="Arena-Feed"
-              className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-              style={{ width: 40, height: 48 }}
-            >
-              <img src="/arena-feed-icon.webp" alt="" style={{ width: 36, height: 36, display: 'block', objectFit: 'contain' }} />
-            </button>
-            <button
-              onClick={handleOpenRecap}
-              aria-label="Tages-Recap"
-              className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-              style={{ width: 40, height: 48 }}
-            >
-              <img src="/recap-icon.webp" alt="" style={{ width: 36, height: 36, display: 'block', objectFit: 'contain' }} />
-            </button>
-            <button
-              onClick={() => setDailyChallengeOpen(true)}
-              aria-label="Daily Challenge"
-              className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
-              style={{ width: 40, height: 48 }}
-            >
-              <img src="/daily-challenge-icon.webp" alt="" style={{ width: 36, height: 36, display: 'block', objectFit: 'contain' }} />
-            </button>
           </div>
 
-          {/* Zone C — Titel immer exakt zentriert */}
+          {/* Zone C — title always exactly centred */}
           <span className="pointer-events-none absolute inset-x-0 text-center text-[15px] font-bold tracking-tight text-slate-100 whitespace-nowrap">
             {title}
           </span>
 
-          {/* Zone R — Chip (kompakt) + Glocke + Settings, rechtsbündig */}
+          {/* Zone R — ExerciseChip (optional) + Bell + Settings */}
           <div className="ml-auto flex shrink-0 items-center pr-0">
             {showChip && (
               <div className="mr-1">
@@ -193,7 +405,11 @@ export function AppLayout() {
                 else void togglePush();
               }}
               disabled={busy}
-              aria-label={pushActive ? 'Benachrichtigungen deaktivieren' : 'Benachrichtigungen aktivieren'}
+              aria-label={
+                pushActive
+                  ? 'Benachrichtigungen deaktivieren'
+                  : 'Benachrichtigungen aktivieren'
+              }
               className={`grid place-items-center rounded-lg transition hover:bg-ink-800 ${
                 pushActive ? 'text-brand-400' : 'text-slate-500'
               }`}
@@ -213,15 +429,13 @@ export function AppLayout() {
               <SettingsIcon className="h-[18px] w-[18px]" />
             </Link>
           </div>
-        </div>
 
+        </div>
       </header>
 
-      <main
-        className="relative flex-1 overflow-hidden"
-        onTouchStart={handleSwipeStart}
-        onTouchEnd={handleSwipeEnd}
-      >
+      {/* ── Page content ─────────────────────────────────────────────────
+           Touch handlers now live on the root div (above), so <main> is plain. */}
+      <main className="relative flex-1 overflow-hidden">
         <AnimatePresence initial={false} custom={swipeDirection.current} mode="popLayout">
           <motion.div
             key={pathname}
@@ -240,15 +454,17 @@ export function AppLayout() {
 
       <BottomNav />
 
+      {/* ── Modals / overlays ─────────────────────────────────────────── */}
+
       {/* Arena Feed */}
       {feedOpen && <ArenaFeed onClose={() => setFeedOpen(false)} />}
 
-      {/* Daily Challenge Modal */}
+      {/* Daily Challenge */}
       {dailyChallengeOpen && (
         <DailyChallengeModal onClose={() => setDailyChallengeOpen(false)} />
       )}
 
-      {/* Daily Recap Modal — auto-show oder manuell */}
+      {/* Daily Recap — auto-show or manually opened */}
       {(recapOpen || recapManualOpen) && recap && (
         <DailyRecapModal
           recap={recap}
@@ -260,46 +476,8 @@ export function AppLayout() {
           medalCounts={medalCounts}
         />
       )}
-      {/* Bestätigung: Benachrichtigungen deaktivieren */}
-      {bellConfirmOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setBellConfirmOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
-            <p className="mb-1 text-center text-base font-bold text-slate-100">Benachrichtigungen deaktivieren?</p>
-            <p className="mb-6 text-center text-sm text-slate-500">Du verpasst dann tägliche Erinnerungen und Ranglisten-Updates.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setBellConfirmOpen(false)}
-                className="flex-1 rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={() => { setBellConfirmOpen(false); void togglePush(); }}
-                className="flex-1 rounded-2xl bg-red-500/20 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/30 transition"
-              >
-                Deaktivieren
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Navigation Drawer */}
-      <NavDrawer
-        open={drawerOpen}
-        onClose={closeDrawer}
-        onOpenFeed={() => setFeedOpen(true)}
-        onOpenRecap={handleOpenRecap}
-        onOpenDailyChallenge={() => setDailyChallengeOpen(true)}
-      />
 
-      {/* Kein Recap verfügbar (manuell geöffnet) */}
+      {/* No recap yet */}
       {recapManualOpen && !recap && !navLoading && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
@@ -316,13 +494,58 @@ export function AppLayout() {
             </p>
             <button
               onClick={() => setRecapManualOpen(false)}
-              className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 hover:bg-ink-700 transition"
+              className="mt-6 w-full rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
             >
               OK
             </button>
           </div>
         </div>
       )}
+
+      {/* Bell disable confirmation */}
+      {bellConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setBellConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
+            <p className="mb-1 text-center text-base font-bold text-slate-100">
+              Benachrichtigungen deaktivieren?
+            </p>
+            <p className="mb-6 text-center text-sm text-slate-500">
+              Du verpasst dann tägliche Erinnerungen und Ranglisten-Updates.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBellConfirmOpen(false)}
+                className="flex-1 rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => { setBellConfirmOpen(false); void togglePush(); }}
+                className="flex-1 rounded-2xl bg-red-500/20 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/30"
+              >
+                Deaktivieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Navigation Drawer — always mounted, animation via MotionValues ── */}
+      <NavDrawer
+        ref={drawerNavRef}
+        open={drawerOpen}
+        onClose={closeDrawer}
+        onOpenFeed={() => setFeedOpen(true)}
+        onOpenRecap={handleOpenRecap}
+        onOpenDailyChallenge={() => setDailyChallengeOpen(true)}
+      />
     </div>
   );
 }
