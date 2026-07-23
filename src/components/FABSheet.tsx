@@ -21,15 +21,17 @@ type Tab = 'training' | 'rest';
 
 interface FABSheetProps {
   onClose: () => void;
+  /** Pre-select a tab when the sheet opens (only visible when 1 exercise enrolled). */
+  initialTab?: Tab;
 }
 
-export function FABSheet({ onClose }: FABSheetProps) {
+export function FABSheet({ onClose, initialTab = 'training' }: FABSheetProps) {
   const { enrolledExercises, switchExercise } = useExercise();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Exercise | null>(
     enrolledExercises.length === 1 ? enrolledExercises[0] : null,
   );
-  const [tab, setTab] = useState<Tab>('training');
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   function pick(ex: Exercise) {
     switchExercise(ex);

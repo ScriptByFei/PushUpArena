@@ -9,6 +9,7 @@ import { useDailyRecap } from '@/hooks/useDailyRecap';
 import { ExerciseChip } from '@/components/ExerciseChip';
 import { useExercise } from '@/context/ExerciseContext';
 import { ArenaFeed } from '@/components/ArenaFeed';
+import { FABSheet } from '@/components/FABSheet';
 import { DailyChallengeModal } from '@/components/DailyChallengeModal';
 import { NavDrawer, type NavDrawerHandle } from '@/components/navigation/NavDrawer';
 import { useNavBadges } from '@/hooks/useNavBadges';
@@ -54,6 +55,8 @@ export function AppLayout() {
   const [bellConfirmOpen, setBellConfirmOpen]       = useState(false);
   const [feedOpen, setFeedOpen]                     = useState(false);
   const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false);
+  const [fabOpen, setFabOpen]                       = useState(false);
+  const [fabInitialTab, setFabInitialTab]           = useState<'training' | 'rest'>('training');
 
   // Keep ref in sync with state on every render
   drawerOpenRef.current = drawerOpen;
@@ -96,6 +99,16 @@ export function AppLayout() {
     await forceLoad();
     setRecapManualOpen(true);
   }, [forceLoad]);
+
+  const openFAB = useCallback((tab: 'training' | 'rest') => {
+    setFabInitialTab(tab);
+    setFabOpen(true);
+  }, []);
+
+  const handleTogglePush = useCallback(() => {
+    if (pushActive) setBellConfirmOpen(true);
+    else void togglePush();
+  }, [pushActive, togglePush]);
 
   /* ── NavDrawer swipe gesture (open from left edge / drag to close) ─── */
 
@@ -320,9 +333,16 @@ export function AppLayout() {
         </AnimatePresence>
       </main>
 
-      <BottomNav />
+      <BottomNav onOpenFAB={() => openFAB('training')} />
 
       {/* ── Overlays / modals ─────────────────────────────────────────── */}
+
+      {fabOpen && (
+        <FABSheet
+          initialTab={fabInitialTab}
+          onClose={() => setFabOpen(false)}
+        />
+      )}
 
       {feedOpen && <ArenaFeed onClose={() => setFeedOpen(false)} />}
 
@@ -411,6 +431,10 @@ export function AppLayout() {
         challengeIsActive={challengeIsActive}
         feedNewCount={feedNewCount}
         hasUnreadRecap={recapOpen}
+        onOpenTraining={() => openFAB('training')}
+        onOpenRestDay={() => openFAB('rest')}
+        pushActive={pushActive}
+        onTogglePush={handleTogglePush}
       />
     </div>
   );

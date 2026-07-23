@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { ComponentType, SVGProps } from 'react';
 import { HomeIcon, PlusIcon, UsersIcon, TrophyIcon, UserIcon, CalendarIcon } from '@/components/ui/icons';
-import { FABSheet } from '@/components/FABSheet';
 
 interface NavItem {
   to: string;
@@ -39,9 +37,7 @@ function SideItem({ to, label, Icon }: NavItem) {
   );
 }
 
-export function BottomNav() {
-  const [showSheet, setShowSheet] = useState(false);
-
+export function BottomNav({ onOpenFAB }: { onOpenFAB: () => void }) {
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
@@ -51,7 +47,7 @@ export function BottomNav() {
       <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full pb-2">
         <button
           aria-label="Eintragen"
-          onClick={() => setShowSheet(true)}
+          onClick={onOpenFAB}
           className={
             'flex h-14 w-14 items-center justify-center rounded-full ' +
             'bg-gradient-to-br from-brand-400 to-brand-600 text-white ' +
@@ -69,9 +65,6 @@ export function BottomNav() {
           <SideItem key={item.to} {...item} />
         ))}
       </div>
-
-      {/* Trainings-Auswahl Bottom Sheet */}
-      {showSheet && <FABSheet onClose={() => setShowSheet(false)} />}
     </nav>
   );
 }

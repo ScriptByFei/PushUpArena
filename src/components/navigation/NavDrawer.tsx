@@ -19,12 +19,16 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Avatar } from '@/components/ui/Avatar';
 import {
+  BellIcon,
+  BellOffIcon,
   BoltIcon,
   HomeIcon,
   LogoutIcon,
+  PlusIcon,
   RecapIcon,
   SettingsIcon,
   TrophyIcon,
+  UserIcon,
   XIcon,
 } from '@/components/ui/icons';
 
@@ -55,6 +59,11 @@ export interface NavDrawerProps {
   challengeIsActive?: boolean;
   feedNewCount?: number;
   hasUnreadRecap?: boolean;
+  /** Quick Actions */
+  onOpenTraining: () => void;
+  onOpenRestDay: () => void;
+  pushActive: boolean;
+  onTogglePush: () => void;
 }
 
 /* ---------- Constants ---------- */
@@ -212,6 +221,15 @@ function NavRow({ children, v }: { children: React.ReactNode; v: Variants }) {
   );
 }
 
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true"
+      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
 function GlobalStatsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -235,6 +253,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   {
     open, onClose, onOpenFeed, onOpenRecap, onOpenDailyChallenge,
     challengeIsActive = false, feedNewCount = 0, hasUnreadRecap = false,
+    onOpenTraining, onOpenRestDay, pushActive, onTogglePush,
   },
   ref,
 ) {
@@ -259,6 +278,16 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   const navItemV = {
     open:   { opacity: 1, x: 0,  transition: { duration: prefersReduced ? 0 : 0.2, ease: 'easeOut' as const } },
     closed: { opacity: 0, x: -6, transition: { duration: 0 } },
+  };
+
+  // Quick-action grid — fades up slightly before the nav list
+  const qaContainerV = {
+    open:   { transition: prefersReduced ? {} : { staggerChildren: 0.05, delayChildren: 0.03 } },
+    closed: {},
+  };
+  const qaItemV = {
+    open:   { opacity: 1, y: 0,  transition: { duration: prefersReduced ? 0 : 0.16, ease: 'easeOut' as const } },
+    closed: { opacity: 0, y: 8,  transition: { duration: 0 } },
   };
 
   // ─── MotionValues ───────────────────────────────────────────────────────────
@@ -485,6 +514,92 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             <XIcon className="h-[15px] w-[15px]" />
           </button>
         </div>
+
+        {/* ── Quick Actions ────────────────────────────────────────────────
+             2×2 grid of icon+label buttons for the most frequent actions.
+             Slides in (y: 8→0) slightly before the nav list stagger.      */}
+        <motion.div
+          initial="closed"
+          animate={open ? 'open' : 'closed'}
+          variants={qaContainerV}
+          className="grid grid-cols-2 gap-2 px-3 py-3"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          {/* Training eintragen */}
+          <motion.button
+            variants={qaItemV}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { onClose(); onOpenTraining(); }}
+            aria-label="Training eintragen"
+            className={
+              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
+              'bg-brand-600/10 text-brand-300 transition-colors duration-150 ' +
+              'hover:bg-brand-600/15 active:bg-brand-600/20 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+            }
+          >
+            <PlusIcon className="h-5 w-5 text-brand-400" />
+            <span className="text-[11px] font-medium leading-tight">Training</span>
+          </motion.button>
+
+          {/* Ruhetag eintragen */}
+          <motion.button
+            variants={qaItemV}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { onClose(); onOpenRestDay(); }}
+            aria-label="Ruhetag eintragen"
+            className={
+              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
+              'bg-ink-800/70 text-slate-400 transition-colors duration-150 ' +
+              'hover:bg-ink-700/70 hover:text-slate-200 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+            }
+          >
+            <MoonIcon className="h-5 w-5" />
+            <span className="text-[11px] font-medium leading-tight">Ruhetag</span>
+          </motion.button>
+
+          {/* Push-Benachrichtigungen */}
+          <motion.button
+            variants={qaItemV}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { onClose(); onTogglePush(); }}
+            aria-label={pushActive ? 'Push deaktivieren' : 'Push aktivieren'}
+            className={
+              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
+              'transition-colors duration-150 ' +
+              (pushActive
+                ? 'bg-ink-800/70 text-brand-300 hover:bg-ink-700/70 hover:text-brand-200 '
+                : 'bg-ink-800/70 text-slate-400 hover:bg-ink-700/70 hover:text-slate-200 ') +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+            }
+          >
+            {pushActive
+              ? <BellIcon className="h-5 w-5" />
+              : <BellOffIcon className="h-5 w-5" />
+            }
+            <span className="text-[11px] font-medium leading-tight">
+              {pushActive ? 'Push an' : 'Push aus'}
+            </span>
+          </motion.button>
+
+          {/* Profil öffnen */}
+          <motion.button
+            variants={qaItemV}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleProfileClick}
+            aria-label="Profil öffnen"
+            className={
+              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
+              'bg-ink-800/70 text-slate-400 transition-colors duration-150 ' +
+              'hover:bg-ink-700/70 hover:text-slate-200 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
+            }
+          >
+            <UserIcon className="h-5 w-5" />
+            <span className="text-[11px] font-medium leading-tight">Profil</span>
+          </motion.button>
+        </motion.div>
 
         {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
         <div className="flex-1 overflow-y-auto px-2 pb-4" data-no-swipe>
