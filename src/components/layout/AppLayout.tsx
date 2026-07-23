@@ -129,7 +129,7 @@ export function AppLayout() {
               className="grid place-items-center rounded-lg transition hover:bg-ink-800 active:bg-ink-700"
               style={{ width: 40, height: 48 }}
             >
-              <img src="/recap-icon.webp" alt="" style={{ width: 52, height: 52, display: 'block', objectFit: 'contain', marginTop: -2 }} />
+              <img src="/recap-icon.webp" alt="" style={{ width: 36, height: 36, display: 'block', objectFit: 'contain' }} />
             </button>
             <button
               onClick={() => setDailyChallengeOpen(true)}
