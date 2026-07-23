@@ -433,8 +433,6 @@ export function AppLayout() {
         hasUnreadRecap={recapOpen}
         onOpenTraining={() => openFAB('training')}
         onOpenRestDay={() => openFAB('rest')}
-        pushActive={pushActive}
-        onTogglePush={handleTogglePush}
       />
     </div>
   );

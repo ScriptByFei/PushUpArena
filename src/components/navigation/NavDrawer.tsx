@@ -19,8 +19,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Avatar } from '@/components/ui/Avatar';
 import {
-  BellIcon,
-  BellOffIcon,
   BoltIcon,
   HomeIcon,
   LogoutIcon,
@@ -28,7 +26,6 @@ import {
   RecapIcon,
   SettingsIcon,
   TrophyIcon,
-  UserIcon,
   XIcon,
 } from '@/components/ui/icons';
 
@@ -62,8 +59,6 @@ export interface NavDrawerProps {
   /** Quick Actions */
   onOpenTraining: () => void;
   onOpenRestDay: () => void;
-  pushActive: boolean;
-  onTogglePush: () => void;
 }
 
 /* ---------- Constants ---------- */
@@ -253,7 +248,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   {
     open, onClose, onOpenFeed, onOpenRecap, onOpenDailyChallenge,
     challengeIsActive = false, feedNewCount = 0, hasUnreadRecap = false,
-    onOpenTraining, onOpenRestDay, pushActive, onTogglePush,
+    onOpenTraining, onOpenRestDay,
   },
   ref,
 ) {
@@ -559,46 +554,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             <span className="text-[11px] font-medium leading-tight">Ruhetag</span>
           </motion.button>
 
-          {/* Push-Benachrichtigungen */}
-          <motion.button
-            variants={qaItemV}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { onClose(); onTogglePush(); }}
-            aria-label={pushActive ? 'Push deaktivieren' : 'Push aktivieren'}
-            className={
-              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
-              'transition-colors duration-150 ' +
-              (pushActive
-                ? 'bg-ink-800/70 text-brand-300 hover:bg-ink-700/70 hover:text-brand-200 '
-                : 'bg-ink-800/70 text-slate-400 hover:bg-ink-700/70 hover:text-slate-200 ') +
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
-            }
-          >
-            {pushActive
-              ? <BellIcon className="h-5 w-5" />
-              : <BellOffIcon className="h-5 w-5" />
-            }
-            <span className="text-[11px] font-medium leading-tight">
-              {pushActive ? 'Push an' : 'Push aus'}
-            </span>
-          </motion.button>
-
-          {/* Profil öffnen */}
-          <motion.button
-            variants={qaItemV}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleProfileClick}
-            aria-label="Profil öffnen"
-            className={
-              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
-              'bg-ink-800/70 text-slate-400 transition-colors duration-150 ' +
-              'hover:bg-ink-700/70 hover:text-slate-200 ' +
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
-            }
-          >
-            <UserIcon className="h-5 w-5" />
-            <span className="text-[11px] font-medium leading-tight">Profil</span>
-          </motion.button>
         </motion.div>
 
         {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
