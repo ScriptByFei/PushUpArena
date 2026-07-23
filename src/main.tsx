@@ -29,9 +29,25 @@ void initOneSignal();
     true, // capture phase → fires before React Router's bubble-phase listener
   );
 
-  // Layer 2 — intercept horizontal edge-swipes at the touch level
-  let _startX = 0;
-  let _startY = 0;
+  // Layer 2 — intercept horizontal edge-swipes at the touch level.
+  //
+  // Two-phase approach:
+  //   a) touchstart (non-passive) fires BEFORE iOS gesture recognition and
+  //      calls preventDefault() for touches that start in the left-edge zone
+  //      below the header.  This is the earliest possible interception point.
+  //   b) touchmove (non-passive) continues blocking for the duration of the
+  //      gesture and also catches wider-zone starts that slipped through (a).
+  //
+  // Header height ~80px (safe-area + 48px header) — touches above that line
+  // reach the hamburger button and must NOT be prevented.
+  // Content has px-4 (16 px) padding, so nothing interactive exists in the
+  // leftmost 16 px below the header; 50 px zone is safe.
+
+  const EDGE_WIDTH  = 50;  // px from left edge considered back-gesture zone
+  const HEADER_H    = 80;  // px from top that should NOT be intercepted
+
+  let _startX       = 0;
+  let _startY       = 0;
   let _blockingHoriz = false;
 
   window.addEventListener('touchstart', (e) => {
@@ -39,7 +55,14 @@ void initOneSignal();
     _startX = t.clientX;
     _startY = t.clientY;
     _blockingHoriz = false;
-  }, { passive: true });
+
+    // Immediately block if touch begins in the left-edge back-gesture zone
+    // and is below the header (hamburger icon is in the header — don't block it)
+    if (t.clientX < EDGE_WIDTH && t.clientY > HEADER_H) {
+      _blockingHoriz = true;
+      e.preventDefault();
+    }
+  }, { passive: false }); // non-passive so we can call preventDefault
 
   window.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 1) return;
@@ -47,16 +70,16 @@ void initOneSignal();
     const dy = e.touches[0].clientY - _startY;
 
     if (!_blockingHoriz) {
-      // Only decide once per gesture — when the finger has moved enough
       if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-      _blockingHoriz = Math.abs(dx) > Math.abs(dy) && _startX < 30 && dx > 0;
+      // Wider zone for move-phase detection (gesture may have started just
+      // outside the touchstart zone but is clearly a left-edge right-swipe)
+      _blockingHoriz = Math.abs(dx) > Math.abs(dy) && _startX < EDGE_WIDTH && dx > 0;
     }
 
     if (_blockingHoriz) {
-      // Horizontal right-swipe from left edge → block iOS back animation
       e.preventDefault();
     }
-  }, { passive: false }); // must be non-passive to call preventDefault
+  }, { passive: false });
 })();
 
 // Früh registrieren — bevor React mounted — damit kein SW-Update verpasst wird.
