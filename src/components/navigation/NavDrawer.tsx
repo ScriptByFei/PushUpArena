@@ -34,9 +34,9 @@ import {
 export interface NavDrawerHandle {
   /** Spring-animate panel to fully-open position (x = 0). */
   snapOpen: () => void;
-  /** Spring-animate panel to fully-closed position (x = -width). */
+  /** Spring-animate panel to fully-closed position (x = −width). */
   snapClose: () => void;
-  /** Set panel position directly (no animation) — used while drag is in progress. */
+  /** Set panel position directly — used while drag is in progress. */
   setDragX: (x: number) => void;
   /** Return current panel pixel width. */
   getWidth: () => number;
@@ -45,9 +45,7 @@ export interface NavDrawerHandle {
 /* ---------- Props ---------- */
 
 export interface NavDrawerProps {
-  /** Logical open state — used ONLY for focus-trap activation and aria-expanded. */
   open: boolean;
-  /** Called by keyboard (Escape), backdrop click, close button, nav-item selection. */
   onClose: () => void;
   onOpenFeed: () => void;
   onOpenRecap: () => void;
@@ -76,12 +74,7 @@ function isRouteActive(pathname: string, to: string): boolean {
 /* ---------- Sub-components ---------- */
 
 function DrawerNavItem({
-  to,
-  label,
-  icon,
-  pathname,
-  onClose,
-  trailing,
+  to, label, icon, pathname, onClose, trailing,
 }: {
   to: string;
   label: string;
@@ -94,25 +87,24 @@ function DrawerNavItem({
   const active = isRouteActive(pathname, to);
   return (
     <button
-      onClick={() => {
-        onClose();
-        if (!active) navigate(to, { replace: true });
-      }}
+      onClick={() => { onClose(); if (!active) navigate(to, { replace: true }); }}
       className={
-        'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[9px] ' +
-        'text-[13.5px] font-medium transition-colors duration-150 ' +
+        'group relative flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[10px] ' +
+        'text-[13px] font-medium transition-colors duration-150 ' +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400 ' +
         (active
-          ? 'bg-brand-600/10 text-brand-300'
-          : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200')
+          ? 'bg-brand-600/[0.09] text-brand-300'
+          : 'text-slate-500 hover:bg-white/[0.05] hover:text-slate-200')
       }
     >
-      <span
-        className={
-          'shrink-0 transition-opacity duration-150 ' +
-          (active ? 'opacity-100' : 'opacity-50 group-hover:opacity-80')
-        }
-      >
+      {/* Thin left accent bar — marks the active route */}
+      {active && (
+        <span className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-brand-400/60" />
+      )}
+      <span className={
+        'shrink-0 transition-opacity duration-150 ' +
+        (active ? 'opacity-100' : 'opacity-[0.45] group-hover:opacity-75')
+      }>
         {icon}
       </span>
       <span className="flex-1 truncate text-left">{label}</span>
@@ -122,34 +114,32 @@ function DrawerNavItem({
 }
 
 function DrawerActionItem({
-  label,
-  icon,
-  onClick,
-  trailing,
-  highlight = false,
+  label, icon, onClick, trailing, highlight = false,
 }: {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
   trailing?: React.ReactNode;
-  /** Slightly elevated visual weight — used for the Daily Live Challenge item. */
+  /** Slightly elevated visual weight — used for Daily Live Challenge. */
   highlight?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={
-        'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[9px] ' +
-        'text-[13.5px] font-medium transition-colors duration-150 ' +
+        'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[10px] ' +
+        'text-[13px] font-medium transition-colors duration-150 ' +
         (highlight
-          ? 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 '
-          : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200 ') +
+          ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 '
+          : 'text-slate-500 hover:bg-white/[0.05] hover:text-slate-200 ') +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
       }
     >
       <span className={
         'shrink-0 transition-opacity duration-150 ' +
-        (highlight ? 'opacity-[0.65] group-hover:opacity-90' : 'opacity-50 group-hover:opacity-80')
+        (highlight
+          ? 'opacity-[0.60] group-hover:opacity-85'
+          : 'opacity-[0.45] group-hover:opacity-75')
       }>
         {icon}
       </span>
@@ -161,34 +151,31 @@ function DrawerActionItem({
 
 /* ---------- Badge helpers ---------- */
 
-/** Small count pill — e.g. "3" or "9+" */
 function NavBadge({ count }: { count: number }) {
   return (
-    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-500/15 px-1.5 text-[10px] font-semibold tabular-nums text-brand-400">
+    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-500/[0.14] px-1.5 text-[10px] font-semibold tabular-nums text-brand-400/80">
       {count > 9 ? '9+' : count}
     </span>
   );
 }
 
-/** Pulsing red dot — live challenge indicator */
 function LiveDot() {
   return (
     <span className="relative flex h-[7px] w-[7px]">
       <span
-        className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-50"
+        className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-40"
         style={{ animationDuration: '2.5s' }}
       />
-      <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-red-400/80" />
+      <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-red-400/70" />
     </span>
   );
 }
 
-/** Static dot — unread recap indicator */
 function UnreadDot() {
-  return <span className="h-[7px] w-[7px] rounded-full bg-brand-400/50" />;
+  return <span className="h-[7px] w-[7px] rounded-full bg-brand-400/40" />;
 }
 
-/** Section label + children wrapper. `first` omits the extra top padding. */
+/** Group header — section label + children. `first` reduces top padding. */
 function NavSection({ label, children, first = false }: {
   label: string;
   children: React.ReactNode;
@@ -197,8 +184,8 @@ function NavSection({ label, children, first = false }: {
   return (
     <section aria-label={label}>
       <p className={
-        'px-3 pb-1 text-[9.5px] font-medium uppercase tracking-[0.13em] text-slate-600/80 ' +
-        (first ? 'pt-4' : 'pt-5')
+        'px-3 pb-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500/70 ' +
+        (first ? 'pt-3' : 'pt-5')
       }>
         {label}
       </p>
@@ -207,10 +194,10 @@ function NavSection({ label, children, first = false }: {
   );
 }
 
-/** Stagger + tap-scale wrapper for each nav row. Receives variants from the parent. */
+/** Stagger + tap-scale wrapper. Receives variant from the parent container. */
 function NavRow({ children, v }: { children: React.ReactNode; v: Variants }) {
   return (
-    <motion.div variants={v} whileTap={{ scale: 0.97 }} className="rounded-xl">
+    <motion.div variants={v} whileTap={{ scale: 0.975 }} className="rounded-xl">
       {children}
     </motion.div>
   );
@@ -228,16 +215,16 @@ function MoonIcon({ className }: { className?: string }) {
 function GlobalStatsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g opacity="0.7" stroke="currentColor" strokeWidth="1.25">
+      <g opacity="0.65" stroke="currentColor" strokeWidth="1.25">
         <circle cx="12" cy="11" r="8.5" />
         <line x1="3.5" y1="11" x2="20.5" y2="11" />
         <path d="M12 2.5 Q8.5 6 8.5 11 Q8.5 16 12 19.5" />
         <path d="M12 2.5 Q15.5 6 15.5 11 Q15.5 16 12 19.5" />
       </g>
-      <rect x="4.5"  y="17.5" width="2" height="3"  rx="0.5" fill="#818cf8" />
-      <rect x="8"    y="14.5" width="2" height="6"  rx="0.5" fill="#818cf8" />
-      <rect x="11.5" y="11.5" width="2" height="9"  rx="0.5" fill="#818cf8" />
-      <rect x="15"   y="8.5"  width="2" height="12" rx="0.5" fill="#818cf8" />
+      <rect x="4.5"  y="17.5" width="2" height="3"  rx="0.5" fill="#818cf8" opacity="0.7" />
+      <rect x="8"    y="14.5" width="2" height="6"  rx="0.5" fill="#818cf8" opacity="0.7" />
+      <rect x="11.5" y="11.5" width="2" height="9"  rx="0.5" fill="#818cf8" opacity="0.7" />
+      <rect x="15"   y="8.5"  width="2" height="12" rx="0.5" fill="#818cf8" opacity="0.7" />
     </svg>
   );
 }
@@ -256,45 +243,43 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   const { signOut } = useAuth();
   const { profile } = useProfile();
   const { pathname } = useLocation();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef    = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const prefersReduced = useReducedMotion();
-  // Store in ref so stable callbacks can read the latest value
   const prefersReducedRef = useRef(prefersReduced);
   prefersReducedRef.current = prefersReduced;
 
-  // ─── Nav stagger variants ────────────────────────────────────────────────────
-  // Container orchestrates stagger; items slide in from x:-6 with fade.
-  // On close the items snap back instantly (duration:0) — panel slides out anyway.
+  // ── Animation variants ───────────────────────────────────────────────────────
+
+  // Nav list — items slide from x:−5 and fade in with a gentle stagger
   const navContainerV = {
-    open:   { transition: prefersReduced ? {} : { staggerChildren: 0.025, delayChildren: 0.07 } },
+    open:   { transition: prefersReduced ? {} : { staggerChildren: 0.03, delayChildren: 0.08 } },
     closed: {},
   };
   const navItemV = {
-    open:   { opacity: 1, x: 0,  transition: { duration: prefersReduced ? 0 : 0.2, ease: 'easeOut' as const } },
-    closed: { opacity: 0, x: -6, transition: { duration: 0 } },
+    open:   { opacity: 1, x: 0,  transition: { duration: prefersReduced ? 0 : 0.18, ease: 'easeOut' as const } },
+    closed: { opacity: 0, x: -5, transition: { duration: 0 } },
   };
 
-  // Quick-action grid — fades up slightly before the nav list
+  // Quick Actions — fade up very subtly, slightly before nav
   const qaContainerV = {
-    open:   { transition: prefersReduced ? {} : { staggerChildren: 0.05, delayChildren: 0.03 } },
+    open:   { transition: prefersReduced ? {} : { staggerChildren: 0.05, delayChildren: 0.04 } },
     closed: {},
   };
   const qaItemV = {
     open:   { opacity: 1, y: 0,  transition: { duration: prefersReduced ? 0 : 0.16, ease: 'easeOut' as const } },
-    closed: { opacity: 0, y: 8,  transition: { duration: 0 } },
+    closed: { opacity: 0, y: 6,  transition: { duration: 0 } },
   };
 
-  // ─── MotionValues ───────────────────────────────────────────────────────────
-  // panelX: 0 = fully open, -width = fully closed. Starts far off-screen.
-  const panelX = useMotionValue(-400);
-  // overlayOpacity: 0 = invisible, 1 = fully opaque. Derived from panelX.
+  // ── MotionValues ─────────────────────────────────────────────────────────────
+
+  // panelX: 0 = fully open, −width = fully closed. Starts far off-screen.
+  const panelX         = useMotionValue(-400);
   const overlayOpacity = useMotionValue(0);
 
-  // Keep backdrop opacity and DOM pointer-events in sync with panelX on every frame.
-  // We mutate the DOM directly to avoid per-frame React re-renders.
+  // Keep overlay opacity and DOM pointer-events in sync with panelX — no React re-renders.
   useMotionValueEvent(panelX, 'change', (x) => {
-    const width = panelRef.current?.offsetWidth ?? 340;
+    const width   = panelRef.current?.offsetWidth ?? 340;
     const opacity = Math.max(0, Math.min(1, (x + width) / width));
     overlayOpacity.set(opacity);
 
@@ -303,21 +288,20 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
     }
     if (panelRef.current) {
       const active = x > -width + 0.5;
-      panelRef.current.style.visibility = active ? 'visible' : 'hidden';
-      panelRef.current.style.pointerEvents = active ? 'auto' : 'none';
+      panelRef.current.style.visibility   = active ? 'visible' : 'hidden';
+      panelRef.current.style.pointerEvents = active ? 'auto'    : 'none';
     }
   });
 
-  // ─── Spring config ──────────────────────────────────────────────────────────
+  // ── Spring config ────────────────────────────────────────────────────────────
+
   const getSpring = () =>
     prefersReducedRef.current
       ? { duration: 0 }
-      : { type: 'spring' as const, stiffness: 350, damping: 35, mass: 0.8 };
+      : { type: 'spring' as const, stiffness: 340, damping: 36, mass: 0.8 };
 
-  // Store the running animation so we can cancel it before a direct setDragX.
   const animCtrl = useRef<ReturnType<typeof animate> | null>(null);
 
-  // ─── Imperative handle exposed to AppLayout ──────────────────────────────────
   useImperativeHandle(ref, () => ({
     snapOpen() {
       animCtrl.current?.stop();
@@ -328,7 +312,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
       const width = panelRef.current?.offsetWidth ?? 340;
       animCtrl.current = animate(panelX, -width, getSpring());
     },
-    /** Drive the panel with a finger — cancels any running spring first. */
     setDragX(x: number) {
       animCtrl.current?.stop();
       panelX.set(x);
@@ -338,7 +321,8 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
     },
   }));
 
-  // ─── Focus trap (active when open prop is true) ──────────────────────────────
+  // ── Focus trap (active when open prop is true) ────────────────────────────────
+
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
@@ -347,21 +331,16 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
     panel.querySelector<HTMLElement>(FOCUSABLE)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
+      if (e.key === 'Escape') { onClose(); return; }
       if (e.key !== 'Tab') return;
-      const all = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const all   = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (all.length === 0) return;
       const first = all[0];
-      const last = all[all.length - 1];
+      const last  = all[all.length - 1];
       if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
+        e.preventDefault(); last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
+        e.preventDefault(); first.focus();
       }
     };
 
@@ -369,7 +348,8 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // ─── Sign-out ────────────────────────────────────────────────────────────────
+  // ── Callbacks ────────────────────────────────────────────────────────────────
+
   const handleSignOut = useCallback(async () => {
     onClose();
     await signOut();
@@ -381,42 +361,39 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   }, [onClose, navigate, pathname]);
 
   const displayName = profile?.display_name ?? profile?.username ?? 'Profil';
-  const avatarUrl = profile?.avatar_url;
+  const avatarUrl   = profile?.avatar_url;
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
   //
-  // Both backdrop and panel live inside a single `position:fixed; inset:0;
-  // overflow:hidden` shell. Because the panel is `position:absolute` (not
-  // fixed) inside this shell, the shell's `overflow:hidden` actually clips it —
-  // so when the panel is at translateX(-340px) it is fully clipped and iOS
-  // WebKit no longer sees any content to the left of the viewport.
-  // Without this wrapper, `position:fixed` elements escape body `overflow:hidden`
-  // and iOS allows horizontal rubber-band drag to reveal them.
+  // Shell: position:fixed inset:0 overflow:hidden
+  //   ↳ Backdrop (absolute, frosted glass)
+  //   ↳ Panel (absolute, clipped by overflow:hidden so iOS can't swipe it into view)
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 45,
-        overflow: 'hidden',
-        pointerEvents: 'none', // children that need events override individually
+        position: 'fixed', inset: 0, zIndex: 45,
+        overflow: 'hidden', pointerEvents: 'none',
       }}
     >
-      {/* Backdrop */}
+      {/* ── Backdrop — frosted glass over the page content ─────────────────── */}
       <div
         ref={backdropRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-        }}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
         onClick={onClose}
         aria-hidden="true"
       >
-        <motion.div className="h-full w-full bg-black/60" style={{ opacity: overlayOpacity }} />
+        <motion.div
+          className="h-full w-full"
+          style={{
+            opacity: overlayOpacity,
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+          }}
+        />
       </div>
 
-      {/* Drawer panel — position:absolute so it is clipped by the wrapper above */}
+      {/* ── Drawer panel ───────────────────────────────────────────────────── */}
       <motion.div
         ref={panelRef}
         id="nav-drawer"
@@ -424,29 +401,26 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
         aria-modal="true"
         aria-label="Navigation"
         style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: 0,
+          position: 'absolute', top: 0, bottom: 0, left: 0,
           x: panelX,
-          visibility: 'hidden',  // initial; motionValueEvent updates this
-          pointerEvents: 'none', // initial; motionValueEvent updates this
-          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          visibility:   'hidden',   // motionValueEvent manages this
+          pointerEvents: 'none',    // motionValueEvent manages this
+          paddingTop:    'max(16px, env(safe-area-inset-top))',
           paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
         }}
         className={
           'z-[1] flex w-[84vw] max-w-[340px] flex-col ' +
-          'rounded-r-2xl border-r border-ink-700 bg-ink-900 shadow-2xl'
+          'rounded-r-[20px] border-r border-white/[0.07] ' +
+          'bg-ink-900 shadow-[4px_0_40px_rgba(0,0,0,0.65)]'
         }
       >
-        {/* ── Profile header — minimal ────────────────────────────────────────
-             Avatar + username only. ~80px tall. No stats, no card.
-             Entrance: avatar fades in, name slides from left (220ms).      */}
+
+        {/* ── Profile header ─────────────────────────────────────────────── */}
         <div
           className="flex items-center gap-3 px-4 pb-4 pt-3"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
         >
-          {/* Avatar — fades in on open */}
+          {/* Avatar fades in */}
           <motion.div
             initial={false}
             animate={open ? { opacity: 1 } : { opacity: 0 }}
@@ -457,18 +431,18 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
               onClick={handleProfileClick}
               aria-label="Profil öffnen"
               className="rounded-full transition active:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400"
-              style={{ filter: 'drop-shadow(0 1px 8px rgba(0,0,0,0.45))' }}
+              style={{ filter: 'drop-shadow(0 1px 8px rgba(0,0,0,0.5))' }}
             >
               <Avatar
                 url={avatarUrl}
                 name={displayName}
                 size={56}
-                className="ring-[1.5px] ring-brand-500/50"
+                className="ring-[1.5px] ring-brand-400/40"
               />
             </button>
           </motion.div>
 
-          {/* Name + greeting — slides in from left */}
+          {/* Name + greeting slide from left */}
           <motion.button
             initial={false}
             animate={open ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
@@ -480,45 +454,40 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             onClick={handleProfileClick}
             aria-label="Profil öffnen"
             className={
-              'min-w-0 flex-1 text-left transition active:opacity-70 ' +
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400 ' +
-              'rounded-lg'
+              'min-w-0 flex-1 rounded-lg text-left transition active:opacity-70 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
           >
-            <p className="truncate text-[16px] font-semibold leading-tight text-slate-100">
+            <p className="truncate text-[15px] font-semibold leading-tight text-slate-100">
               {displayName}
             </p>
-            <p className="mt-0.5 text-[12px] leading-snug text-slate-500">
+            <p className="mt-0.5 text-[11.5px] leading-snug text-slate-600">
               Bereit für dein Training?
             </p>
           </motion.button>
 
-          {/* Close button — circular, subtle */}
+          {/* Close button */}
           <button
             onClick={onClose}
             aria-label="Navigation schließen"
             className={
-              'shrink-0 grid place-items-center rounded-full transition ' +
+              'shrink-0 grid h-8 w-8 place-items-center rounded-full transition ' +
               'bg-white/[0.06] text-slate-400 ' +
-              'hover:bg-white/[0.11] hover:text-slate-200 ' +
-              'active:bg-white/[0.15] ' +
+              'hover:bg-white/[0.10] hover:text-slate-200 ' +
+              'active:bg-white/[0.14] ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
-            style={{ width: 32, height: 32 }}
           >
-            <XIcon className="h-[15px] w-[15px]" />
+            <XIcon className="h-[14px] w-[14px]" />
           </button>
         </div>
 
-        {/* ── Quick Actions ────────────────────────────────────────────────
-             2×2 grid of icon+label buttons for the most frequent actions.
-             Slides in (y: 8→0) slightly before the nav list stagger.      */}
+        {/* ── Quick Actions — 2-up row ────────────────────────────────────── */}
         <motion.div
           initial="closed"
           animate={open ? 'open' : 'closed'}
           variants={qaContainerV}
-          className="grid grid-cols-2 gap-2 px-3 py-3"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          className="grid grid-cols-2 gap-2 px-3 pb-1 pt-3"
         >
           {/* Training eintragen */}
           <motion.button
@@ -527,14 +496,14 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             onClick={() => { onClose(); onOpenTraining(); }}
             aria-label="Training eintragen"
             className={
-              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
-              'bg-brand-600/10 text-brand-300 transition-colors duration-150 ' +
-              'hover:bg-brand-600/15 active:bg-brand-600/20 ' +
+              'flex min-h-[62px] flex-col items-center justify-center gap-2 rounded-2xl px-2 py-2.5 ' +
+              'bg-brand-500/[0.08] text-brand-300 transition-colors duration-150 ' +
+              'hover:bg-brand-500/[0.12] ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
           >
-            <PlusIcon className="h-5 w-5 text-brand-400" />
-            <span className="text-[11px] font-medium leading-tight">Training</span>
+            <PlusIcon className="h-[18px] w-[18px] text-brand-400/90" />
+            <span className="text-[10.5px] font-medium leading-none tracking-[0.01em]">Training</span>
           </motion.button>
 
           {/* Ruhetag eintragen */}
@@ -544,24 +513,22 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             onClick={() => { onClose(); onOpenRestDay(); }}
             aria-label="Ruhetag eintragen"
             className={
-              'flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 ' +
-              'bg-ink-800/70 text-slate-400 transition-colors duration-150 ' +
-              'hover:bg-ink-700/70 hover:text-slate-200 ' +
+              'flex min-h-[62px] flex-col items-center justify-center gap-2 rounded-2xl px-2 py-2.5 ' +
+              'bg-white/[0.05] text-slate-400 transition-colors duration-150 ' +
+              'hover:bg-white/[0.08] hover:text-slate-200 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
           >
-            <MoonIcon className="h-5 w-5" />
-            <span className="text-[11px] font-medium leading-tight">Ruhetag</span>
+            <MoonIcon className="h-[18px] w-[18px]" />
+            <span className="text-[10.5px] font-medium leading-none tracking-[0.01em]">Ruhetag</span>
           </motion.button>
-
         </motion.div>
 
-        {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
+        {/* ── Scrollable nav ──────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-2 pb-4" data-no-swipe>
-          {/* Stagger container — propagates 'open'/'closed' variant to children */}
           <motion.div initial="closed" animate={open ? 'open' : 'closed'} variants={navContainerV}>
 
-            {/* ── HEUTE ──────────────────────────────────────────────────────── */}
+            {/* HEUTE */}
             <NavSection label="Heute" first>
               <NavRow v={navItemV}>
                 <DrawerNavItem
@@ -594,7 +561,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
               <NavRow v={navItemV}>
                 <DrawerActionItem
                   label="Arena Feed"
-                  icon={<img src="/arena-feed-icon.webp" alt="" className="h-[18px] w-[18px] object-contain opacity-80" />}
+                  icon={<img src="/arena-feed-icon.webp" alt="" className="h-[18px] w-[18px] object-contain opacity-75" />}
                   onClick={() => { onClose(); onOpenFeed(); }}
                   trailing={
                     <AnimatePresence>
@@ -615,10 +582,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
               </NavRow>
             </NavSection>
 
-            {/* Divider */}
-            <div className="mx-3 my-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-
-            {/* ── COMMUNITY ──────────────────────────────────────────────────── */}
+            {/* COMMUNITY */}
             <NavSection label="Community">
               <NavRow v={navItemV}>
                 <DrawerActionItem
@@ -649,10 +613,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
               </NavRow>
             </NavSection>
 
-            {/* Divider */}
-            <div className="mx-3 my-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-
-            {/* ── PERSÖNLICH ─────────────────────────────────────────────────── */}
+            {/* PERSÖNLICH */}
             <NavSection label="Persönlich">
               <NavRow v={navItemV}>
                 <DrawerNavItem
@@ -677,27 +638,28 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           </motion.div>
         </div>
 
-        {/* Footer: sign out */}
+        {/* ── Footer: sign out ────────────────────────────────────────────── */}
         <div
-          className="mx-4 mt-1 pt-3"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+          className="mx-3 mt-2 pt-3"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
         >
           {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
           <button
             onClick={handleSignOut}
             className={
-              'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[9px] ' +
-              'text-[13.5px] font-medium transition-colors duration-150 ' +
-              'text-red-400/70 hover:bg-red-500/[0.08] hover:text-red-400 ' +
+              'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[10px] ' +
+              'text-[13px] font-medium transition-colors duration-150 ' +
+              'text-red-400/60 hover:bg-red-500/[0.07] hover:text-red-400/90 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
             }
           >
-            <span className="shrink-0 opacity-60 transition-opacity duration-150 group-hover:opacity-90">
+            <span className="shrink-0 opacity-50 transition-opacity duration-150 group-hover:opacity-85">
               <LogoutIcon className="h-[18px] w-[18px]" />
             </span>
             Abmelden
           </button>
         </div>
+
       </motion.div>
     </div>
   );
