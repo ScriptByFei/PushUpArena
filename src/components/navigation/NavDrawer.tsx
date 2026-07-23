@@ -5,6 +5,7 @@ import {
   useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
+  type Variants,
 } from 'framer-motion';
 import {
   forwardRef,
@@ -94,7 +95,7 @@ function DrawerNavItem({
         if (!active) navigate(to, { replace: true });
       }}
       className={
-        'group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] ' +
+        'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[9px] ' +
         'text-[13.5px] font-medium transition-colors duration-150 ' +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400 ' +
         (active
@@ -121,23 +122,31 @@ function DrawerActionItem({
   icon,
   onClick,
   trailing,
+  highlight = false,
 }: {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
   trailing?: React.ReactNode;
+  /** Slightly elevated visual weight — used for the Daily Live Challenge item. */
+  highlight?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={
-        'group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] ' +
+        'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[9px] ' +
         'text-[13.5px] font-medium transition-colors duration-150 ' +
-        'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200 ' +
+        (highlight
+          ? 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 '
+          : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200 ') +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
       }
     >
-      <span className="shrink-0 opacity-50 transition-opacity duration-150 group-hover:opacity-80">
+      <span className={
+        'shrink-0 transition-opacity duration-150 ' +
+        (highlight ? 'opacity-[0.65] group-hover:opacity-90' : 'opacity-50 group-hover:opacity-80')
+      }>
         {icon}
       </span>
       <span className="flex-1 truncate text-left">{label}</span>
@@ -173,6 +182,34 @@ function LiveDot() {
 /** Static dot — unread recap indicator */
 function UnreadDot() {
   return <span className="h-[7px] w-[7px] rounded-full bg-brand-400/50" />;
+}
+
+/** Section label + children wrapper. `first` omits the extra top padding. */
+function NavSection({ label, children, first = false }: {
+  label: string;
+  children: React.ReactNode;
+  first?: boolean;
+}) {
+  return (
+    <section aria-label={label}>
+      <p className={
+        'px-3 pb-1 text-[9.5px] font-medium uppercase tracking-[0.13em] text-slate-600/80 ' +
+        (first ? 'pt-4' : 'pt-5')
+      }>
+        {label}
+      </p>
+      {children}
+    </section>
+  );
+}
+
+/** Stagger + tap-scale wrapper for each nav row. Receives variants from the parent. */
+function NavRow({ children, v }: { children: React.ReactNode; v: Variants }) {
+  return (
+    <motion.div variants={v} whileTap={{ scale: 0.97 }} className="rounded-xl">
+      {children}
+    </motion.div>
+  );
 }
 
 function GlobalStatsIcon() {
@@ -450,16 +487,13 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
         </div>
 
         {/* Scrollable nav — data-no-swipe prevents page-swipe detection inside list */}
-        <div className="flex-1 overflow-y-auto px-2 pb-2" data-no-swipe>
+        <div className="flex-1 overflow-y-auto px-2 pb-4" data-no-swipe>
           {/* Stagger container — propagates 'open'/'closed' variant to children */}
           <motion.div initial="closed" animate={open ? 'open' : 'closed'} variants={navContainerV}>
 
-            <section aria-label="Hauptmenü">
-              <p className="px-3 pb-1.5 pt-4 text-[9.5px] font-medium uppercase tracking-[0.13em] text-slate-600/80">
-                Navigation
-              </p>
-
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+            {/* ── HEUTE ──────────────────────────────────────────────────────── */}
+            <NavSection label="Heute" first>
+              <NavRow v={navItemV}>
                 <DrawerNavItem
                   to="/"
                   label="Dashboard"
@@ -467,9 +501,27 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
                   pathname={pathname}
                   onClose={onClose}
                 />
-              </motion.div>
-
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+              </NavRow>
+              <NavRow v={navItemV}>
+                <DrawerActionItem
+                  label="Daily Live Challenge"
+                  icon={<BoltIcon className="h-[18px] w-[18px]" />}
+                  onClick={() => { onClose(); onOpenDailyChallenge(); }}
+                  highlight
+                  trailing={
+                    challengeIsActive ? (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <LiveDot />
+                      </motion.span>
+                    ) : undefined
+                  }
+                />
+              </NavRow>
+              <NavRow v={navItemV}>
                 <DrawerActionItem
                   label="Arena Feed"
                   icon={<img src="/arena-feed-icon.webp" alt="" className="h-[18px] w-[18px] object-contain opacity-80" />}
@@ -490,9 +542,15 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
                     </AnimatePresence>
                   }
                 />
-              </motion.div>
+              </NavRow>
+            </NavSection>
 
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+            {/* Divider */}
+            <div className="mx-3 my-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+            {/* ── COMMUNITY ──────────────────────────────────────────────────── */}
+            <NavSection label="Community">
+              <NavRow v={navItemV}>
                 <DrawerActionItem
                   label="Arena Rückblick"
                   icon={<RecapIcon className="h-[18px] w-[18px]" />}
@@ -509,38 +567,8 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
                     ) : undefined
                   }
                 />
-              </motion.div>
-
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
-                <DrawerActionItem
-                  label="Daily Live Challenge"
-                  icon={<BoltIcon className="h-[18px] w-[18px]" />}
-                  onClick={() => { onClose(); onOpenDailyChallenge(); }}
-                  trailing={
-                    challengeIsActive ? (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.25 }}
-                      >
-                        <LiveDot />
-                      </motion.span>
-                    ) : undefined
-                  }
-                />
-              </motion.div>
-
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
-                <DrawerNavItem
-                  to="/achievements"
-                  label="Erfolge"
-                  icon={<TrophyIcon className="h-[18px] w-[18px]" />}
-                  pathname={pathname}
-                  onClose={onClose}
-                />
-              </motion.div>
-
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+              </NavRow>
+              <NavRow v={navItemV}>
                 <DrawerNavItem
                   to="/global-stats"
                   label="Globale Statistiken"
@@ -548,20 +576,24 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
                   pathname={pathname}
                   onClose={onClose}
                 />
-              </motion.div>
-            </section>
+              </NavRow>
+            </NavSection>
 
             {/* Divider */}
-            <div
-              className="mx-3 my-3 h-px"
-              style={{ background: 'rgba(255,255,255,0.06)' }}
-            />
+            <div className="mx-3 my-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-            <section aria-label="Konto">
-              <p className="px-3 pb-1.5 pt-1 text-[9.5px] font-medium uppercase tracking-[0.13em] text-slate-600/80">
-                Konto
-              </p>
-              <motion.div variants={navItemV} whileTap={{ scale: 0.97 }} className="rounded-xl">
+            {/* ── PERSÖNLICH ─────────────────────────────────────────────────── */}
+            <NavSection label="Persönlich">
+              <NavRow v={navItemV}>
+                <DrawerNavItem
+                  to="/achievements"
+                  label="Erfolge"
+                  icon={<TrophyIcon className="h-[18px] w-[18px]" />}
+                  pathname={pathname}
+                  onClose={onClose}
+                />
+              </NavRow>
+              <NavRow v={navItemV}>
                 <DrawerNavItem
                   to="/settings"
                   label="Einstellungen"
@@ -569,8 +601,8 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
                   pathname={pathname}
                   onClose={onClose}
                 />
-              </motion.div>
-            </section>
+              </NavRow>
+            </NavSection>
 
           </motion.div>
         </div>
@@ -584,7 +616,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           <button
             onClick={handleSignOut}
             className={
-              'group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] ' +
+              'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[9px] ' +
               'text-[13.5px] font-medium transition-colors duration-150 ' +
               'text-red-400/70 hover:bg-red-500/[0.08] hover:text-red-400 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
