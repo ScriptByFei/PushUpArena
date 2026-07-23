@@ -249,20 +249,39 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
+  //
+  // Both backdrop and panel live inside a single `position:fixed; inset:0;
+  // overflow:hidden` shell. Because the panel is `position:absolute` (not
+  // fixed) inside this shell, the shell's `overflow:hidden` actually clips it —
+  // so when the panel is at translateX(-340px) it is fully clipped and iOS
+  // WebKit no longer sees any content to the left of the viewport.
+  // Without this wrapper, `position:fixed` elements escape body `overflow:hidden`
+  // and iOS allows horizontal rubber-band drag to reveal them.
   return (
-    <>
-      {/* Backdrop — always in DOM; pointer-events managed imperatively above. */}
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 45,
+        overflow: 'hidden',
+        pointerEvents: 'none', // children that need events override individually
+      }}
+    >
+      {/* Backdrop */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 z-[45]"
-        style={{ pointerEvents: 'none' }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+        }}
         onClick={onClose}
         aria-hidden="true"
       >
         <motion.div className="h-full w-full bg-black/60" style={{ opacity: overlayOpacity }} />
       </div>
 
-      {/* Drawer panel — always in DOM; x position driven by MotionValue */}
+      {/* Drawer panel — position:absolute so it is clipped by the wrapper above */}
       <motion.div
         ref={panelRef}
         id="nav-drawer"
@@ -270,6 +289,10 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
         aria-modal="true"
         aria-label="Navigation"
         style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: 0,
           x: panelX,
           visibility: 'hidden',  // initial; motionValueEvent updates this
           pointerEvents: 'none', // initial; motionValueEvent updates this
@@ -277,7 +300,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
         }}
         className={
-          'fixed left-0 top-0 z-[46] flex h-full w-[84vw] max-w-[340px] flex-col ' +
+          'z-[1] flex w-[84vw] max-w-[340px] flex-col ' +
           'rounded-r-2xl border-r border-ink-700 bg-ink-900 shadow-2xl'
         }
       >
@@ -432,6 +455,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           </button>
         </div>
       </motion.div>
-    </>
+    </div>
   );
 });

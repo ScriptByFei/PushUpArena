@@ -15,6 +15,10 @@
     max-width: 100%;
     overflow-x: hidden;
     overscroll-behavior-x: none;
+    /* Prevents iOS WebKit from allowing horizontal rubber-band drag.
+       Individual components that need horizontal scroll (e.g. discover cards)
+       override with touch-action: pan-x pan-y on their own element. */
+    touch-action: pan-y;
   }
 
   body {
