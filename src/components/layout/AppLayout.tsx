@@ -37,9 +37,6 @@ const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000;
  */
 const SWIPE_ROUTES = ['/', '/friends', '/leaderboard', '/activity', '/profile'];
 
-/** px from left edge to activate drawer-open gesture (Dashboard only). */
-const EDGE_ZONE = 40;
-
 /** Dead zone (px) before committing to a gesture axis. */
 const AXIS_LOCK_THRESHOLD = 8;
 
@@ -237,8 +234,12 @@ export function AppLayout() {
       startTime = performance.now();
 
       if (drawerOpenRef.current) {
+        // Drawer is open — track potential close gesture (leftward swipe).
         mode = 'drawer';
-      } else if (e.clientX <= EDGE_ZONE && pathnameRef.current === '/') {
+      } else if (pathnameRef.current === '/') {
+        // Dashboard, drawer closed — track potential open gesture (rightward swipe).
+        // No edge-zone restriction: tab-swipe is gone so any right-swipe is safe.
+        // This also avoids iOS intercepting left-edge touches as "go back".
         mode = 'drawer';
       }
     };
@@ -255,6 +256,9 @@ export function AppLayout() {
       if (!axisLocked) {
         if (Math.max(absDx, absDy) < AXIS_LOCK_THRESHOLD) return;
         if (absDx > absDy * H_DOMINANCE) {
+          // Wrong-direction guard: opening requires rightward, closing requires leftward.
+          if (!drawerOpenRef.current && dx < 0) { reset(); return; } // left swipe on Dashboard → ignore
+          if (drawerOpenRef.current  && dx > 0) { reset(); return; } // right swipe when open → ignore
           axisLocked = true;
           axisHoriz  = true;
           root.setPointerCapture(e.pointerId);
