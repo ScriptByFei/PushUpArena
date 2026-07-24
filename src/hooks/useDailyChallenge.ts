@@ -8,10 +8,11 @@
 //    Re-Render des gesamten Modals
 //  • Status wird bei Tagesgrenze via onEnd-Callback aus useCountdown
 //    still im Hintergrund aktualisiert (kein Skeleton-Flash)
-//  • Realtime-Subscription (INSERT auf daily_challenge_entries) → Rangliste
-//    + Sätze neu laden. Benötigt: ALTER PUBLICATION supabase_realtime ADD
-//    TABLE daily_challenge_entries; (TODO Phase 4 falls noch nicht gesetzt)
-//  • isLoggingRef verhindert parallele logSet-Aufrufe (race-safe)
+//  • Realtime-Subscription auf daily_challenge_entries → Rangliste + Sätze
+//    automatisch aktuell halten wenn Challenge läuft.
+//  • Satzeingabe NICHT mehr im Challenge-Modal — Sätze kommen ausschließlich
+//    über Dashboard / NavDrawer (workout_entries). Ein DB-Trigger synct
+//    daily_challenge_entries automatisch.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -76,13 +77,11 @@ export function useDailyChallenge() {
 
   // ── Aktions-States ────────────────────────────────────────────────────────
   const [isJoining, setIsJoining]                 = useState(false);
-  const [isLoggingSet, setIsLoggingSet]           = useState(false);
   const [isEditingSet, setIsEditingSet]           = useState(false);
   const [isDeletingSet, setIsDeletingSet]         = useState(false);
   const [actionError, setActionError]             = useState<string | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const isLoggingRef              = useRef(false);   // parallele logSet-Aufrufe verhindern
   const isJoiningRef              = useRef(false);   // parallele joinChallenge-Aufrufe verhindern
   const isEditingRef              = useRef(false);   // parallele updateSet-Aufrufe verhindern
   const isDeletingRef             = useRef(false);   // parallele deleteSet-Aufrufe verhindern
@@ -352,58 +351,9 @@ export function useDailyChallenge() {
     }
   }, [exerciseId, user, refreshStatus, refreshLeaderboard, refreshMySets, toast]);
 
-  // ── logSet ────────────────────────────────────────────────────────────────
-  // Gibt { ok: true } bei Erfolg zurück, { ok: false, secondsRemaining? } bei Fehler.
-  // workoutEntryId: ID des workout_entries-Datensatzes wenn vom Dashboard auto-geloggt.
-  //   Wird in daily_challenge_entries gespeichert damit delete_challenge_set
-  //   beide Einträge atomisch löschen kann.
-  const logSet = useCallback(async (
-    repetitions: number,
-    workoutEntryId?: string,
-  ): Promise<{ ok: boolean; secondsRemaining?: number }> => {
-    if (!exerciseId || !user) return { ok: false };
-    if (isLoggingRef.current) return { ok: false }; // parallele Aufrufe blockieren
-    isLoggingRef.current = true;
-    setIsLoggingSet(true);
-    setActionError(null);
-    try {
-      const { data, error } = await supabase.rpc('log_challenge_set', {
-        p_exercise_id:      exerciseId,
-        p_repetitions:      repetitions,
-        p_workout_entry_id: workoutEntryId ?? null,
-      });
-      if (error) throw error;
-      if (data?.error) {
-        const code = data.error as string;
-        let msg = DC_ERROR_MESSAGES[code] ?? DC_ERROR_MESSAGES.UNKNOWN;
-        let secondsRemaining: number | undefined;
-        if (code === 'COOLDOWN_ACTIVE' && data.seconds_remaining != null) {
-          secondsRemaining = data.seconds_remaining;
-          msg = `Noch ${data.seconds_remaining}s warten.`;
-        }
-        setActionError(msg);
-        toast.error(msg);
-        return { ok: false, secondsRemaining };
-      }
-      // Erfolg — Hinweis auf 30-minütiges Bearbeitungsfenster
-      const total = data?.total_repetitions ?? '–';
-      toast.success(`+${repetitions} Wdh. · Gesamt: ${total} · Noch 30 Min. bearbeitbar`);
-      await Promise.all([refreshLeaderboard(), refreshMySets()]);
-      return { ok: true };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
-      setActionError(msg);
-      toast.error(msg);
-      return { ok: false };
-    } finally {
-      isLoggingRef.current = false;
-      setIsLoggingSet(false);
-    }
-  }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
-
   // ── updateSet ─────────────────────────────────────────────────────────────
-  // Ändert die Wiederholungszahl eines eigenen Satzes.
-  // Schlägt fehl wenn das 30-Minuten-Bearbeitungsfenster abgelaufen ist.
+  // Ändert die Wiederholungszahl über das zugrundeliegende workout_entry.
+  // Der DB-Trigger synct daily_challenge_entries automatisch.
   const updateSet = useCallback(async (
     entryId: string,
     repetitions: number,
@@ -427,6 +377,8 @@ export function useDailyChallenge() {
       }
       toast.success(`Satz aktualisiert: ${repetitions} Wdh.`);
       await Promise.all([refreshLeaderboard(), refreshMySets()]);
+      // Dashboard + Aktivitätsverlauf informieren (workout_entry wurde geändert)
+      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
       return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
@@ -440,8 +392,7 @@ export function useDailyChallenge() {
   }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
 
   // ── deleteSet ─────────────────────────────────────────────────────────────
-  // Löscht einen eigenen Satz.
-  // Schlägt fehl wenn das 30-Minuten-Bearbeitungsfenster abgelaufen ist.
+  // Löscht über das zugrundeliegende workout_entry; Trigger entfernt daily_challenge_entries.
   const deleteSet = useCallback(async (
     entryId: string,
   ): Promise<{ ok: boolean }> => {
@@ -463,8 +414,8 @@ export function useDailyChallenge() {
       }
       toast.success('Satz gelöscht.');
       await Promise.all([refreshLeaderboard(), refreshMySets()]);
-      // Signal an Dashboard: workout_entry wurde ggf. mitgelöscht →
-      // DrawerStatsContext muss refetchen damit „Heute" korrekt ist.
+      // workout_entry wurde gelöscht → Dashboard, Aktivität und DrawerStatsContext informieren
+      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
       window.dispatchEvent(new CustomEvent('challengeSetDeleted'));
       return { ok: true };
     } catch (err) {
@@ -620,7 +571,6 @@ export function useDailyChallenge() {
     isLoadingDayDetails,
     isLoadingParticipantDetails,
     isJoining,
-    isLoggingSet,
     isEditingSet,
     isDeletingSet,
 
@@ -642,7 +592,6 @@ export function useDailyChallenge() {
     loadHistoryParticipant,
     refreshToday,
     joinChallenge,
-    logSet,
     updateSet,
     deleteSet,
   };

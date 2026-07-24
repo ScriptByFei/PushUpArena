@@ -173,17 +173,7 @@ export default function Dashboard() {
     setLastEntry({ id: entryId, amount });
     window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setLastEntry(null), 6000);
-
-    // Auto-Logging in die Challenge:
-    // Wenn der User bereits teilnimmt und die Challenge läuft,
-    // wird der Satz automatisch auch als Challenge-Satz eingetragen.
-    // entryId wird mitgegeben damit delete_challenge_set beide Einträge
-    // atomisch löschen kann („Heute" und Challenge gehen gemeinsam auf 0).
-    // Mengen außerhalb [10, 100] überspringen (Challenge-Constraints).
-    // Fire-and-forget — Dashboard-Eintrag ist bereits gespeichert.
-    if (challenge.isActive && challenge.hasJoined && amount >= 10 && amount <= 100) {
-      void challenge.logSet(amount, entryId);
-    }
+    // Challenge-Satz wird automatisch via DB-Trigger angelegt (keine separate RPC nötig).
   }
 
   async function undoLast() {

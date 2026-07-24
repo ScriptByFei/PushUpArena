@@ -52,17 +52,6 @@ function DailyChallengeCountdown({
   );
 }
 
-/** Frontend-Validierung der Wiederholungszahl; gibt Fehlermeldung oder null zurück. */
-function validateReps(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return 'Gib die Anzahl der Wiederholungen ein.';
-  if (!/^\d+$/.test(trimmed)) return 'Bitte gib eine ganze Zahl ein.';
-  const n = parseInt(trimmed, 10);
-  if (n < 10)  return 'Ein Satz muss mindestens 10 Wiederholungen enthalten.';
-  if (n > 100) return 'Pro Satz sind maximal 100 Wiederholungen erlaubt.';
-  return null;
-}
-
 // ── Icons ──────────────────────────────────────────────────────────────────
 
 function CloseIcon() {
@@ -127,10 +116,10 @@ function StatusCard({
 // ── Teilnahmekarte ─────────────────────────────────────────────────────────
 
 const RULES = [
-  'Jeder Satz muss direkt eingetragen werden.',
-  '10 bis 100 Wiederholungen pro Satz.',
-  'Mindestens 30 Sekunden Abstand zwischen zwei Sätzen.',
-  'Gespeicherte Sätze können nicht bearbeitet werden.',
+  'Sätze eintragen über Dashboard (Schnell eintragen) oder das Menü.',
+  'Nur Sätze mit 10 bis 100 Wiederholungen werden gewertet.',
+  'Bereits heute absolvierte Wdh. werden direkt übernommen.',
+  'Sätze können nachträglich bearbeitet oder gelöscht werden.',
 ] as const;
 
 function TeilnahmeCard({
@@ -237,232 +226,6 @@ function TeilnahmeCard({
         </div>
       )}
     </>
-  );
-}
-
-// ── Satzeingabe-Karte ──────────────────────────────────────────────────────
-// Wird nur gerendert wenn isActive && hasJoined.
-// Cooldown-Initialisierung: aus mySets (letzter Satz < 30s ago).
-// Nach erfolgreichem logSet: sofortiger lokaler 30s-Countdown, danach
-// durch mySets-Update mit Serverzeit überschrieben (genauere Basis).
-// Bei COOLDOWN_ACTIVE vom Server: verbleibende Sekunden korrigieren.
-
-interface SatzEingabeCardProps {
-  isActive: boolean;
-  hasJoined: boolean;
-  challengeDate: string | null;
-  isLoggingSet: boolean;
-  actionError: string | null;
-  mySets: DailyChallengeSet[];
-  logSet: (reps: number) => Promise<{ ok: boolean; secondsRemaining?: number }>;
-}
-
-function SatzEingabeCard({
-  isActive,
-  hasJoined,
-  challengeDate,
-  isLoggingSet,
-  actionError,
-  mySets,
-  logSet,
-}: SatzEingabeCardProps) {
-  const [inputValue, setInputValue]   = useState('');
-  const [localError, setLocalError]   = useState<string | null>(null);
-  const [successMsg, setSuccessMsg]   = useState<string | null>(null);
-  const [hasTried, setHasTried]       = useState(false);
-  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
-
-  const inputRef       = useRef<HTMLInputElement>(null);
-  const successTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Cooldown-Countdown
-  useEffect(() => {
-    if (!cooldownEndsAt) { setCooldownSeconds(0); return; }
-
-    const tick = () => {
-      const rem = Math.max(0, (cooldownEndsAt - Date.now()) / 1000);
-      setCooldownSeconds(Math.ceil(rem));
-      if (rem <= 0) setCooldownEndsAt(null);
-    };
-    tick();
-    const id = setInterval(tick, 500);
-    return () => clearInterval(id);
-  }, [cooldownEndsAt]);
-
-  // Cooldown aus mySets ableiten (Initialzustand + nach neuem Satz)
-  useEffect(() => {
-    if (mySets.length === 0) return;
-    const last = mySets[0]; // index 0 = neuester Satz (RPC liefert DESC)
-    const endsAt = last.createdAt.getTime() + 30_000;
-    if (endsAt > Date.now()) {
-      setCooldownEndsAt(endsAt);
-    }
-  }, [mySets]);
-
-  // Challenge endet → Eingabe sperren + Reset
-  useEffect(() => {
-    if (!isActive) {
-      setInputValue('');
-      setLocalError(null);
-      setSuccessMsg(null);
-      setCooldownEndsAt(null);
-      if (successTimer.current) clearTimeout(successTimer.current);
-    }
-  }, [isActive]);
-
-  // Neuer Challenge-Tag → vollständiger Reset
-  useEffect(() => {
-    setInputValue('');
-    setLocalError(null);
-    setSuccessMsg(null);
-    setCooldownEndsAt(null);
-    setHasTried(false);
-    if (successTimer.current) clearTimeout(successTimer.current);
-  }, [challengeDate]);
-
-  // Cleanup bei Unmount
-  useEffect(() => {
-    return () => {
-      if (successTimer.current) clearTimeout(successTimer.current);
-    };
-  }, []);
-
-  // Nicht anzeigen wenn Challenge inaktiv oder nicht beigetreten
-  if (!isActive || !hasJoined) return null;
-
-  const isBlocked = isLoggingSet || cooldownSeconds > 0;
-
-  const handleSubmit = async () => {
-    if (isBlocked) return;
-    // Laufenden Erfolgs-Timer stoppen
-    if (successTimer.current) { clearTimeout(successTimer.current); successTimer.current = null; }
-    setSuccessMsg(null);
-
-    const validationError = validateReps(inputValue);
-    if (validationError) {
-      setLocalError(validationError);
-      return;
-    }
-    setLocalError(null);
-    setHasTried(true);
-
-    const reps = parseInt(inputValue.trim(), 10);
-
-    // Sofortiger lokaler Cooldown-Start (wird durch mySets-Update korrigiert)
-    setCooldownEndsAt(Date.now() + 30_000);
-
-    const result = await logSet(reps);
-
-    if (result.ok) {
-      setInputValue('');
-      setSuccessMsg(`Satz mit ${reps} Wiederholungen gespeichert.`);
-      successTimer.current = setTimeout(() => setSuccessMsg(null), 4_000);
-      inputRef.current?.focus();
-    } else {
-      // Cooldown zurücksetzen wenn kein Server-Cooldown aktiv
-      if (result.secondsRemaining != null) {
-        // Server korrigiert verbleibende Zeit
-        setCooldownEndsAt(Date.now() + result.secondsRemaining * 1_000);
-      } else {
-        setCooldownEndsAt(null);
-      }
-    }
-  };
-
-  const handleBlur = () => {
-    if (inputValue) {
-      const err = validateReps(inputValue);
-      setLocalError(err);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (!isBlocked) void handleSubmit();
-    }
-  };
-
-  // Server-Fehlermeldung nur nach eigenem Versuch anzeigen (kein Stale-Error aus joinChallenge)
-  const serverError = hasTried ? actionError : null;
-  const hasError = !!(localError || serverError);
-
-  const buttonLabel = isLoggingSet
-    ? null
-    : cooldownSeconds > 0
-    ? `Warte noch ${cooldownSeconds}s`
-    : 'Satz speichern';
-
-  return (
-    <Card>
-      <CardTitle>Satz eintragen</CardTitle>
-      <p className="mt-1 text-xs text-slate-500">
-        Trage den Satz direkt nach der Ausführung ein.
-      </p>
-
-      <div className="mt-3">
-        <label
-          htmlFor="reps-input"
-          className="mb-1.5 block text-sm font-medium text-slate-300"
-        >
-          Wiederholungen
-        </label>
-        <input
-          ref={inputRef}
-          id="reps-input"
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={inputValue}
-          onChange={e => {
-            setInputValue(e.target.value);
-            if (localError) setLocalError(null);
-            if (successMsg) setSuccessMsg(null);
-          }}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          disabled={isLoggingSet || !isActive}
-          min={10}
-          max={100}
-          placeholder="z. B. 25"
-          aria-describedby={hasError ? 'reps-error' : undefined}
-          aria-invalid={hasError || undefined}
-          className="input-base disabled:opacity-50"
-        />
-
-        {/* Validierungs- oder Serverfehler */}
-        {(localError || serverError) && (
-          <p
-            id="reps-error"
-            role="alert"
-            className="mt-1.5 text-sm text-red-400"
-          >
-            {localError ?? serverError}
-          </p>
-        )}
-
-        {/* Erfolgsmeldung */}
-        {successMsg && (
-          <p
-            aria-live="polite"
-            className="mt-1.5 text-sm font-medium text-brand-300"
-          >
-            {successMsg}
-          </p>
-        )}
-      </div>
-
-      <button
-        onClick={() => void handleSubmit()}
-        disabled={isBlocked}
-        aria-busy={isLoggingSet}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-500 active:bg-brand-700 disabled:opacity-50"
-      >
-        {isLoggingSet && <Spinner size="sm" />}
-        {buttonLabel ?? 'Satz speichern'}
-      </button>
-    </Card>
   );
 }
 
@@ -604,35 +367,6 @@ function PerformanceCard({
 
 // ── Satzliste ──────────────────────────────────────────────────────────────
 
-// ── Edit-Countdown ─────────────────────────────────────────────────────────
-// Zeigt verbleibende Minuten/Sekunden bis das Bearbeitungsfenster schließt.
-
-function EditCountdown({ editUntil }: { editUntil: Date | null }) {
-  const [secs, setSecs] = useState<number>(() =>
-    editUntil ? Math.max(0, Math.floor((editUntil.getTime() - Date.now()) / 1000)) : 0
-  );
-
-  useEffect(() => {
-    if (!editUntil) return;
-    const tick = () => {
-      const remaining = Math.max(0, Math.floor((editUntil.getTime() - Date.now()) / 1000));
-      setSecs(remaining);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [editUntil]);
-
-  if (!editUntil || secs <= 0) return null;
-  const mins  = Math.floor(secs / 60);
-  const s     = secs % 60;
-  const label = mins > 0
-    ? `Bearbeitbar noch ${mins} Min. ${s < 10 ? '0' : ''}${s} Sek.`
-    : `Bearbeitbar noch ${s} Sek.`;
-
-  return <p className="mt-0.5 text-[10.5px] tabular-nums text-slate-500">{label}</p>;
-}
-
 // ── MySetsCard ─────────────────────────────────────────────────────────────
 
 interface MySetsCardProps {
@@ -749,10 +483,8 @@ function MySetsCard({
         {mySets.map((set, i) => {
           // Satznummer: neueste = total, älteste = 1
           const setNumber  = total - i;
-          const secsLeft   = set.editUntil
-            ? Math.max(0, Math.floor((set.editUntil.getTime() - Date.now()) / 1000))
-            : 0;
-          const isEditable = secsLeft > 0;
+          // Bearbeitbar wenn kein aggregierter Import-Eintrag (is_imported = TRUE)
+          const isEditable = !set.isImported;
           const isThisEdit = editingId === set.id;
           const isThisDel  = confirmDeleteId === set.id;
 
@@ -766,7 +498,6 @@ function MySetsCard({
                   <p className="tabular-nums text-xs text-slate-500">
                     {formatBerlinTime(set.createdAt)} Uhr
                   </p>
-                  {isEditable && <EditCountdown editUntil={set.editUntil} />}
                 </div>
 
                 {/* Rechts: Aktionen + Wert */}
@@ -903,13 +634,11 @@ interface HeuteTabProps {
   hasStatus: boolean;
   isActive: boolean;
   hasJoined: boolean;
-  challengeDate: string | null;
   startsAt: Date | null;
   endsAt: Date | null;
   serverNow: Date | null;
   onCountdownEnd: () => void;
   isJoining: boolean;
-  isLoggingSet: boolean;
   isLoadingMySets: boolean;
   isLoadingLeaderboard: boolean;
   actionError: string | null;
@@ -918,7 +647,6 @@ interface HeuteTabProps {
   mySets: DailyChallengeSet[];
   leaderboard: DailyChallengeLeaderboardEntry[];
   joinChallenge: () => Promise<void>;
-  logSet: (reps: number) => Promise<{ ok: boolean; secondsRemaining?: number }>;
   updateSet: (entryId: string, repetitions: number) => Promise<{ ok: boolean }>;
   deleteSet: (entryId: string) => Promise<{ ok: boolean }>;
   isEditingSet: boolean;
@@ -931,13 +659,11 @@ function HeuteTab({
   hasStatus,
   isActive,
   hasJoined,
-  challengeDate,
   startsAt,
   endsAt,
   serverNow,
   onCountdownEnd,
   isJoining,
-  isLoggingSet,
   isLoadingMySets,
   isLoadingLeaderboard,
   actionError,
@@ -946,7 +672,6 @@ function HeuteTab({
   mySets,
   leaderboard,
   joinChallenge,
-  logSet,
   updateSet,
   deleteSet,
   isEditingSet,
@@ -983,15 +708,6 @@ function HeuteTab({
             isJoining={isJoining}
             actionError={actionError}
             joinChallenge={joinChallenge}
-          />
-          <SatzEingabeCard
-            isActive={isActive}
-            hasJoined={hasJoined}
-            challengeDate={challengeDate}
-            isLoggingSet={isLoggingSet}
-            actionError={actionError}
-            mySets={mySets}
-            logSet={logSet}
           />
         </>
       )}
@@ -1131,7 +847,6 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     leaderboard,
     mySets,
     isJoining,
-    isLoggingSet,
     isLoadingMySets,
     isLoadingLeaderboard,
     actionError,
@@ -1147,7 +862,6 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     isLoadingParticipantDetails,
     participantDetailsError,
     joinChallenge,
-    logSet,
     updateSet,
     deleteSet,
     isEditingSet,
@@ -1264,13 +978,11 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             hasStatus={status !== null}
             isActive={isActive}
             hasJoined={hasJoined}
-            challengeDate={challengeDate}
             startsAt={startsAt}
             endsAt={endsAt}
             serverNow={serverNow}
             onCountdownEnd={handleCountdownEnd}
             isJoining={isJoining}
-            isLoggingSet={isLoggingSet}
             isLoadingMySets={isLoadingMySets}
             isLoadingLeaderboard={isLoadingLeaderboard}
             actionError={actionError}
@@ -1279,7 +991,6 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             mySets={mySets}
             leaderboard={leaderboard}
             joinChallenge={joinChallenge}
-            logSet={logSet}
             updateSet={updateSet}
             deleteSet={deleteSet}
             isEditingSet={isEditingSet}
