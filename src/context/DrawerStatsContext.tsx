@@ -112,6 +112,14 @@ export function DrawerStatsProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
 
+  // Sofort neu laden wenn workout_entries mutiert wurden (WorkoutHistory, Track).
+  // Dasselbe Muster wie challengeSetDeleted im Dashboard.
+  useEffect(() => {
+    const handler = () => void load();
+    window.addEventListener('workoutEntriesChanged', handler);
+    return () => window.removeEventListener('workoutEntriesChanged', handler);
+  }, [load]);
+
   const value: DrawerStatsContextValue = {
     stats,
     statsLoading,

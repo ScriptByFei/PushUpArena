@@ -56,6 +56,7 @@ export function useWorkouts(exerciseId?: string) {
       setEntries((prev) =>
         [data, ...prev].sort((a, b) => b.performed_at.localeCompare(a.performed_at)),
       );
+      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
       return { error: null, data };
     },
     [user, exerciseId],
@@ -78,6 +79,7 @@ export function useWorkouts(exerciseId?: string) {
           .map((e) => (e.id === id ? data : e))
           .sort((a, b) => b.performed_at.localeCompare(a.performed_at)),
       );
+      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
       return { error: null };
     },
     [],
@@ -87,6 +89,7 @@ export function useWorkouts(exerciseId?: string) {
     const { error: err } = await supabase.from('workout_entries').delete().eq('id', id);
     if (err) return { error: err.message };
     setEntries((prev) => prev.filter((e) => e.id !== id));
+    window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
     return { error: null };
   }, []);
 
