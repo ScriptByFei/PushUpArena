@@ -22,6 +22,7 @@ export type DailyChallengeError =
   | 'COOLDOWN_ACTIVE'
   | 'UNAUTHENTICATED'
   | 'INVALID_EXERCISE'
+  | 'EXERCISE_NOT_IN_CHALLENGE'
   | 'DUPLICATE_REQUEST'
   | 'ENTRY_NOT_FOUND'
   | 'EDIT_WINDOW_EXPIRED'
@@ -29,18 +30,19 @@ export type DailyChallengeError =
   | 'UNKNOWN';
 
 export const DC_ERROR_MESSAGES: Record<string, string> = {
-  CHALLENGE_NOT_ACTIVE: 'Die Daily Challenge ist gerade nicht aktiv.',
-  NOT_JOINED:           'Bitte nimm zuerst an der Challenge teil.',
-  ALREADY_JOINED:       'Du nimmst bereits an der Challenge teil.',
-  INVALID_REPETITIONS:  'Ein Satz muss 10–100 Wiederholungen enthalten.',
-  COOLDOWN_ACTIVE:      'Bitte warte noch kurz vor dem nächsten Satz.',
-  UNAUTHENTICATED:      'Bitte melde dich erneut an.',
-  INVALID_EXERCISE:     'Ungültige Übung.',
-  DUPLICATE_REQUEST:    'Dieser Satz wurde bereits verarbeitet.',
-  ENTRY_NOT_FOUND:      'Dieser Satz wurde nicht gefunden.',
-  EDIT_WINDOW_EXPIRED:  'Das Bearbeitungsfenster ist abgelaufen. Dieser Satz ist gesperrt.',
-  JOIN_DEADLINE_PASSED: 'Die Teilnahme für heute ist beendet. Neue Teilnahme ist morgen ab 00:00 Uhr wieder möglich.',
-  UNKNOWN:              'Aktion fehlgeschlagen. Bitte versuche es erneut.',
+  CHALLENGE_NOT_ACTIVE:    'Die Daily Challenge ist gerade nicht aktiv.',
+  NOT_JOINED:              'Bitte nimm zuerst an der Challenge teil.',
+  ALREADY_JOINED:          'Du nimmst bereits an der Challenge teil.',
+  INVALID_REPETITIONS:     'Ein Satz muss 10–100 Wiederholungen enthalten.',
+  COOLDOWN_ACTIVE:         'Bitte warte noch kurz vor dem nächsten Satz.',
+  UNAUTHENTICATED:         'Bitte melde dich erneut an.',
+  INVALID_EXERCISE:        'Ungültige Übung.',
+  EXERCISE_NOT_IN_CHALLENGE: 'Diese Übung hat keine aktive Daily Challenge.',
+  DUPLICATE_REQUEST:       'Dieser Satz wurde bereits verarbeitet.',
+  ENTRY_NOT_FOUND:         'Dieser Satz wurde nicht gefunden.',
+  EDIT_WINDOW_EXPIRED:     'Das Bearbeitungsfenster ist abgelaufen. Dieser Satz ist gesperrt.',
+  JOIN_DEADLINE_PASSED:    'Die Teilnahme für heute ist beendet. Neue Teilnahme ist morgen ab 00:00 Uhr wieder möglich.',
+  UNKNOWN:                 'Aktion fehlgeschlagen. Bitte versuche es erneut.',
 };
 
 // ── Domain-Typen (camelCase, Dates als Date-Objekte) ──────────────────────

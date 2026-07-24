@@ -2,7 +2,11 @@
 //
 // Architektur-Entscheidungen:
 //  • Kein React Query — analog zu useLeaderboard / useWorkoutLogger
-//  • Übung kommt aus ExerciseContext (aktuelle Übung des Users)
+//  • Die Daily Live Challenge ist IMMER für Push-ups (CHALLENGE_EXERCISE_SLUG).
+//    Sie ist unabhängig von der aktuell ausgewählten Übung des Users.
+//    Andere Übungen erhalten später eigene Challenge-Hooks/-Instanzen.
+//  • Push-up Exercise-ID wird einmalig per Slug geladen (Modul-Level-Cache);
+//    alle Hook-Instanzen teilen sich diese ID ohne redundante DB-Abfragen.
 //  • Countdown isoliert in DailyChallengeCountdown (useCountdown-Hook);
 //    dieser Hook enthält kein eigenes setInterval mehr → kein sekündlicher
 //    Re-Render des gesamten Modals
@@ -18,8 +22,35 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { useExercise } from '@/context/ExerciseContext';
 import { useToast } from '@/context/ToastContext';
+
+// ── Push-up als exklusive Challenge-Übung ─────────────────────────────────────
+// Die Daily Live Challenge ist ausschließlich für Push-ups.
+// Slug entspricht dem exercises.slug in der DB.
+// Für zukünftige Challenges: separater Hook mit anderem Slug.
+const CHALLENGE_EXERCISE_SLUG = 'pushups';
+
+// Modul-Level-Cache: Die Exercise-ID wird einmalig pro Page-Load geladen.
+// Mehrere Hook-Instanzen (Dashboard + Modal) teilen sich denselben Wert
+// ohne redundante DB-Abfragen.
+let _cachedChallengeExerciseId: string | null = null;
+let _challengeExerciseIdFetch: Promise<string | null> | null = null;
+
+function fetchChallengeExerciseId(): Promise<string | null> {
+  if (_cachedChallengeExerciseId) return Promise.resolve(_cachedChallengeExerciseId);
+  if (_challengeExerciseIdFetch) return _challengeExerciseIdFetch;
+  _challengeExerciseIdFetch = supabase
+    .from('exercises')
+    .select('id')
+    .eq('slug', CHALLENGE_EXERCISE_SLUG)
+    .eq('is_challenge_enabled', true)
+    .single()
+    .then(({ data }) => {
+      _cachedChallengeExerciseId = data?.id ?? null;
+      return _cachedChallengeExerciseId;
+    });
+  return _challengeExerciseIdFetch;
+}
 import {
   type DailyChallengeHistoryDay,
   type DailyChallengeLeaderboardEntry,
@@ -41,9 +72,18 @@ const VISIBILITY_REFETCH_MS = 5 * 60 * 1000; // 5 Min im Hintergrund → re-sync
 
 export function useDailyChallenge() {
   const { user } = useAuth();
-  const { exercise } = useExercise();
   const toast = useToast();
-  const exerciseId = exercise?.id ?? null;
+
+  // Push-up Exercise-ID — aus Modul-Cache oder einmalig per DB-Abfrage.
+  // useState initialisiert mit dem Cache-Wert: kein Extra-Render wenn bereits bekannt.
+  const [exerciseId, setExerciseId] = useState<string | null>(_cachedChallengeExerciseId);
+
+  useEffect(() => {
+    if (exerciseId) return; // bereits im Cache
+    void fetchChallengeExerciseId().then(id => {
+      if (id) setExerciseId(id);
+    });
+  }, [exerciseId]);
 
   // ── Status ──────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<DailyChallengeStatus | null>(null);

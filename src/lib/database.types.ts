@@ -61,9 +61,11 @@ export interface Database {
           slug: string;
           unit: string;
           created_at: string;
+          /** true = diese Übung hat eine aktive Daily Live Challenge */
+          is_challenge_enabled: boolean;
         };
-        Insert: { name: string; slug: string; unit?: string };
-        Update: { name?: string; slug?: string; unit?: string };
+        Insert: { name: string; slug: string; unit?: string; is_challenge_enabled?: boolean };
+        Update: { name?: string; slug?: string; unit?: string; is_challenge_enabled?: boolean };
         Relationships: [];
       };
       workout_entries: {
