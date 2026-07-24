@@ -77,11 +77,15 @@ export function useDailyChallenge() {
   // ── Aktions-States ────────────────────────────────────────────────────────
   const [isJoining, setIsJoining]                 = useState(false);
   const [isLoggingSet, setIsLoggingSet]           = useState(false);
+  const [isEditingSet, setIsEditingSet]           = useState(false);
+  const [isDeletingSet, setIsDeletingSet]         = useState(false);
   const [actionError, setActionError]             = useState<string | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const isLoggingRef              = useRef(false);   // parallele logSet-Aufrufe verhindern
   const isJoiningRef              = useRef(false);   // parallele joinChallenge-Aufrufe verhindern
+  const isEditingRef              = useRef(false);   // parallele updateSet-Aufrufe verhindern
+  const isDeletingRef             = useRef(false);   // parallele deleteSet-Aufrufe verhindern
   const currentChallengeDateRef   = useRef<string | null>(null);
   const channelRef                = useRef<RealtimeChannel | null>(null);
   // Unique suffix per hook instance so that Dashboard + Modal can coexist
@@ -368,9 +372,9 @@ export function useDailyChallenge() {
         toast.error(msg);
         return { ok: false, secondsRemaining };
       }
-      // Erfolg
+      // Erfolg — Hinweis auf 30-minütiges Bearbeitungsfenster
       const total = data?.total_repetitions ?? '–';
-      toast.success(`+${repetitions} Wdh. gespeichert! Gesamt heute: ${total}`);
+      toast.success(`+${repetitions} Wdh. · Gesamt: ${total} · Noch 30 Min. bearbeitbar`);
       await Promise.all([refreshLeaderboard(), refreshMySets()]);
       return { ok: true };
     } catch (err) {
@@ -381,6 +385,80 @@ export function useDailyChallenge() {
     } finally {
       isLoggingRef.current = false;
       setIsLoggingSet(false);
+    }
+  }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
+
+  // ── updateSet ─────────────────────────────────────────────────────────────
+  // Ändert die Wiederholungszahl eines eigenen Satzes.
+  // Schlägt fehl wenn das 30-Minuten-Bearbeitungsfenster abgelaufen ist.
+  const updateSet = useCallback(async (
+    entryId: string,
+    repetitions: number,
+  ): Promise<{ ok: boolean }> => {
+    if (!exerciseId || !user) return { ok: false };
+    if (isEditingRef.current) return { ok: false };
+    isEditingRef.current = true;
+    setIsEditingSet(true);
+    setActionError(null);
+    try {
+      const { data, error } = await supabase.rpc('update_challenge_set', {
+        p_entry_id:    entryId,
+        p_repetitions: repetitions,
+      });
+      if (error) throw error;
+      if (data?.error) {
+        const msg = DC_ERROR_MESSAGES[data.error] ?? DC_ERROR_MESSAGES.UNKNOWN;
+        setActionError(msg);
+        toast.error(msg);
+        return { ok: false };
+      }
+      toast.success(`Satz aktualisiert: ${repetitions} Wdh.`);
+      await Promise.all([refreshLeaderboard(), refreshMySets()]);
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
+      setActionError(msg);
+      toast.error(msg);
+      return { ok: false };
+    } finally {
+      isEditingRef.current = false;
+      setIsEditingSet(false);
+    }
+  }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
+
+  // ── deleteSet ─────────────────────────────────────────────────────────────
+  // Löscht einen eigenen Satz.
+  // Schlägt fehl wenn das 30-Minuten-Bearbeitungsfenster abgelaufen ist.
+  const deleteSet = useCallback(async (
+    entryId: string,
+  ): Promise<{ ok: boolean }> => {
+    if (!exerciseId || !user) return { ok: false };
+    if (isDeletingRef.current) return { ok: false };
+    isDeletingRef.current = true;
+    setIsDeletingSet(true);
+    setActionError(null);
+    try {
+      const { data, error } = await supabase.rpc('delete_challenge_set', {
+        p_entry_id: entryId,
+      });
+      if (error) throw error;
+      if (data?.error) {
+        const msg = DC_ERROR_MESSAGES[data.error] ?? DC_ERROR_MESSAGES.UNKNOWN;
+        setActionError(msg);
+        toast.error(msg);
+        return { ok: false };
+      }
+      toast.success('Satz gelöscht.');
+      await Promise.all([refreshLeaderboard(), refreshMySets()]);
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
+      setActionError(msg);
+      toast.error(msg);
+      return { ok: false };
+    } finally {
+      isDeletingRef.current = false;
+      setIsDeletingSet(false);
     }
   }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
 
@@ -515,6 +593,8 @@ export function useDailyChallenge() {
     isLoadingParticipantDetails,
     isJoining,
     isLoggingSet,
+    isEditingSet,
+    isDeletingSet,
 
     // Fehlerzustände
     statusError,
@@ -535,6 +615,8 @@ export function useDailyChallenge() {
     refreshToday,
     joinChallenge,
     logSet,
+    updateSet,
+    deleteSet,
   };
 }
 

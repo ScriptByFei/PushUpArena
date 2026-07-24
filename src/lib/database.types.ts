@@ -379,7 +379,16 @@ export interface Database {
           id: string;
           repetitions: number;
           created_at: string;
+          edit_until: string | null;
         }[];
+      };
+      update_challenge_set: {
+        Args: { p_entry_id: string; p_repetitions: number };
+        Returns: Json;
+      };
+      delete_challenge_set: {
+        Args: { p_entry_id: string };
+        Returns: Json;
       };
       get_challenge_history: {
         Args: { p_exercise_id: string; p_limit?: number };

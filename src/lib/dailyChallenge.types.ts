@@ -23,6 +23,8 @@ export type DailyChallengeError =
   | 'UNAUTHENTICATED'
   | 'INVALID_EXERCISE'
   | 'DUPLICATE_REQUEST'
+  | 'ENTRY_NOT_FOUND'
+  | 'EDIT_WINDOW_EXPIRED'
   | 'UNKNOWN';
 
 export const DC_ERROR_MESSAGES: Record<string, string> = {
@@ -34,6 +36,8 @@ export const DC_ERROR_MESSAGES: Record<string, string> = {
   UNAUTHENTICATED:      'Bitte melde dich erneut an.',
   INVALID_EXERCISE:     'Ungültige Übung.',
   DUPLICATE_REQUEST:    'Dieser Satz wurde bereits verarbeitet.',
+  ENTRY_NOT_FOUND:      'Dieser Satz wurde nicht gefunden.',
+  EDIT_WINDOW_EXPIRED:  'Das Bearbeitungsfenster ist abgelaufen. Dieser Satz ist gesperrt.',
   UNKNOWN:              'Aktion fehlgeschlagen. Bitte versuche es erneut.',
 };
 
@@ -69,6 +73,8 @@ export interface DailyChallengeSet {
   id: string;
   repetitions: number;
   createdAt: Date;
+  /** Bearbeitbar bis zu diesem Zeitpunkt. NULL = alter Eintrag → gesperrt. */
+  editUntil: Date | null;
 }
 
 export interface DailyChallengeHistoryDay {
@@ -180,6 +186,7 @@ export function mapSet(raw: SetRowRaw): DailyChallengeSet {
     id:          raw.id,
     repetitions: raw.repetitions,
     createdAt:   new Date(raw.created_at),
+    editUntil:   raw.edit_until ? new Date(raw.edit_until) : null,
   };
 }
 

@@ -604,12 +604,47 @@ function PerformanceCard({
 
 // ── Satzliste ──────────────────────────────────────────────────────────────
 
+// ── Edit-Countdown ─────────────────────────────────────────────────────────
+// Zeigt verbleibende Minuten/Sekunden bis das Bearbeitungsfenster schließt.
+
+function EditCountdown({ editUntil }: { editUntil: Date | null }) {
+  const [secs, setSecs] = useState<number>(() =>
+    editUntil ? Math.max(0, Math.floor((editUntil.getTime() - Date.now()) / 1000)) : 0
+  );
+
+  useEffect(() => {
+    if (!editUntil) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor((editUntil.getTime() - Date.now()) / 1000));
+      setSecs(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [editUntil]);
+
+  if (!editUntil || secs <= 0) return null;
+  const mins  = Math.floor(secs / 60);
+  const s     = secs % 60;
+  const label = mins > 0
+    ? `Bearbeitbar noch ${mins} Min. ${s < 10 ? '0' : ''}${s} Sek.`
+    : `Bearbeitbar noch ${s} Sek.`;
+
+  return <p className="mt-0.5 text-[10.5px] tabular-nums text-slate-500">{label}</p>;
+}
+
+// ── MySetsCard ─────────────────────────────────────────────────────────────
+
 interface MySetsCardProps {
   hasJoined: boolean;
   mySets: DailyChallengeSet[];
   isLoadingMySets: boolean;
   setsError: string | null;
   refreshMySets: () => Promise<void>;
+  updateSet: (entryId: string, repetitions: number) => Promise<{ ok: boolean }>;
+  deleteSet: (entryId: string) => Promise<{ ok: boolean }>;
+  isEditingSet: boolean;
+  isDeletingSet: boolean;
 }
 
 function MySetsCard({
@@ -618,8 +653,35 @@ function MySetsCard({
   isLoadingMySets,
   setsError,
   refreshMySets,
+  updateSet,
+  deleteSet,
+  isEditingSet,
+  isDeletingSet,
 }: MySetsCardProps) {
-  // RPC liefert Sätze bereits ORDER BY created_at DESC – keine eigene Sortierung nötig.
+  const [editingId, setEditingId]         = useState<string | null>(null);
+  const [editValue, setEditValue]         = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const handleStartEdit = (set: DailyChallengeSet) => {
+    setEditingId(set.id);
+    setEditValue(String(set.repetitions));
+    setConfirmDeleteId(null);
+  };
+
+  const handleCancelEdit = () => { setEditingId(null); setEditValue(''); };
+
+  const handleSaveEdit = async (set: DailyChallengeSet) => {
+    const reps = parseInt(editValue.trim(), 10);
+    if (isNaN(reps) || reps < 10 || reps > 100) return;
+    if (reps === set.repetitions) { handleCancelEdit(); return; }
+    const result = await updateSet(set.id, reps);
+    if (result.ok) setEditingId(null);
+  };
+
+  const handleConfirmDelete = async (entryId: string) => {
+    const result = await deleteSet(entryId);
+    if (result.ok) setConfirmDeleteId(null);
+  };
 
   if (setsError) {
     return (
@@ -686,21 +748,119 @@ function MySetsCard({
       <ul className="mt-1.5 divide-y divide-ink-800">
         {mySets.map((set, i) => {
           // Satznummer: neueste = total, älteste = 1
-          const setNumber = total - i;
+          const setNumber  = total - i;
+          const secsLeft   = set.editUntil
+            ? Math.max(0, Math.floor((set.editUntil.getTime() - Date.now()) / 1000))
+            : 0;
+          const isEditable = secsLeft > 0;
+          const isThisEdit = editingId === set.id;
+          const isThisDel  = confirmDeleteId === set.id;
+
           return (
-            <li key={set.id} className="flex items-center justify-between py-2.5">
-              <div>
-                <p className="text-sm font-semibold text-slate-200">Satz {setNumber}</p>
-                <p className="mt-0.5 tabular-nums text-xs text-slate-500">
-                  {formatBerlinTime(set.createdAt)} Uhr
-                </p>
+            <li key={set.id} className="py-2.5">
+              {/* Haupt-Zeile */}
+              <div className="flex items-center justify-between gap-2">
+                {/* Links: Satznummer + Zeit + Countdown */}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-200">Satz {setNumber}</p>
+                  <p className="tabular-nums text-xs text-slate-500">
+                    {formatBerlinTime(set.createdAt)} Uhr
+                  </p>
+                  {isEditable && <EditCountdown editUntil={set.editUntil} />}
+                </div>
+
+                {/* Rechts: Aktionen + Wert */}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {isEditable ? (
+                    <>
+                      <button
+                        onClick={() => handleStartEdit(set)}
+                        disabled={isEditingSet || isDeletingSet}
+                        aria-label={`Satz ${setNumber} bearbeiten`}
+                        title="Bearbeiten"
+                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-ink-700 hover:text-slate-200 disabled:opacity-40"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" aria-hidden="true">
+                          <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => { setConfirmDeleteId(set.id); setEditingId(null); }}
+                        disabled={isEditingSet || isDeletingSet}
+                        aria-label={`Satz ${setNumber} löschen`}
+                        title="Löschen"
+                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" aria-hidden="true">
+                          <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </>
+                  ) : (
+                    <span className="mr-1 text-[11px] text-slate-600" title="Bearbeitungsfenster abgelaufen">🔒</span>
+                  )}
+                  <div className="text-right">
+                    <p className="tabular-nums text-lg font-bold leading-none text-slate-100">
+                      {set.repetitions}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">Wdh.</p>
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="tabular-nums text-lg font-bold leading-none text-slate-100">
-                  {set.repetitions}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">Wdh.</p>
-              </div>
+
+              {/* Inline-Bearbeitungsformular */}
+              {isThisEdit && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={10}
+                    max={100}
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter')  void handleSaveEdit(set);
+                      if (e.key === 'Escape') handleCancelEdit();
+                    }}
+                    autoFocus
+                    className="w-20 rounded-xl border border-ink-600 bg-ink-800 px-3 py-1.5 text-sm font-semibold tabular-nums text-slate-100 focus:border-brand-400 focus:outline-none"
+                    placeholder="10–100"
+                  />
+                  <span className="text-xs text-slate-500">Wdh.</span>
+                  <button
+                    onClick={() => void handleSaveEdit(set)}
+                    disabled={isEditingSet}
+                    className="rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-500 disabled:opacity-60"
+                  >
+                    {isEditingSet ? '…' : 'Speichern'}
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="rounded-xl border border-ink-600 px-3 py-1.5 text-xs font-semibold text-slate-400 transition hover:bg-ink-700"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              )}
+
+              {/* Lösch-Bestätigung */}
+              {isThisDel && (
+                <div className="mt-2 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2">
+                  <span className="flex-1 text-xs text-red-300">Satz {setNumber} wirklich löschen?</span>
+                  <button
+                    onClick={() => void handleConfirmDelete(set.id)}
+                    disabled={isDeletingSet}
+                    className="rounded-lg bg-red-500/30 px-3 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/50 disabled:opacity-60"
+                  >
+                    {isDeletingSet ? '…' : 'Löschen'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:text-slate-300"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              )}
             </li>
           );
         })}
@@ -759,6 +919,10 @@ interface HeuteTabProps {
   leaderboard: DailyChallengeLeaderboardEntry[];
   joinChallenge: () => Promise<void>;
   logSet: (reps: number) => Promise<{ ok: boolean; secondsRemaining?: number }>;
+  updateSet: (entryId: string, repetitions: number) => Promise<{ ok: boolean }>;
+  deleteSet: (entryId: string) => Promise<{ ok: boolean }>;
+  isEditingSet: boolean;
+  isDeletingSet: boolean;
   refreshMySets: () => Promise<void>;
   refreshLeaderboard: () => Promise<void>;
 }
@@ -783,6 +947,10 @@ function HeuteTab({
   leaderboard,
   joinChallenge,
   logSet,
+  updateSet,
+  deleteSet,
+  isEditingSet,
+  isDeletingSet,
   refreshMySets,
   refreshLeaderboard,
 }: HeuteTabProps) {
@@ -849,6 +1017,10 @@ function HeuteTab({
         isLoadingMySets={isLoadingMySets}
         setsError={setsError}
         refreshMySets={refreshMySets}
+        updateSet={updateSet}
+        deleteSet={deleteSet}
+        isEditingSet={isEditingSet}
+        isDeletingSet={isDeletingSet}
       />
     </div>
   );
@@ -976,6 +1148,10 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     participantDetailsError,
     joinChallenge,
     logSet,
+    updateSet,
+    deleteSet,
+    isEditingSet,
+    isDeletingSet,
     refreshStatus,
     refreshMySets,
     refreshLeaderboard,
@@ -1104,6 +1280,10 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             leaderboard={leaderboard}
             joinChallenge={joinChallenge}
             logSet={logSet}
+            updateSet={updateSet}
+            deleteSet={deleteSet}
+            isEditingSet={isEditingSet}
+            isDeletingSet={isDeletingSet}
             refreshMySets={refreshMySets}
             refreshLeaderboard={refreshLeaderboard}
           />
