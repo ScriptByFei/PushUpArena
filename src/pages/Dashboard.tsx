@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, type ReactNode, type CSSProperties } from 'react';
+import { useRef, useState, useEffect, useCallback, type ReactNode, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useExercise } from '@/context/ExerciseContext';
 import { useGoals } from '@/hooks/useGoals';
@@ -11,6 +11,8 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { QuickAdd } from '@/components/QuickAdd';
 import { useRestDayInfo } from '@/hooks/useRestDayInfo';
+import { useDailyChallenge } from '@/hooks/useDailyChallenge';
+import { DailyChallengeCard } from '@/components/DailyChallengeCard';
 
 function InfoIcon() {
   return (
@@ -104,6 +106,9 @@ export default function Dashboard() {
   const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();
 
+  // Daily Challenge — eigene Hook-Instanz für Dashboard (eindeutige Channel-ID)
+  const challenge = useDailyChallenge();
+
   const [streakInfoOpen, setStreakInfoOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem('streakBannerDismissed') === '1'
@@ -148,11 +153,26 @@ export default function Dashboard() {
 
   const unit = exercise.unit === 'reps' ? 'Wdh.' : exercise.unit;
 
+  // Öffnet das DailyChallengeModal über ein Window-Event.
+  // AppLayout hört darauf und setzt setDailyChallengeOpen(true).
+  const openChallengeModal = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openDailyChallenge'));
+  }, []);
+
   function onLogged({ amount, entryId }: { amount: number; entryId: string }) {
     void refetchStats();
     setLastEntry({ id: entryId, amount });
     window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setLastEntry(null), 6000);
+
+    // Auto-Logging in die Challenge:
+    // Wenn der User bereits teilnimmt und die Challenge läuft,
+    // wird der Satz automatisch auch als Challenge-Satz eingetragen.
+    // Mengen außerhalb [10, 100] überspringen (Challenge-Constraints).
+    // Fire-and-forget — Dashboard-Eintrag ist bereits gespeichert.
+    if (challenge.isActive && challenge.hasJoined && amount >= 10 && amount <= 100) {
+      void challenge.logSet(amount);
+    }
   }
 
   async function undoLast() {
@@ -202,6 +222,16 @@ export default function Dashboard() {
         />
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
+
+      {/* Daily Live Challenge — Kompaktkarte */}
+      <DailyChallengeCard
+        status={challenge.status}
+        leaderboard={challenge.leaderboard}
+        isJoining={challenge.isJoining}
+        onJoin={challenge.joinChallenge}
+        onOpen={openChallengeModal}
+        exerciseUnit={unit}
+      />
 
       {/* Ziele */}
       <Card>

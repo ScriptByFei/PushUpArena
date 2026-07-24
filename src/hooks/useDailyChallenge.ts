@@ -84,6 +84,10 @@ export function useDailyChallenge() {
   const isJoiningRef              = useRef(false);   // parallele joinChallenge-Aufrufe verhindern
   const currentChallengeDateRef   = useRef<string | null>(null);
   const channelRef                = useRef<RealtimeChannel | null>(null);
+  // Unique suffix per hook instance so that Dashboard + Modal can coexist
+  // without both subscribing to the same named Supabase channel (which would
+  // cause the channel to be shared and removed when either unmounts).
+  const channelIdRef              = useRef(`dc_${Math.random().toString(36).slice(2, 8)}`);
   const hiddenAtRef               = useRef<number | null>(null);
   // Caches für Tages- und Teilnehmerdetails (Modal-Lebensdauer)
   const dayDetailsCacheRef        = useRef(new Map<string, DailyChallengeDayDetails>());
@@ -404,7 +408,7 @@ export function useDailyChallenge() {
     }
     if (!isActive || !hasJoined || !exerciseId || !challengeDate) return;
 
-    const channelName = `dc_entries_${exerciseId}_${challengeDate}`;
+    const channelName = `${channelIdRef.current}_entries_${exerciseId}_${challengeDate}`;
     const channel = supabase
       .channel(channelName)
       .on(

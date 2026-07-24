@@ -230,6 +230,15 @@ export function AppLayout() {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [navigate]);
 
+  /* ── openDailyChallenge window event ─────────────────────────────────── */
+  // Dashboard.tsx dispatcht dieses Event wenn der User die Challenge-Karte
+  // antippt. AppLayout hat den State und setzt das Modal auf open.
+  useEffect(() => {
+    const handler = () => setDailyChallengeOpen(true);
+    window.addEventListener('openDailyChallenge', handler);
+    return () => window.removeEventListener('openDailyChallenge', handler);
+  }, []);
+
   /* ── Render ──────────────────────────────────────────────────────────── */
 
   return (
