@@ -142,7 +142,7 @@ function DrawerActionItem({
         'group flex w-full min-h-[48px] items-center gap-3 rounded-xl px-3 py-[10px] ' +
         'text-[13px] font-medium transition-colors duration-150 ' +
         (highlight
-          ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 '
+          ? 'text-slate-300 hover:bg-white/[0.05] hover:text-slate-100 '
           : 'text-slate-500 hover:bg-white/[0.05] hover:text-slate-200 ') +
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400'
       }
@@ -196,7 +196,7 @@ function NavSection({ label, children, first = false }: {
   return (
     <section aria-label={label}>
       <p className={
-        'px-3 pb-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500/70 ' +
+        'px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500/60 ' +
         (first ? 'pt-3' : 'pt-5')
       }>
         {label}
@@ -227,16 +227,14 @@ function MoonIcon({ className }: { className?: string }) {
 function GlobalStatsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g opacity="0.65" stroke="currentColor" strokeWidth="1.25">
-        <circle cx="12" cy="11" r="8.5" />
-        <line x1="3.5" y1="11" x2="20.5" y2="11" />
-        <path d="M12 2.5 Q8.5 6 8.5 11 Q8.5 16 12 19.5" />
-        <path d="M12 2.5 Q15.5 6 15.5 11 Q15.5 16 12 19.5" />
-      </g>
-      <rect x="4.5"  y="17.5" width="2" height="3"  rx="0.5" fill="#818cf8" opacity="0.7" />
-      <rect x="8"    y="14.5" width="2" height="6"  rx="0.5" fill="#818cf8" opacity="0.7" />
-      <rect x="11.5" y="11.5" width="2" height="9"  rx="0.5" fill="#818cf8" opacity="0.7" />
-      <rect x="15"   y="8.5"  width="2" height="12" rx="0.5" fill="#818cf8" opacity="0.7" />
+      <circle cx="12" cy="11" r="8.5" stroke="currentColor" strokeWidth="1.25" opacity="0.45" />
+      <line x1="3.5" y1="11" x2="20.5" y2="11" stroke="currentColor" strokeWidth="1.25" opacity="0.45" />
+      <path d="M12 2.5 Q8.5 6 8.5 11 Q8.5 16 12 19.5" stroke="currentColor" strokeWidth="1.25" opacity="0.45" />
+      <path d="M12 2.5 Q15.5 6 15.5 11 Q15.5 16 12 19.5" stroke="currentColor" strokeWidth="1.25" opacity="0.45" />
+      <rect x="4.5"  y="17.5" width="2" height="3"  rx="0.5" fill="currentColor" opacity="0.50" />
+      <rect x="8"    y="14.5" width="2" height="6"  rx="0.5" fill="currentColor" opacity="0.65" />
+      <rect x="11.5" y="11.5" width="2" height="9"  rx="0.5" fill="currentColor" opacity="0.80" />
+      <rect x="15"   y="8.5"  width="2" height="12" rx="0.5" fill="currentColor" opacity="0.95" />
     </svg>
   );
 }
@@ -262,26 +260,30 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
   prefersReducedRef.current = prefersReduced;
 
   // ── Animation variants ───────────────────────────────────────────────────────
+  // Memoised so Framer Motion receives stable references and avoids
+  // unnecessary subscription work on every React re-render.
 
   // Nav list — items slide from x:−5 and fade in with a gentle stagger
-  const navContainerV = {
+  const navContainerV = useMemo(() => ({
     open:   { transition: prefersReduced ? {} : { staggerChildren: 0.03, delayChildren: 0.08 } },
     closed: {},
-  };
-  const navItemV = {
+  }), [prefersReduced]);
+
+  const navItemV = useMemo(() => ({
     open:   { opacity: 1, x: 0,  transition: { duration: prefersReduced ? 0 : 0.18, ease: 'easeOut' as const } },
     closed: { opacity: 0, x: -5, transition: { duration: 0 } },
-  };
+  }), [prefersReduced]);
 
   // Quick Actions — fade up very subtly, slightly before nav
-  const qaContainerV = {
+  const qaContainerV = useMemo(() => ({
     open:   { transition: prefersReduced ? {} : { staggerChildren: 0.05, delayChildren: 0.04 } },
     closed: {},
-  };
-  const qaItemV = {
+  }), [prefersReduced]);
+
+  const qaItemV = useMemo(() => ({
     open:   { opacity: 1, y: 0,  transition: { duration: prefersReduced ? 0 : 0.16, ease: 'easeOut' as const } },
     closed: { opacity: 0, y: 6,  transition: { duration: 0 } },
-  };
+  }), [prefersReduced]);
 
   // ── MotionValues ─────────────────────────────────────────────────────────────
 
@@ -446,7 +448,6 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
               onClick={handleProfileClick}
               aria-label="Profil öffnen"
               className="rounded-full transition active:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400"
-              style={{ filter: 'drop-shadow(0 1px 8px rgba(0,0,0,0.5))' }}
             >
               <Avatar
                 url={avatarUrl}
@@ -476,7 +477,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             <p className="truncate text-[15px] font-semibold leading-tight text-slate-100">
               {displayName}
             </p>
-            <p className="mt-0.5 text-[11.5px] leading-snug text-slate-600">
+            <p className="mt-0.5 text-[11.5px] leading-snug text-slate-400/60">
               {greeting}
             </p>
           </motion.button>
@@ -502,7 +503,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           initial="closed"
           animate={open ? 'open' : 'closed'}
           variants={qaContainerV}
-          className="grid grid-cols-2 gap-2 px-3 pb-1 pt-3"
+          className="grid grid-cols-2 gap-2.5 px-3 pb-1 pt-3"
         >
           {/* Training eintragen */}
           <motion.button
@@ -518,7 +519,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             }
           >
             <PlusIcon className="h-[18px] w-[18px] text-brand-400/90" />
-            <span className="text-[10.5px] font-medium leading-none tracking-[0.01em]">Training</span>
+            <span className="text-[11px] font-medium leading-none tracking-[0.01em]">Training</span>
           </motion.button>
 
           {/* Ruhetag eintragen */}
@@ -535,12 +536,12 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
             }
           >
             <MoonIcon className="h-[18px] w-[18px]" />
-            <span className="text-[10.5px] font-medium leading-none tracking-[0.01em]">Ruhetag</span>
+            <span className="text-[11px] font-medium leading-none tracking-[0.01em]">Ruhetag</span>
           </motion.button>
         </motion.div>
 
         {/* ── Scrollable nav ──────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-2 pb-4" data-no-swipe>
+        <div className="flex-1 overflow-y-auto px-3 pb-4" data-no-swipe>
           <motion.div initial="closed" animate={open ? 'open' : 'closed'} variants={navContainerV}>
 
             {/* HEUTE */}
@@ -655,7 +656,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
 
         {/* ── Footer: sign out ────────────────────────────────────────────── */}
         <div
-          className="mx-3 mt-2 pt-3"
+          className="mx-3 mt-2 pb-2 pt-3"
           style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
         >
           {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
