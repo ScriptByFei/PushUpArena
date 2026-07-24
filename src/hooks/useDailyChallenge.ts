@@ -476,8 +476,15 @@ export function useDailyChallenge() {
     if (hasJoined) void refreshMySets();
   }, [challengeDate, hasJoined, user, refreshLeaderboard, refreshMySets]);
 
-  // Realtime-Subscription auf daily_challenge_entries (INSERT)
-  // → Rangliste + Sätze automatisch aktuell halten wenn Challenge läuft
+  // Realtime-Subscription auf daily_challenge_entries (INSERT + UPDATE + DELETE)
+  // → Rangliste + Sätze automatisch aktuell halten wenn Challenge läuft.
+  //
+  // Warum event: '*' statt nur 'INSERT':
+  //   Nach einem Edit (UPDATE) oder Delete (DELETE) durch die eigene Hook-Instanz
+  //   (z. B. im Modal) bekommen andere Instanzen (z. B. Dashboard) kein Signal,
+  //   weil update/deleteSet() nur den lokalen State refreshen. Realtime auf '*'
+  //   stellt sicher, dass alle Instanzen nach jeder Mutation synchron bleiben.
+  //
   // Voraussetzung: ALTER PUBLICATION supabase_realtime ADD TABLE daily_challenge_entries;
   useEffect(() => {
     if (channelRef.current) {
@@ -492,21 +499,24 @@ export function useDailyChallenge() {
       .on(
         'postgres_changes',
         {
-          event:  'INSERT',
+          event:  '*',
           schema: 'public',
           table:  'daily_challenge_entries',
           filter: `exercise_id=eq.${exerciseId}`,
         },
-        () => {
-          // Debounce: bei mehreren schnellen INSERTs in Folge nur einmal refreshen.
-          // Ohne Debounce würden N Events → N parallele Requests auslösen.
+        (payload) => {
+          // Debounce: bei mehreren schnellen Events in Folge nur einmal refreshen.
           if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
           realtimeDebounceRef.current = setTimeout(() => {
             realtimeDebounceRef.current = null;
             void refreshLeaderboard();
-            // refreshMySets() wird NICHT hier aufgerufen:
-            // – Bei eigenen Inserts: logSet() ruft refreshMySets() bereits direkt auf.
-            // – Bei fremden Inserts: mySets des aktuellen Nutzers ändert sich nicht.
+            // Bei INSERT: mySets werden von logSet() direkt refresht (eigener Insert)
+            // oder ändern sich nicht (fremder Insert) → kein Refresh nötig.
+            // Bei UPDATE/DELETE: andere Hook-Instanzen (z. B. Dashboard) haben
+            // mySets noch veraltet → explizit refreshen.
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+              void refreshMySets();
+            }
           }, 300);
         }
       )
@@ -524,7 +534,7 @@ export function useDailyChallenge() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [isActive, hasJoined, exerciseId, challengeDate, refreshLeaderboard]);
+  }, [isActive, hasJoined, exerciseId, challengeDate, refreshLeaderboard, refreshMySets]);
 
   // Sichtbarkeits-Änderung: Status neu laden nach langer Pause ODER Tageswechsel.
   //
