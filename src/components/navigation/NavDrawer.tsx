@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -57,6 +58,17 @@ export interface NavDrawerProps {
   /** Quick Actions */
   onOpenTraining: () => void;
   onOpenRestDay: () => void;
+}
+
+/* ---------- Greeting ---------- */
+
+/** Returns a short, time-appropriate greeting in German. */
+function getTimeGreeting(): string {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return 'Guten Morgen.';
+  if (h >= 12 && h < 17) return 'Schön, dass du wieder da bist.';
+  if (h >= 17 && h < 23) return 'Noch ein Training heute?';
+  return 'Schön, dass du da bist.';
 }
 
 /* ---------- Constants ---------- */
@@ -362,6 +374,9 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
 
   const displayName = profile?.display_name ?? profile?.username ?? 'Profil';
   const avatarUrl   = profile?.avatar_url;
+  // Computed once on mount — re-evaluates if the component unmounts and remounts
+  // (e.g. after a long background session), not on every render.
+  const greeting    = useMemo(getTimeGreeting, []);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   //
@@ -462,7 +477,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
               {displayName}
             </p>
             <p className="mt-0.5 text-[11.5px] leading-snug text-slate-600">
-              Bereit für dein Training?
+              {greeting}
             </p>
           </motion.button>
 
