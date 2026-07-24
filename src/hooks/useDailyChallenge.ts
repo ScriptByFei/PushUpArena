@@ -330,10 +330,17 @@ export function useDailyChallenge() {
         toast.error(msg);
         return;
       }
-      await refreshStatus();
-      await refreshLeaderboard();
+      // Alle abhängigen Bereiche gleichzeitig aktualisieren
+      await Promise.all([refreshStatus(), refreshLeaderboard(), refreshMySets()]);
+      // DrawerStatsContext (Dashboard) informieren: importierte Wdh. ändern Tagesstand
+      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
       if (data?.status === 'JOINED') {
-        toast.success('Du nimmst heute an der Daily Challenge teil! 🔥');
+        const imported = data.imported_amount ?? 0;
+        if (imported > 0) {
+          toast.success(`Du nimmst teil! ${imported} Wdh. aus dem heutigen Training wurden übernommen. 🔥`);
+        } else {
+          toast.success('Du nimmst heute an der Daily Challenge teil! 🔥');
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
@@ -343,7 +350,7 @@ export function useDailyChallenge() {
       isJoiningRef.current = false;
       setIsJoining(false);
     }
-  }, [exerciseId, user, refreshStatus, refreshLeaderboard, toast]);
+  }, [exerciseId, user, refreshStatus, refreshLeaderboard, refreshMySets, toast]);
 
   // ── logSet ────────────────────────────────────────────────────────────────
   // Gibt { ok: true } bei Erfolg zurück, { ok: false, secondsRemaining? } bei Fehler.
@@ -592,9 +599,11 @@ export function useDailyChallenge() {
     isActive,
     hasJoined,
     challengeDate,
-    startsAt:  status?.startsAt  ?? null,
-    endsAt:    status?.endsAt    ?? null,
-    serverNow: status?.serverNow ?? null,
+    startsAt:             status?.startsAt             ?? null,
+    endsAt:               status?.endsAt               ?? null,
+    serverNow:            status?.serverNow            ?? null,
+    /** true ab 16:20 Uhr Berliner Zeit — Beitreten nicht mehr möglich */
+    joinDeadlinePassed:   status?.joinDeadlinePassed   ?? false,
 
     // Daten
     leaderboard,

@@ -145,9 +145,10 @@ export function DailyChallengeCard({
 
   // ── Abgeleitete Werte ──────────────────────────────────────────────────────
 
-  const isActive  = status?.isActive  ?? false;
-  const hasJoined = status?.hasJoined ?? false;
-  const isEnded   = status !== null && !isActive && status.serverNow >= status.endsAt;
+  const isActive           = status?.isActive           ?? false;
+  const hasJoined          = status?.hasJoined          ?? false;
+  const joinDeadlinePassed = status?.joinDeadlinePassed ?? false;
+  const isEnded            = status !== null && !isActive && status.serverNow >= status.endsAt;
 
   // Karte nur anzeigen für laufende oder heute beendete Challenges
   const berlinToday = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
@@ -219,26 +220,32 @@ export function DailyChallengeCard({
         className={CARD}
       >
         <div className="flex items-center justify-between gap-3">
-          {/* Label + Teilnehmer-Info */}
+          {/* Label + Hinweis */}
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <LiveDot />
               <span className="text-[13px] font-semibold text-slate-100">Daily Live Challenge</span>
             </div>
             <p className="mt-0.5 text-[11.5px] text-slate-500">
-              {participantCount > 0
-                ? `${participantCount} Teilnehmer · Führend: ${leaderTotal.toLocaleString('de-DE')} ${exerciseUnit}`
-                : 'Noch keine Teilnehmer — starte jetzt!'}
+              {joinDeadlinePassed
+                ? 'Die Teilnahme für heute ist beendet.'
+                : participantCount > 0
+                  ? `${participantCount} Teilnehmer · Bereits absolvierte Wdh. werden übernommen.`
+                  : 'Teilnahme bis 16:20 Uhr möglich. Bereits absolvierte Wdh. werden übernommen.'}
             </p>
           </div>
 
-          {/* Join-Button */}
+          {/* Join-Button — deaktiviert nach 16:20 */}
           <button
-            onClick={onJoin}
-            disabled={isJoining}
-            className="shrink-0 rounded-xl bg-brand-600 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-brand-500 active:scale-95 disabled:opacity-60"
+            onClick={joinDeadlinePassed ? undefined : onJoin}
+            disabled={isJoining || joinDeadlinePassed}
+            className={`shrink-0 rounded-xl px-4 py-2 text-[12px] font-semibold text-white transition active:scale-95 disabled:opacity-60 ${
+              joinDeadlinePassed
+                ? 'bg-ink-700 cursor-not-allowed'
+                : 'bg-brand-600 hover:bg-brand-500'
+            }`}
           >
-            {isJoining ? '…' : 'Teilnehmen'}
+            {isJoining ? '…' : joinDeadlinePassed ? 'Beendet' : 'Teilnehmen'}
           </button>
         </div>
       </motion.div>

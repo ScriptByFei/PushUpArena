@@ -25,6 +25,7 @@ export type DailyChallengeError =
   | 'DUPLICATE_REQUEST'
   | 'ENTRY_NOT_FOUND'
   | 'EDIT_WINDOW_EXPIRED'
+  | 'JOIN_DEADLINE_PASSED'
   | 'UNKNOWN';
 
 export const DC_ERROR_MESSAGES: Record<string, string> = {
@@ -38,19 +39,24 @@ export const DC_ERROR_MESSAGES: Record<string, string> = {
   DUPLICATE_REQUEST:    'Dieser Satz wurde bereits verarbeitet.',
   ENTRY_NOT_FOUND:      'Dieser Satz wurde nicht gefunden.',
   EDIT_WINDOW_EXPIRED:  'Das Bearbeitungsfenster ist abgelaufen. Dieser Satz ist gesperrt.',
+  JOIN_DEADLINE_PASSED: 'Die Teilnahme für heute ist beendet. Neue Teilnahme ist morgen ab 00:00 Uhr wieder möglich.',
   UNKNOWN:              'Aktion fehlgeschlagen. Bitte versuche es erneut.',
 };
 
 // ── Domain-Typen (camelCase, Dates als Date-Objekte) ──────────────────────
 export interface DailyChallengeStatus {
   isActive: boolean;
-  challengeDate: string;    // 'YYYY-MM-DD' (Berliner Datum)
+  challengeDate: string;             // 'YYYY-MM-DD' (Berliner Datum)
   startsAt: Date;
   endsAt: Date;
   serverNow: Date;
   hasJoined: boolean;
   secondsUntilStart: number;
   secondsUntilEnd: number;
+  /** true ab 16:20 Uhr Berliner Zeit — Beitritt dann nicht mehr möglich */
+  joinDeadlinePassed: boolean;
+  /** Sekunden bis zur 16:20-Deadline (negativ wenn abgelaufen) */
+  secondsUntilJoinDeadline: number;
 }
 
 export interface DailyChallengeLeaderboardEntry {
@@ -75,6 +81,8 @@ export interface DailyChallengeSet {
   createdAt: Date;
   /** Bearbeitbar bis zu diesem Zeitpunkt. NULL = alter Eintrag → gesperrt. */
   editUntil: Date | null;
+  /** true = automatisch beim Beitritt importiert (READ-ONLY, kein Edit/Delete) */
+  isImported: boolean;
 }
 
 export interface DailyChallengeHistoryDay {
@@ -152,14 +160,16 @@ export interface DailyChallengeParticipantDetails {
 
 export function mapStatus(raw: StatusRaw): DailyChallengeStatus {
   return {
-    isActive:           raw.is_active,
-    challengeDate:      raw.challenge_date,
-    startsAt:           new Date(raw.starts_at),
-    endsAt:             new Date(raw.ends_at),
-    serverNow:          new Date(raw.server_now),
-    hasJoined:          raw.has_joined,
-    secondsUntilStart:  raw.seconds_until_start,
-    secondsUntilEnd:    raw.seconds_until_end,
+    isActive:                  raw.is_active,
+    challengeDate:             raw.challenge_date,
+    startsAt:                  new Date(raw.starts_at),
+    endsAt:                    new Date(raw.ends_at),
+    serverNow:                 new Date(raw.server_now),
+    hasJoined:                 raw.has_joined,
+    secondsUntilStart:         raw.seconds_until_start,
+    secondsUntilEnd:           raw.seconds_until_end,
+    joinDeadlinePassed:        raw.join_deadline_passed,
+    secondsUntilJoinDeadline:  raw.seconds_until_join_deadline,
   };
 }
 
@@ -187,6 +197,7 @@ export function mapSet(raw: SetRowRaw): DailyChallengeSet {
     repetitions: raw.repetitions,
     createdAt:   new Date(raw.created_at),
     editUntil:   raw.edit_until ? new Date(raw.edit_until) : null,
+    isImported:  raw.is_imported,
   };
 }
 

@@ -189,6 +189,7 @@ export interface Database {
           challenge_date: string;   // 'YYYY-MM-DD'
           joined_at: string;        // timestamptz → ISO string
           created_at: string;
+          imported_amount: number;  // Wdh. aus workout_entries beim Beitritt importiert
         };
         Insert: {
           id?: string;
@@ -213,6 +214,7 @@ export interface Database {
           is_flagged: boolean;
           flag_reason: string | null;
           workout_entry_id: string | null;  // Link zum Dashboard-Eintrag (nullable)
+          is_imported: boolean;             // TRUE = automatisch beim Beitritt importiert (READ-ONLY)
         };
         Insert: never;              // only via log_challenge_set RPC
         Update: never;
@@ -327,13 +329,15 @@ export interface Database {
         Args: { p_exercise_id: string };
         Returns: {
           is_active: boolean;
-          challenge_date: string;       // 'YYYY-MM-DD'
-          starts_at: string;            // ISO timestamptz
+          challenge_date: string;              // 'YYYY-MM-DD'
+          starts_at: string;                   // ISO timestamptz
           ends_at: string;
           has_joined: boolean;
-          server_now: string;           // ISO timestamptz
-          seconds_until_start: number;  // integer
-          seconds_until_end: number;    // integer
+          server_now: string;                  // ISO timestamptz
+          seconds_until_start: number;         // integer
+          seconds_until_end: number;           // integer
+          join_deadline_passed: boolean;       // true ab 16:20 Uhr Berliner Zeit
+          seconds_until_join_deadline: number; // negativ wenn abgelaufen
         };
       };
       join_daily_challenge: {
@@ -342,6 +346,7 @@ export interface Database {
           status?: 'JOINED' | 'ALREADY_JOINED';
           error?: string;
           participation_id?: string;
+          imported_amount?: number;  // Anzahl importierter Wdh. beim Beitritt (0 wenn keine)
         };
       };
       log_challenge_set: {
@@ -386,6 +391,7 @@ export interface Database {
           repetitions: number;
           created_at: string;
           edit_until: string | null;
+          is_imported: boolean;  // TRUE = importierter Startwert (READ-ONLY)
         }[];
       };
       update_challenge_set: {
