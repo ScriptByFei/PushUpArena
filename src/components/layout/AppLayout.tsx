@@ -71,12 +71,14 @@ export function AppLayout() {
   const closeDrawer = useCallback(() => {
     drawerNavRef.current?.snapClose();
     setDrawerOpen(false);
-    // Return focus to the trigger (hamburger) in a rAF so it runs after React
-    // flushes the state update.  focus-visible:ring-2 ensures the ring only
-    // appears for keyboard-triggered focus, not programmatic calls — so mouse
-    // users won't see a stale ring after tap-to-close.
+    // Blur the trigger after close so iOS Safari releases :focus-visible.
+    // A programmatic .focus() call on iOS triggers :focus-visible just like a
+    // keyboard focus would — causing the violet ring to persist.  We blur
+    // instead: keyboard users Tab to navigate; touch users see no stale ring.
     requestAnimationFrame(() => {
-      menuButtonRef.current?.focus();
+      setTimeout(() => {
+        menuButtonRef.current?.blur();
+      }, 50);
     });
   }, []);
 
@@ -266,13 +268,23 @@ export function AppLayout() {
               ref={menuButtonRef}
               id="nav-drawer-trigger"
               onClick={toggleDrawer}
+              onTouchEnd={() => {
+                // Blur on touch so iOS Safari immediately releases :focus-visible.
+                requestAnimationFrame(() => { menuButtonRef.current?.blur(); });
+              }}
+              onPointerUp={(e) => {
+                if (e.pointerType === 'touch') {
+                  requestAnimationFrame(() => { menuButtonRef.current?.blur(); });
+                }
+              }}
               aria-label="Navigation öffnen"
               aria-expanded={drawerOpen}
               aria-controls="nav-drawer"
+              data-state={drawerOpen ? 'open' : 'closed'}
               className={
-                'grid place-items-center rounded-lg text-slate-400 transition ' +
+                'menu-trigger grid place-items-center rounded-lg text-slate-400 transition ' +
                 'hover:bg-ink-800 active:bg-ink-700 ' +
-                'focus:outline-none ' +
+                'focus:outline-none focus:ring-0 ' +
                 'focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950'
               }
               style={{ width: 40, height: 48 }}

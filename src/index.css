@@ -68,3 +68,15 @@
 ::-webkit-scrollbar-thumb {
   @apply rounded-full bg-ink-600;
 }
+
+/* iOS Safari: Hamburger-Button kein Fokusring nach Touch-Open/Close.
+   :focus-visible reagiert auf iOS auch auf programmatische .focus()-Aufrufe —
+   diese Regeln unterdrücken den Ring für alle Fälle außer echter Tastaturnavigation. */
+.menu-trigger:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+.menu-trigger[data-state='open'] {
+  outline: none;
+  box-shadow: none;
+}
