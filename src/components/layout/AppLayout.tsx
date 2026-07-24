@@ -71,10 +71,12 @@ export function AppLayout() {
   const closeDrawer = useCallback(() => {
     drawerNavRef.current?.snapClose();
     setDrawerOpen(false);
-    // blur() in a rAF so it runs after React flushes the state update and
-    // the browser has re-painted — prevents a stale focus-ring on iOS/Safari.
+    // Return focus to the trigger (hamburger) in a rAF so it runs after React
+    // flushes the state update.  focus-visible:ring-2 ensures the ring only
+    // appears for keyboard-triggered focus, not programmatic calls — so mouse
+    // users won't see a stale ring after tap-to-close.
     requestAnimationFrame(() => {
-      menuButtonRef.current?.blur();
+      menuButtonRef.current?.focus();
     });
   }, []);
 
