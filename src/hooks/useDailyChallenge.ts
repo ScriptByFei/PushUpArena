@@ -347,8 +347,13 @@ export function useDailyChallenge() {
 
   // ── logSet ────────────────────────────────────────────────────────────────
   // Gibt { ok: true } bei Erfolg zurück, { ok: false, secondsRemaining? } bei Fehler.
-  // Die Komponente nutzt ok um den Cooldown zu starten und die Erfolgsmeldung zu zeigen.
-  const logSet = useCallback(async (repetitions: number): Promise<{ ok: boolean; secondsRemaining?: number }> => {
+  // workoutEntryId: ID des workout_entries-Datensatzes wenn vom Dashboard auto-geloggt.
+  //   Wird in daily_challenge_entries gespeichert damit delete_challenge_set
+  //   beide Einträge atomisch löschen kann.
+  const logSet = useCallback(async (
+    repetitions: number,
+    workoutEntryId?: string,
+  ): Promise<{ ok: boolean; secondsRemaining?: number }> => {
     if (!exerciseId || !user) return { ok: false };
     if (isLoggingRef.current) return { ok: false }; // parallele Aufrufe blockieren
     isLoggingRef.current = true;
@@ -356,8 +361,9 @@ export function useDailyChallenge() {
     setActionError(null);
     try {
       const { data, error } = await supabase.rpc('log_challenge_set', {
-        p_exercise_id:   exerciseId,
-        p_repetitions:   repetitions,
+        p_exercise_id:      exerciseId,
+        p_repetitions:      repetitions,
+        p_workout_entry_id: workoutEntryId ?? null,
       });
       if (error) throw error;
       if (data?.error) {
@@ -450,6 +456,9 @@ export function useDailyChallenge() {
       }
       toast.success('Satz gelöscht.');
       await Promise.all([refreshLeaderboard(), refreshMySets()]);
+      // Signal an Dashboard: workout_entry wurde ggf. mitgelöscht →
+      // DrawerStatsContext muss refetchen damit „Heute" korrekt ist.
+      window.dispatchEvent(new CustomEvent('challengeSetDeleted'));
       return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;

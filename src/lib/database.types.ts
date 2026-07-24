@@ -212,6 +212,7 @@ export interface Database {
           created_at: string;
           is_flagged: boolean;
           flag_reason: string | null;
+          workout_entry_id: string | null;  // Link zum Dashboard-Eintrag (nullable)
         };
         Insert: never;              // only via log_challenge_set RPC
         Update: never;
@@ -344,7 +345,12 @@ export interface Database {
         };
       };
       log_challenge_set: {
-        Args: { p_exercise_id: string; p_repetitions: number };
+        Args: {
+          p_exercise_id: string;
+          p_repetitions: number;
+          /** Optional: ID des verknüpften workout_entries-Datensatzes (Dashboard-Auto-Log) */
+          p_workout_entry_id?: string | null;
+        };
         Returns: {
           status?: 'OK';
           error?: string;

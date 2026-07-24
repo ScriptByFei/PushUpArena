@@ -146,6 +146,15 @@ export default function Dashboard() {
     window.dispatchEvent(new CustomEvent('openDailyChallenge'));
   }, []);
 
+  // Wenn im Modal ein Challenge-Satz gelöscht wird, kann der verknüpfte
+  // workout_entry mitgelöscht worden sein (delete_challenge_set löscht beide).
+  // → DrawerStats neu laden damit „Heute" sofort den korrekten Wert zeigt.
+  useEffect(() => {
+    const handler = () => void refetchStats();
+    window.addEventListener('challengeSetDeleted', handler);
+    return () => window.removeEventListener('challengeSetDeleted', handler);
+  }, [refetchStats]);
+
   if (exLoading) return <LoadingState label="Lade Übung …" />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
 
@@ -168,10 +177,12 @@ export default function Dashboard() {
     // Auto-Logging in die Challenge:
     // Wenn der User bereits teilnimmt und die Challenge läuft,
     // wird der Satz automatisch auch als Challenge-Satz eingetragen.
+    // entryId wird mitgegeben damit delete_challenge_set beide Einträge
+    // atomisch löschen kann („Heute" und Challenge gehen gemeinsam auf 0).
     // Mengen außerhalb [10, 100] überspringen (Challenge-Constraints).
     // Fire-and-forget — Dashboard-Eintrag ist bereits gespeichert.
     if (challenge.isActive && challenge.hasJoined && amount >= 10 && amount <= 100) {
-      void challenge.logSet(amount);
+      void challenge.logSet(amount, entryId);
     }
   }
 
