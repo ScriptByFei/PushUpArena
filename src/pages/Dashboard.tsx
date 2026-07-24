@@ -224,15 +224,17 @@ export default function Dashboard() {
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
 
-      {/* Daily Live Challenge — Kompaktkarte */}
-      <DailyChallengeCard
-        status={challenge.status}
-        leaderboard={challenge.leaderboard}
-        isJoining={challenge.isJoining}
-        onJoin={challenge.joinChallenge}
-        onOpen={openChallengeModal}
-        exerciseUnit={unit}
-      />
+      {/* Daily Live Challenge — nur für Push-up sichtbar */}
+      {exercise.is_challenge_enabled && (
+        <DailyChallengeCard
+          status={challenge.status}
+          leaderboard={challenge.leaderboard}
+          isJoining={challenge.isJoining}
+          onJoin={challenge.joinChallenge}
+          onOpen={openChallengeModal}
+          exerciseUnit={unit}
+        />
+      )}
 
       {/* Ziele */}
       <Card>
