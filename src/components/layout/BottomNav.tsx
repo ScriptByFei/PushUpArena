@@ -27,7 +27,7 @@ function SideItem({ to, label, Icon }: NavItem) {
       end={to === '/'}
       replace
       aria-label={label}
-      className="flex h-16 flex-col items-center justify-center gap-1"
+      className="flex h-16 w-full flex-col items-center justify-center gap-1"
     >
       {({ isActive }) => (
         <>
