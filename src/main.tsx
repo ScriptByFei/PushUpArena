@@ -55,11 +55,14 @@ void initOneSignal();
     _startY = t.clientY;
     _blockingHoriz = false;
 
-    // Never block touches that land on the header — the hamburger button lives
-    // there and preventDefault() would silence the click event.
-    // Using contains() is device-independent (no hardcoded pixel offset).
+    // Never block touches on interactive chrome — the header (hamburger) and
+    // the bottom nav (Start icon is within the 50 px edge zone on narrow phones).
+    // preventDefault() on touchstart suppresses the synthetic click, so we must
+    // exempt any element that the user might want to tap.
     const headerEl = document.querySelector('header');
     if (headerEl?.contains(e.target as Node)) return;
+    const bottomNavEl = document.querySelector('nav');
+    if (bottomNavEl?.contains(e.target as Node)) return;
 
     // Immediately claim touches in the left-edge zone so iOS cannot start the
     // system back-swipe animation.  The AppLayout drawer gesture handler still
