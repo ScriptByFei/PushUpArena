@@ -30,7 +30,7 @@ export function ProgressBar({
   return (
     <div>
       {(label || showValues) && (
-        <div className="mb-2 flex items-baseline justify-between text-sm">
+        <div className="mb-1.5 flex items-baseline justify-between text-sm">
           {label && <span className="text-slate-300">{label}</span>}
           {showValues && (
             <span className={`tabular-nums ${done ? 'font-semibold text-emerald-400' : 'text-slate-400'}`}>

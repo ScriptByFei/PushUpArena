@@ -237,7 +237,7 @@ export default function Dashboard() {
       )}
 
       {/* Ziele */}
-      <Card>
+      <Card className="py-3">
         <div className="flex items-center justify-between">
           <CardTitle>Ziele</CardTitle>
           {!((goal?.daily_goal ?? 0) === 0 && (goal?.weekly_goal ?? 0) === 0) && (
@@ -247,9 +247,9 @@ export default function Dashboard() {
           )}
         </div>
         {goalLoading ? (
-          <p className="py-4 text-sm text-slate-500">Lade Ziele …</p>
+          <p className="py-3 text-sm text-slate-500">Lade Ziele …</p>
         ) : (goal?.daily_goal ?? 0) === 0 && (goal?.weekly_goal ?? 0) === 0 ? (
-          <div className="mt-2 flex flex-col items-center gap-2 py-3 text-center">
+          <div className="mt-2 flex flex-col items-center gap-1.5 py-2 text-center">
             <span className="text-3xl">🎯</span>
             <p className="text-sm text-slate-400">Noch keine Ziele gesetzt.</p>
             <Link to="/settings">
@@ -257,7 +257,7 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="mt-3 space-y-5">
+          <div className="mt-2 space-y-3">
             {(goal?.daily_goal ?? 0) > 0 && (
               <ProgressBar value={stats.today_amount} max={goal!.daily_goal} label="Tagesziel" />
             )}
