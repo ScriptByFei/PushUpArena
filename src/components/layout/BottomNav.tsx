@@ -8,6 +8,10 @@ interface NavItem {
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
+// ─── Feature flag ─────────────────────────────────────────────────────────────
+// Set to `true` to bring the FAB back. No other changes needed.
+const FAB_ENABLED = false;
+
 const items: NavItem[] = [
   { to: '/', label: 'Start', Icon: HomeIcon },
   { to: '/friends', label: 'Freunde', Icon: UsersIcon },
@@ -43,21 +47,23 @@ export function BottomNav({ onOpenFAB }: { onOpenFAB: () => void }) {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* FAB — schwebt mittig über der Bottom Navigation */}
-      <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full pb-2">
-        <button
-          aria-label="Eintragen"
-          onClick={onOpenFAB}
-          className={
-            'flex h-14 w-14 items-center justify-center rounded-full ' +
-            'bg-gradient-to-br from-brand-400 to-brand-600 text-white ' +
-            'shadow-glow ring-2 ring-ink-900 ' +
-            'transition active:scale-95 hover:from-brand-300 hover:to-brand-500'
-          }
-        >
-          <PlusIcon className="h-6 w-6" />
-        </button>
-      </div>
+      {/* FAB — schwebt mittig über der Bottom Navigation (FAB_ENABLED = false → ausgeblendet) */}
+      {FAB_ENABLED && (
+        <div className="absolute left-1/2 top-0 z-50 -translate-x-1/2 -translate-y-full pb-2">
+          <button
+            aria-label="Eintragen"
+            onClick={onOpenFAB}
+            className={
+              'flex h-14 w-14 items-center justify-center rounded-full ' +
+              'bg-gradient-to-br from-brand-400 to-brand-600 text-white ' +
+              'shadow-glow ring-2 ring-ink-900 ' +
+              'transition active:scale-95 hover:from-brand-300 hover:to-brand-500'
+            }
+          >
+            <PlusIcon className="h-6 w-6" />
+          </button>
+        </div>
+      )}
 
       {/* 5 Nav-Items gleichmäßig verteilt */}
       <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2">
