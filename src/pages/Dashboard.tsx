@@ -140,6 +140,12 @@ export default function Dashboard() {
   const [lastEntry, setLastEntry] = useState<{ id: string; amount: number } | null>(null);
   const undoTimer = useRef<number | undefined>(undefined);
 
+  // Öffnet das DailyChallengeModal über ein Window-Event.
+  // Muss VOR den Early-Returns stehen — Hooks dürfen nicht bedingt aufgerufen werden.
+  const openChallengeModal = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openDailyChallenge'));
+  }, []);
+
   if (exLoading) return <LoadingState label="Lade Übung …" />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
 
@@ -152,12 +158,6 @@ export default function Dashboard() {
         : {};
 
   const unit = exercise.unit === 'reps' ? 'Wdh.' : exercise.unit;
-
-  // Öffnet das DailyChallengeModal über ein Window-Event.
-  // AppLayout hört darauf und setzt setDailyChallengeOpen(true).
-  const openChallengeModal = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('openDailyChallenge'));
-  }, []);
 
   function onLogged({ amount, entryId }: { amount: number; entryId: string }) {
     void refetchStats();
