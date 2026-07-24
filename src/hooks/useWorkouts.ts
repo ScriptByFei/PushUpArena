@@ -24,7 +24,7 @@ export function useWorkouts(exerciseId?: string) {
     since.setDate(since.getDate() - 90);
     const { data, error: err } = await supabase
       .from('workout_entries')
-      .select('id, user_id, exercise_id, amount, note, performed_at')
+      .select('id, user_id, exercise_id, amount, note, performed_at, created_at')
       .eq('user_id', user.id)
       .eq('exercise_id', exerciseId)
       .gte('performed_at', since.toISOString())

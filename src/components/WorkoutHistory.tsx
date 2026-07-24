@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useRestDays } from '@/hooks/useRestDays';
 import { useStats } from '@/hooks/useStats';
@@ -14,6 +14,8 @@ import { formatTime, toDateTimeLocalValue } from '@/lib/date';
 import type { WorkoutEntry } from '@/lib/database.types';
 
 const TZ = 'Europe/Berlin';
+const EDIT_WINDOW_MS = 30 * 60 * 1000; // 30 Minuten
+
 function berlinToday() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: TZ });
 }
@@ -25,8 +27,58 @@ function berlinYesterday() {
 function minEntryDatetime() {
   return `${berlinToday()}T00:00`;
 }
-function isEditableToday(performed_at: string): boolean {
-  return new Date(performed_at).toLocaleDateString('sv-SE', { timeZone: TZ }) === berlinToday();
+function editSecsLeft(createdAt: string): number {
+  return Math.max(0, Math.round((EDIT_WINDOW_MS - (Date.now() - new Date(createdAt).getTime())) / 1000));
+}
+
+// Isolierte Countdown-Komponente: rendert nur sich selbst einmal pro Sekunde.
+// Blendet Edit/Delete-Buttons aus, sobald das 30-Minuten-Fenster abgelaufen ist.
+function WorkoutEntryActions({
+  createdAt,
+  onEdit,
+  onDelete,
+}: {
+  createdAt: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [secs, setSecs] = useState(() => editSecsLeft(createdAt));
+
+  useEffect(() => {
+    if (secs <= 0) return;
+    const id = setInterval(() => {
+      setSecs(s => {
+        if (s <= 1) { clearInterval(id); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []); // nur beim Mount
+
+  if (secs <= 0) return null;
+
+  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+  const ss = String(secs % 60).padStart(2, '0');
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <span className="mr-1 tabular-nums text-[10px] text-slate-600">{mm}:{ss}</span>
+      <button
+        aria-label="Bearbeiten"
+        onClick={onEdit}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-ink-700 hover:text-slate-200"
+      >
+        <EditIcon className="h-4 w-4" />
+      </button>
+      <button
+        aria-label="Löschen"
+        onClick={onDelete}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300"
+      >
+        <TrashIcon className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 interface Props {
@@ -229,18 +281,11 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
                               <p className="flex-1 text-xs text-slate-400">
                                 {formatTime(item.entry.performed_at)}
                               </p>
-                              {isEditableToday(item.entry.performed_at) && (
-                                <>
-                                  <button aria-label="Bearbeiten" onClick={() => setEditing(item.entry)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-ink-700 hover:text-slate-200">
-                                    <EditIcon className="h-4 w-4" />
-                                  </button>
-                                  <button aria-label="Löschen" onClick={() => setDeleting(item.entry)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-500/20 hover:text-rose-300">
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </>
-                              )}
+                              <WorkoutEntryActions
+                                createdAt={item.entry.created_at}
+                                onEdit={() => setEditing(item.entry)}
+                                onDelete={() => setDeleting(item.entry)}
+                              />
                             </div>
                           ) : (
                             <div key={`r-${item.id}`} className="flex items-center gap-3 rounded-xl bg-ink-800/60 px-3 py-2">
@@ -273,7 +318,7 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
           onClose={() => setEditing(null)}
           onSave={async (patch) => {
             const { error: err } = await updateEntry(editing.id, patch);
-            if (err) toast.error(err);
+            if (err) toast.error(err === 'EDIT_WINDOW_EXPIRED' ? 'Bearbeitungsfenster abgelaufen (30 Min.).' : err);
             else { toast.success('Eintrag aktualisiert.'); setEditing(null); void refetchStats(); }
           }}
         />
@@ -284,7 +329,7 @@ export function WorkoutHistory({ exerciseId, unit }: Props) {
         onConfirm={async () => {
           if (!deleting) return;
           const { error: err } = await deleteEntry(deleting.id);
-          if (err) toast.error(err);
+          if (err) toast.error(err === 'EDIT_WINDOW_EXPIRED' ? 'Bearbeitungsfenster abgelaufen (30 Min.).' : err);
           else { toast.success('Eintrag gelöscht.'); void refetchStats(); }
           setDeleting(null);
         }}>
