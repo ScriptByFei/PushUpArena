@@ -152,7 +152,7 @@ export function LeaderboardCard({
     return (
       <Card>
         <CardTitle>Live-Rangliste</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">Die Rangliste ist ab 05:00 Uhr aktiv.</p>
+        <p className="mt-2 text-sm text-slate-500">Die Rangliste wird aktiv, sobald Teilnehmer beitreten.</p>
       </Card>
     );
   }

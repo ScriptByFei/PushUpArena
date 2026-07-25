@@ -104,11 +104,14 @@ function StatusCard({
         serverNow={serverNow}
         onEnd={onCountdownEnd}
       />
-      <p className="mt-1.5 text-xs text-slate-500">
-        {isActive
-          ? 'Täglich von 05:00 bis 00:00 Uhr'
-          : 'Die nächste Challenge startet um 05:00 Uhr.'}
-      </p>
+      {isActive ? (
+        <>
+          <p className="mt-1.5 text-xs text-slate-500">Live bis Mitternacht</p>
+          <p className="text-xs text-slate-500">Anmeldung bis 16:20 Uhr</p>
+        </>
+      ) : (
+        <p className="mt-1.5 text-xs text-slate-500">Die nächste Challenge startet um Mitternacht.</p>
+      )}
     </Card>
   );
 }
@@ -146,7 +149,7 @@ function TeilnahmeCard({
     return (
       <Card>
         <CardTitle>Teilnahme</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">Die Teilnahme ist ab 05:00 Uhr möglich.</p>
+        <p className="mt-2 text-sm text-slate-500">Anmeldung täglich von 00:00 bis 16:20 Uhr möglich.</p>
       </Card>
     );
   }
