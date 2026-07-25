@@ -27,7 +27,7 @@ function SideItem({ to, label, Icon }: NavItem) {
       end={to === '/'}
       replace
       aria-label={label}
-      className="flex h-16 w-full flex-col items-center justify-end pb-1 gap-1"
+      className="flex h-full w-full flex-col items-center justify-end pb-1 gap-1"
     >
       {({ isActive }) => (
         <>
@@ -45,7 +45,7 @@ export function BottomNav({ onOpenFAB }: { onOpenFAB: () => void }) {
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}
+      style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom) - 12px), 0px)' }}
     >
       {/* FAB — schwebt mittig über der Bottom Navigation (FAB_ENABLED = false → ausgeblendet) */}
       {FAB_ENABLED && (
@@ -66,7 +66,7 @@ export function BottomNav({ onOpenFAB }: { onOpenFAB: () => void }) {
       )}
 
       {/* 5 Nav-Items gleichmäßig verteilt */}
-      <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2">
+      <div className="mx-auto h-[64px] grid max-w-md grid-cols-5 items-stretch px-2">
         {items.map((item) => (
           <SideItem key={item.to} {...item} />
         ))}
