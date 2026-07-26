@@ -155,6 +155,21 @@ export default function Dashboard() {
     return () => window.removeEventListener('challengeSetDeleted', handler);
   }, [refetchStats]);
 
+  // Challenge-Karte nach jeder workout_entries-Mutation sofort neu laden.
+  // Dieses Event wird geworfen von:
+  //   • useWorkouts (addEntry, updateEntry, deleteEntry) → Workout-Verlauf & Track-Page
+  //   • useDailyChallenge (joinChallenge, updateSet, deleteSet) → Challenge-Modal
+  //   • undoLast() hier unten → Rückgängig-Button
+  // So bleibt die Karte immer synchron – ohne setTimeout und ohne Realtime-Latenz.
+  useEffect(() => {
+    const handler = () => {
+      void challenge.refreshLeaderboard();
+      void challenge.refreshMySets();
+    };
+    window.addEventListener('workoutEntriesChanged', handler);
+    return () => window.removeEventListener('workoutEntriesChanged', handler);
+  }, [challenge.refreshLeaderboard, challenge.refreshMySets]);
+
   if (exLoading) return <LoadingState label="Lade Übung …" />;
   if (exError || !exercise) return <ErrorState message={exError ?? 'Übung fehlt.'} onRetry={reload} />;
 
@@ -186,6 +201,9 @@ export default function Dashboard() {
     toast.success('Rückgängig gemacht.');
     setLastEntry(null);
     void refetchStats();
+    // workoutEntriesChanged informiert DrawerStatsContext (Stats-Kacheln) und den
+    // Challenge-Listener oben – Challenge-Karte wird sofort korrekt aktualisiert.
+    window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
   }
 
   return (
