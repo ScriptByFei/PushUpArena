@@ -1,23 +1,19 @@
-// DailyChallengeModal – Phase 3C+: Satzeingabe + Cooldown + isolierter Countdown.
+// DailyChallengeModal – reine Live-Ansicht des heutigen Trainingstages.
 // Hook-Instanz: einmal in DailyChallengeModal, Daten als Props weiter.
 // Countdown in eigener DailyChallengeCountdown-Komponente → kein sekündlicher
 // Re-Render des Modal-Baums mehr.
-// Phase 3D: Deine Leistung, Satzliste, Live-Rangliste, Verlauf.
+// Zwei Tabs: "Live" (Status, Deine Leistung, Live-Rangliste) und
+// "Deine Sätze" (Satzliste des heutigen Tages). Kein Verlauf mehr.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useCountdown } from '@/hooks/useCountdown';
 import { formatBerlinTime } from '@/lib/date';
 import { LeaderboardCard } from '@/components/DailyChallengeLeaderboard';
-import { HistoryList } from '@/components/DailyChallengeHistory';
-import { HistoryDayView, HistoryParticipantView } from '@/components/DailyChallengeHistoryDetail';
 import type {
-  DailyChallengeHistoryDay,
   DailyChallengeLeaderboardEntry,
   DailyChallengeSet,
-  DailyChallengeDayDetails,
-  DailyChallengeParticipantDetails,
 } from '@/lib/dailyChallenge.types';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
@@ -63,7 +59,7 @@ function CloseIcon() {
 
 // ── Tab-Typen ──────────────────────────────────────────────────────────────
 
-type Tab = 'heute' | 'verlauf';
+type Tab = 'live' | 'sets';
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -292,8 +288,10 @@ function MySetsCard({
   if (mySets.length === 0) {
     return (
       <Card>
-        <CardTitle>Deine Sätze</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">Noch kein Satz eingetragen.</p>
+        <CardTitle>Noch keine Sätze heute</CardTitle>
+        <p className="mt-2 text-sm text-slate-500">
+          Deine heutigen Push-up-Sätze erscheinen hier automatisch.
+        </p>
       </Card>
     );
   }
@@ -346,7 +344,7 @@ function TabPill({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`mb-3 rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
+      className={`mb-3 flex-1 rounded-lg px-4 py-1.5 text-center text-sm font-semibold transition ${
         active
           ? 'bg-brand-600/30 text-brand-300'
           : 'text-slate-500 hover:bg-ink-800 hover:text-slate-300'
@@ -357,9 +355,9 @@ function TabPill({
   );
 }
 
-// ── Heute-Tab ──────────────────────────────────────────────────────────────
+// ── Live-Tab ───────────────────────────────────────────────────────────────
 
-interface HeuteTabProps {
+interface LiveTabProps {
   // hasStatus = false solange der initiale Statusabruf noch läuft (status === null)
   hasStatus: boolean;
   isActive: boolean;
@@ -377,7 +375,7 @@ interface HeuteTabProps {
   refreshLeaderboard: () => Promise<void>;
 }
 
-function HeuteTab({
+function LiveTab({
   hasStatus,
   isActive,
   startsAt,
@@ -392,7 +390,7 @@ function HeuteTab({
   leaderboard,
   refreshMySets,
   refreshLeaderboard,
-}: HeuteTabProps) {
+}: LiveTabProps) {
   // Skeleton nur beim initialen Laden (hasStatus = false).
   // Hintergrund-Refreshes (onCountdownEnd) aktualisieren status still →
   // kein Skeleton-Flash.
@@ -423,6 +421,22 @@ function HeuteTab({
         leaderboardError={leaderboardError}
         refreshLeaderboard={refreshLeaderboard}
       />
+    </div>
+  );
+}
+
+// ── Sätze-Tab ──────────────────────────────────────────────────────────────
+
+interface SetsTabProps {
+  mySets: DailyChallengeSet[];
+  isLoadingMySets: boolean;
+  setsError: string | null;
+  refreshMySets: () => Promise<void>;
+}
+
+function SetsTab({ mySets, isLoadingMySets, setsError, refreshMySets }: SetsTabProps) {
+  return (
+    <div className="flex flex-col gap-3">
       <MySetsCard
         mySets={mySets}
         isLoadingMySets={isLoadingMySets}
@@ -430,94 +444,6 @@ function HeuteTab({
         refreshMySets={refreshMySets}
       />
     </div>
-  );
-}
-
-// ── Verlauf-Tab (mit interner Navigation list → day → participant) ─────────
-
-type HistoryView = 'list' | 'day' | 'participant';
-
-interface VerlaufTabProps {
-  historyView: HistoryView;
-  selectedChallengeDate: string | null;
-  // Verlaufsliste
-  history: DailyChallengeHistoryDay[];
-  isLoadingHistory: boolean;
-  historyError: string | null;
-  refreshHistory: () => Promise<void>;
-  // Tagesdetail
-  dayDetails: DailyChallengeDayDetails | null;
-  isLoadingDayDetails: boolean;
-  dayDetailsError: string | null;
-  // Teilnehmerdetail
-  participantDetails: DailyChallengeParticipantDetails | null;
-  isLoadingParticipantDetails: boolean;
-  participantDetailsError: string | null;
-  // Navigation-Handler
-  onSelectDay: (challengeDate: string) => void;
-  onSelectParticipant: (userId: string) => void;
-  onBackToList: () => void;
-  onBackToDay: () => void;
-  retryLoadDay: () => void;
-  retryLoadParticipant: () => void;
-}
-
-function VerlaufTab({
-  historyView,
-  selectedChallengeDate,
-  history,
-  isLoadingHistory,
-  historyError,
-  refreshHistory,
-  dayDetails,
-  isLoadingDayDetails,
-  dayDetailsError,
-  participantDetails,
-  isLoadingParticipantDetails,
-  participantDetailsError,
-  onSelectDay,
-  onSelectParticipant,
-  onBackToList,
-  onBackToDay,
-  retryLoadDay,
-  retryLoadParticipant,
-}: VerlaufTabProps) {
-  if (historyView === 'day' && selectedChallengeDate) {
-    return (
-      <HistoryDayView
-        challengeDate={selectedChallengeDate}
-        dayDetails={dayDetails}
-        isLoading={isLoadingDayDetails}
-        error={dayDetailsError}
-        onBack={onBackToList}
-        onSelectParticipant={onSelectParticipant}
-        retryLoadDay={retryLoadDay}
-      />
-    );
-  }
-
-  if (historyView === 'participant' && selectedChallengeDate) {
-    return (
-      <HistoryParticipantView
-        challengeDate={selectedChallengeDate}
-        participant={participantDetails}
-        isLoading={isLoadingParticipantDetails}
-        error={participantDetailsError}
-        onBack={onBackToDay}
-        retryLoadParticipant={retryLoadParticipant}
-      />
-    );
-  }
-
-  // Default: Liste
-  return (
-    <HistoryList
-      history={history}
-      isLoadingHistory={isLoadingHistory}
-      historyError={historyError}
-      refreshHistory={refreshHistory}
-      onSelectDay={onSelectDay}
-    />
   );
 }
 
@@ -539,73 +465,12 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     isLoadingLeaderboard,
     setsError,
     leaderboardError,
-    history,
-    isLoadingHistory,
-    historyError,
-    selectedDayDetails,
-    isLoadingDayDetails,
-    dayDetailsError,
-    selectedParticipantDetails,
-    isLoadingParticipantDetails,
-    participantDetailsError,
     refreshStatus,
     refreshMySets,
     refreshLeaderboard,
-    refreshHistory,
-    loadHistoryDay,
-    loadHistoryParticipant,
   } = useDailyChallenge();
 
-  const [activeTab, setActiveTab] = useState<Tab>('heute');
-
-  // Lazy History-Loading: einmalig beim ersten Wechsel zum Verlauf-Tab.
-  // Ref statt State, damit der Effekt keinen Re-Render auslöst.
-  const hasRequestedHistoryRef = useRef(false);
-  useEffect(() => {
-    if (activeTab !== 'verlauf') return;
-    if (hasRequestedHistoryRef.current) return;
-    hasRequestedHistoryRef.current = true;
-    void refreshHistory();
-  }, [activeTab, refreshHistory]);
-
-  // ── Verlauf-interne Navigation ───────────────────────────────────────────
-  const [historyView, setHistoryView]                       = useState<'list' | 'day' | 'participant'>('list');
-  const [selectedChallengeDate, setSelectedChallengeDate]   = useState<string | null>(null);
-  const [selectedParticipantId, setSelectedParticipantId]   = useState<string | null>(null);
-
-  const handleSelectDay = (challengeDate: string) => {
-    setHistoryView('day');
-    setSelectedChallengeDate(challengeDate);
-    void loadHistoryDay(challengeDate);
-  };
-
-  const handleSelectParticipant = (userId: string) => {
-    if (!selectedChallengeDate) return;
-    setHistoryView('participant');
-    setSelectedParticipantId(userId);
-    void loadHistoryParticipant(selectedChallengeDate, userId);
-  };
-
-  const handleBackToList = () => {
-    setHistoryView('list');
-    setSelectedChallengeDate(null);
-    setSelectedParticipantId(null);
-  };
-
-  const handleBackToDay = () => {
-    setHistoryView('day');
-    setSelectedParticipantId(null);
-  };
-
-  const handleRetryDay = () => {
-    if (selectedChallengeDate) void loadHistoryDay(selectedChallengeDate);
-  };
-
-  const handleRetryParticipant = () => {
-    if (selectedChallengeDate && selectedParticipantId) {
-      void loadHistoryParticipant(selectedChallengeDate, selectedParticipantId);
-    }
-  };
+  const [activeTab, setActiveTab] = useState<Tab>('live');
 
   // Stabiler Callback für den Countdown-End-Handler:
   // Inline-Arrow würde bei jedem Modal-Re-Render eine neue Referenz erzeugen
@@ -645,8 +510,8 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <div role="tablist" aria-label="Daily-Live-Ansicht" className="flex gap-1">
-          <TabPill label="Heute"   active={activeTab === 'heute'}   onClick={() => setActiveTab('heute')}   />
-          <TabPill label="Verlauf" active={activeTab === 'verlauf'} onClick={() => setActiveTab('verlauf')} />
+          <TabPill label="Live"        active={activeTab === 'live'} onClick={() => setActiveTab('live')} />
+          <TabPill label="Deine Sätze" active={activeTab === 'sets'} onClick={() => setActiveTab('sets')} />
         </div>
       </div>
 
@@ -655,8 +520,8 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
         className="flex-1 overflow-y-auto px-4 pt-4"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
-        {activeTab === 'heute' ? (
-          <HeuteTab
+        {activeTab === 'live' ? (
+          <LiveTab
             hasStatus={status !== null}
             isActive={isActive}
             startsAt={startsAt}
@@ -673,25 +538,11 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             refreshLeaderboard={refreshLeaderboard}
           />
         ) : (
-          <VerlaufTab
-            historyView={historyView}
-            selectedChallengeDate={selectedChallengeDate}
-            history={history}
-            isLoadingHistory={isLoadingHistory}
-            historyError={historyError}
-            refreshHistory={refreshHistory}
-            dayDetails={selectedDayDetails}
-            isLoadingDayDetails={isLoadingDayDetails}
-            dayDetailsError={dayDetailsError}
-            participantDetails={selectedParticipantDetails}
-            isLoadingParticipantDetails={isLoadingParticipantDetails}
-            participantDetailsError={participantDetailsError}
-            onSelectDay={handleSelectDay}
-            onSelectParticipant={handleSelectParticipant}
-            onBackToList={handleBackToList}
-            onBackToDay={handleBackToDay}
-            retryLoadDay={handleRetryDay}
-            retryLoadParticipant={handleRetryParticipant}
+          <SetsTab
+            mySets={mySets}
+            isLoadingMySets={isLoadingMySets}
+            setsError={setsError}
+            refreshMySets={refreshMySets}
           />
         )}
       </div>

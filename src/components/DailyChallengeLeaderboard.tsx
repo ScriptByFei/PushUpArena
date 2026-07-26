@@ -188,20 +188,16 @@ export function LeaderboardCard({
     );
   }
 
-  // Leer (defensiv — die Rangliste enthält normalerweise immer alle Nutzer)
+  // Leer — legitimer Zustand: niemand hat heute schon einen Satz absolviert.
+  // Die Rangliste zeigt ausschließlich Nutzer mit set_count > 0 (serverseitig
+  // gefiltert in get_daily_challenge_leaderboard).
   if (leaderboard.length === 0) {
     return (
       <Card>
         <CardTitle>Live-Rangliste</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
-          Die Rangliste konnte nicht geladen werden.
+          Noch keine Sätze heute. Sei der Erste!
         </p>
-        <button
-          onClick={() => void refreshLeaderboard()}
-          className="mt-3 rounded-xl border border-ink-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
-        >
-          Aktualisieren
-        </button>
       </Card>
     );
   }
