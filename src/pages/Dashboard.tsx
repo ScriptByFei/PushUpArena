@@ -188,7 +188,10 @@ export default function Dashboard() {
     setLastEntry({ id: entryId, amount });
     window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setLastEntry(null), 6000);
-    // Challenge-Satz wird automatisch via DB-Trigger angelegt (keine separate RPC nötig).
+    // workoutEntriesChanged wird bereits in useWorkoutLogger dispatched;
+    // hier nochmal explizit aufrufen als Belt-and-Suspenders für die Challenge-Karte.
+    void challenge.refreshLeaderboard();
+    void challenge.refreshMySets();
   }
 
   async function undoLast() {

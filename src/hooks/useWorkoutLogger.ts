@@ -54,6 +54,9 @@ export function useWorkoutLogger(exerciseId?: string, unit = 'Wdh.') {
 
       toast.success(`+${amount} ${unit} gespeichert 💪`);
 
+      // Challenge-Karte und DrawerStats sofort synchronisieren.
+      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
+
       // Meilenstein-Check: hat der User mit diesem Eintrag 100 heute geknackt?
       const newTotal = prevDailyTotal + amount;
       if (prevDailyTotal < MILESTONE && newTotal >= MILESTONE) {
