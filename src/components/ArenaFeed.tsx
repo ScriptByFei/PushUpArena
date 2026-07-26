@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useArenaFeed, type FeedFilter, type LiveActivityMap } from '@/hooks/useArenaFeed';
 import { getChip, getEventPriority, getGroupCardType } from '@/lib/feedRegistry';
@@ -718,35 +718,65 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
 
   const {
     events, loading, refreshing, hasMore, newEventIds, liveActivity,
-    refresh, loadMore,
+    refresh, loadMore, silentRefresh,
   } = useArenaFeed(filter);
 
-  // Fetch live leaderboard for competitive context (lead-over-#2, rank proximity)
+  // ── Rang-Hilfsfunktion ──────────────────────────────────────────────────────
+  const fetchRankList = useCallback(async (exId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).rpc('get_all_active_today', { p_exercise: exId });
+    if (!data) return;
+    const sorted: RankEntry[] = [...data]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .sort((a: any, b: any) => b.today_amount - a.today_amount)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((r: any, i: number) => ({
+        userId: r.user_id,
+        displayName: r.display_name || r.username || 'Unbekannt',
+        avatarUrl: (r.avatar_url ?? null) as string | null,
+        reps: r.today_amount as number,
+        rank: i + 1,
+      }));
+    setRankList(sorted);
+  }, []);
+
+  // Fetch live leaderboard for competitive context (lead-over-#2, rank proximity).
+  // Einmalig beim ersten Laden; wird durch liveActivity-Debounce aktuell gehalten.
   const rankFetched = useRef(false);
   useEffect(() => {
     if (rankFetched.current) return;
     const exId = activeExercise?.id ?? events.find(e => e.exercise_id)?.exercise_id;
     if (!exId) return;
     rankFetched.current = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).rpc('get_all_active_today', { p_exercise: exId }).then(({ data }: any) => {
-      if (!data) return;
-      const sorted: RankEntry[] = [...data]
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .sort((a: any, b: any) => b.today_amount - a.today_amount)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((r: any, i: number) => ({
-          userId: r.user_id,
-          displayName: r.display_name || r.username || 'Unbekannt',
-          avatarUrl: (r.avatar_url ?? null) as string | null,
-          reps: r.today_amount as number,
-          rank: i + 1,
-        }));
-      setRankList(sorted);
-    });
-  }, [activeExercise?.id, events]);
+    void fetchRankList(exId);
+  }, [activeExercise?.id, events, fetchRankList]);
 
-  // Re-fetch ranking on pull-to-refresh
+  // Debounced Aktualisierung von Rang + Feed wenn live_activity sich ändert.
+  // Tritt auf bei:
+  //   a) Neuem Workout (INSERT) → live_activity erhöht sich → neue Daten anzeigen
+  //   b) Gelöschtem/bearbeitetem Satz (DELETE/UPDATE) → live_activity sinkt →
+  //      abgelaufene feed_events aus dem UI entfernen + Rang korrigieren
+  const liveActivityDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (Object.keys(liveActivity).length === 0) return; // nichts zu tun bei leerem State
+    const exId = activeExercise?.id ?? events.find(e => e.exercise_id)?.exercise_id;
+
+    if (liveActivityDebounce.current) clearTimeout(liveActivityDebounce.current);
+    liveActivityDebounce.current = setTimeout(async () => {
+      // Feed neu laden (entfernt abgelaufene Events)
+      await silentRefresh();
+      // Rangliste neu laden
+      if (exId) await fetchRankList(exId);
+    }, 2000);
+
+    return () => {
+      if (liveActivityDebounce.current) clearTimeout(liveActivityDebounce.current);
+    };
+  // liveActivity als Dependency: jede Änderung (neues Workout, Delete, Edit) triggert den Debounce
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveActivity]);
+
+  // Re-fetch ranking + feed on pull-to-refresh
   const handleRefresh = async () => {
     rankFetched.current = false;
     await refresh();
@@ -761,12 +791,17 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
 
-  // Users with live activity who have no story in the current feed
+  // Users with live activity who have no story in the current feed.
+  // Nutzer mit todayTotal = 0 (Satz gelöscht) werden ausgeblendet.
   const liveOnlyUsers = useMemo(() => {
     const storyUserIds = new Set(stories.map(g => g.user_id));
     const fiveMinAgo = Date.now() - 5 * 60 * 1000;
     return Object.entries(liveActivity)
-      .filter(([userId, entry]) => !storyUserIds.has(userId) && new Date(entry.ts).getTime() > fiveMinAgo)
+      .filter(([userId, entry]) =>
+        !storyUserIds.has(userId) &&
+        entry.todayTotal > 0 &&                               // nicht anzeigen wenn Summe 0
+        new Date(entry.ts).getTime() > fiveMinAgo,
+      )
       .map(([userId, entry]) => {
         const ref = events.find(e => e.user_id === userId);
         return {

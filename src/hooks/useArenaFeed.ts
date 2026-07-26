@@ -187,8 +187,32 @@ export function useArenaFeed(filter: FeedFilter) {
     };
   }, [user, filter]);
 
+  // Silent re-fetch: ersetzt events ohne liveActivity zu leeren oder den Spinner zu zeigen.
+  // Wird aufgerufen wenn live_activity sich ändert (Satz gelöscht/bearbeitet) damit
+  // abgelaufene feed_events aus dem UI verschwinden.
+  const silentRefresh = useCallback(async () => {
+    if (!user) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc('get_arena_feed', {
+        p_filter: filter,
+        p_cursor: null,
+        p_limit: PAGE_SIZE,
+      });
+      if (error) throw error;
+      const rows = applyFilter((data as ArenaFeedEvent[]) ?? []);
+      setEvents(rows);
+      cursorRef.current = rows.length > 0 ? rows[rows.length - 1].created_at : null;
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (e) {
+      console.error('useArenaFeed silentRefresh error', e);
+    }
+  }, [user, filter]);
+
   // Realtime: live_activity aggregate → per-user today totals + last delta.
   // Replaces the old raw workout_entries subscription (fewer rows, no client-side accumulation).
+  // Beim DELETE/UPDATE eines workout_entries setzt der DB-Trigger invalidate_workout_feed_events()
+  // live_activity.today_total auf den neuen Wert (nie DELETE → payload.new ist immer befüllt).
   useEffect(() => {
     if (!user) return;
     const applyRow = (row: {
@@ -211,7 +235,13 @@ export function useArenaFeed(filter: FeedFilter) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'live_activity' },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (payload: any) => applyRow(payload.new),
+        (payload: any) => {
+          // payload.new ist null bei DELETE-Events — Guard verhindert Crash.
+          // Da der DB-Trigger immer UPDATE statt DELETE macht, ist dieser Fall
+          // theoretisch nicht möglich, aber defensiv sinnvoll.
+          if (!payload.new?.user_id) return;
+          applyRow(payload.new);
+        },
       )
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
@@ -227,5 +257,6 @@ export function useArenaFeed(filter: FeedFilter) {
     refresh,
     loadMore,
     toggleReaction,
+    silentRefresh,
   };
 }
