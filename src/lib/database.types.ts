@@ -182,7 +182,11 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
-      // ── Daily Challenge ────────────────────────────────────────────────────
+      // ── Daily Challenge (Legacy) ─────────────────────────────────────────────
+      // daily_challenge_participations/entries werden seit der Umstellung auf
+      // Daily Live (automatische Teilnahme, Quelle = workout_entries) von
+      // nichts mehr gelesen oder beschrieben. Tabellen bleiben in der DB
+      // erhalten (keine Datenlöschung), Typen hier nur noch zu Dokumentzwecken.
       daily_challenge_participations: {
         Row: {
           id: string;
@@ -218,7 +222,7 @@ export interface Database {
           workout_entry_id: string | null;  // Link zum Dashboard-Eintrag (nullable)
           is_imported: boolean;             // TRUE = automatisch beim Beitritt importiert (READ-ONLY)
         };
-        Insert: never;              // only via log_challenge_set RPC
+        Insert: never;              // Legacy-Tabelle, wird nicht mehr beschrieben (Daily Live liest direkt aus workout_entries)
         Update: never;
         Relationships: [];
       };
@@ -339,23 +343,6 @@ export interface Database {
           seconds_until_end: number;           // integer
         };
       };
-      log_challenge_set: {
-        Args: {
-          p_exercise_id: string;
-          p_repetitions: number;
-          /** Optional: ID des verknüpften workout_entries-Datensatzes (Dashboard-Auto-Log) */
-          p_workout_entry_id?: string | null;
-        };
-        Returns: {
-          status?: 'OK';
-          error?: string;
-          entry_id?: string;
-          total_repetitions?: number;
-          set_count?: number;
-          seconds_remaining?: number;
-          message?: string;
-        };
-      };
       get_daily_challenge_leaderboard: {
         Args: { p_exercise_id: string; p_date?: string | null };
         Returns: {
@@ -382,14 +369,6 @@ export interface Database {
           edit_until: string | null;
           is_imported: boolean;  // TRUE = importierter Startwert (READ-ONLY)
         }[];
-      };
-      update_challenge_set: {
-        Args: { p_entry_id: string; p_repetitions: number };
-        Returns: Json;
-      };
-      delete_challenge_set: {
-        Args: { p_entry_id: string };
-        Returns: Json;
       };
       get_challenge_history: {
         Args: { p_exercise_id: string; p_limit?: number };

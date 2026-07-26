@@ -146,20 +146,12 @@ export default function Dashboard() {
     window.dispatchEvent(new CustomEvent('openDailyChallenge'));
   }, []);
 
-  // Wenn im Modal ein Challenge-Satz gelöscht wird, kann der verknüpfte
-  // workout_entry mitgelöscht worden sein (delete_challenge_set löscht beide).
-  // → DrawerStats neu laden damit „Heute" sofort den korrekten Wert zeigt.
-  useEffect(() => {
-    const handler = () => void refetchStats();
-    window.addEventListener('challengeSetDeleted', handler);
-    return () => window.removeEventListener('challengeSetDeleted', handler);
-  }, [refetchStats]);
-
-  // Challenge-Karte nach jeder workout_entries-Mutation sofort neu laden.
+  // Daily-Live-Karte nach jeder workout_entries-Mutation sofort neu laden.
   // Dieses Event wird geworfen von:
   //   • useWorkouts (addEntry, updateEntry, deleteEntry) → Workout-Verlauf & Track-Page
-  //   • useDailyChallenge (updateSet, deleteSet) → Challenge-Modal
   //   • undoLast() hier unten → Rückgängig-Button
+  // DrawerStatsContext hört ebenfalls auf dieses Event und aktualisiert „Heute"
+  // selbstständig — kein zusätzlicher Listener hier nötig.
   // So bleibt die Karte immer synchron – ohne setTimeout und ohne Realtime-Latenz.
   useEffect(() => {
     const handler = () => {

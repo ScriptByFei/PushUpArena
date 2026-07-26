@@ -1,4 +1,7 @@
-// Hook für die gesamte Daily-Challenge-Logik.
+// Hook für Daily Live: reine Live-Auswertung der heutigen workout_entries.
+// Keine Anmeldung, keine Teilnehmerliste — jeder registrierte Nutzer ist
+// automatisch dabei. workout_entries ist die einzige Datenquelle (keine
+// separate Spiegel-Tabelle mehr).
 //
 // Architektur-Entscheidungen:
 //  • Kein React Query — analog zu useLeaderboard / useWorkoutLogger
@@ -12,11 +15,12 @@
 //    Re-Render des gesamten Modals
 //  • Status wird bei Tagesgrenze via onEnd-Callback aus useCountdown
 //    still im Hintergrund aktualisiert (kein Skeleton-Flash)
-//  • Realtime-Subscription auf daily_challenge_entries → Rangliste + Sätze
-//    automatisch aktuell halten wenn Challenge läuft.
-//  • Satzeingabe NICHT mehr im Challenge-Modal — Sätze kommen ausschließlich
-//    über Dashboard / NavDrawer (workout_entries). Ein DB-Trigger synct
-//    daily_challenge_entries automatisch.
+//  • Realtime-Subscription auf live_activity (öffentliches Aggregat, wird bei
+//    jeder workout_entries-Änderung getriggert) → Rangliste + eigene Sätze
+//    automatisch aktuell halten, siehe Kommentar bei der Subscription unten.
+//  • Satzeingabe NICHT im Challenge-Modal — Sätze kommen ausschließlich über
+//    Dashboard / NavDrawer (workout_entries) und werden von dort per Event
+//    ('workoutEntriesChanged') und Realtime propagiert.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -59,7 +63,6 @@ import {
   type DailyChallengeDayDetails,
   type DailyChallengeParticipantDetails,
   type DailyChallengeHistoricalSet,
-  DC_ERROR_MESSAGES,
   mapHistoryDay,
   mapLeaderboardEntry,
   mapSet,
@@ -115,14 +118,7 @@ export function useDailyChallenge() {
   const [isLoadingParticipantDetails, setIsLoadingParticipantDetails] = useState(false);
   const [participantDetailsError, setParticipantDetailsError]     = useState<string | null>(null);
 
-  // ── Aktions-States ────────────────────────────────────────────────────────
-  const [isEditingSet, setIsEditingSet]           = useState(false);
-  const [isDeletingSet, setIsDeletingSet]         = useState(false);
-  const [actionError, setActionError]             = useState<string | null>(null);
-
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const isEditingRef              = useRef(false);   // parallele updateSet-Aufrufe verhindern
-  const isDeletingRef             = useRef(false);   // parallele deleteSet-Aufrufe verhindern
   const currentChallengeDateRef   = useRef<string | null>(null);
   const channelRef                = useRef<RealtimeChannel | null>(null);
   // Unique suffix per hook instance so that Dashboard + Modal can coexist
@@ -170,6 +166,7 @@ export function useDailyChallenge() {
 
       setStatus(mapped);
     } catch (err) {
+      console.error('Daily Live status RPC failed:', err);
       const msg = err instanceof Error ? err.message : 'Status konnte nicht geladen werden.';
       setStatusError(msg);
     } finally {
@@ -190,6 +187,7 @@ export function useDailyChallenge() {
       if (error) throw error;
       setLeaderboard((data ?? []).map(mapLeaderboardEntry));
     } catch (err) {
+      console.error('Daily Live leaderboard RPC failed:', err);
       const msg = err instanceof Error ? err.message : 'Rangliste konnte nicht geladen werden.';
       setLeaderboardError(msg);
     } finally {
@@ -210,6 +208,7 @@ export function useDailyChallenge() {
       if (error) throw error;
       setMySets((data ?? []).map(mapSet));
     } catch (err) {
+      console.error('Daily Live my-sets RPC failed:', err);
       const msg = err instanceof Error ? err.message : 'Sätze konnten nicht geladen werden.';
       setSetsError(msg);
     } finally {
@@ -230,6 +229,7 @@ export function useDailyChallenge() {
       if (error) throw error;
       setHistory((data ?? []).map(mapHistoryDay));
     } catch (err) {
+      console.error('Daily Live history RPC failed:', err);
       const msg = err instanceof Error ? err.message : 'Verlauf konnte nicht geladen werden.';
       setHistoryError(msg);
     } finally {
@@ -268,6 +268,7 @@ export function useDailyChallenge() {
       dayDetailsCacheRef.current.set(cacheKey, mapped);
       setSelectedDayDetails(mapped);
     } catch (err) {
+      console.error('Daily Live day-details RPC failed:', err);
       const msg = err instanceof Error ? err.message : 'Tagesdetails konnten nicht geladen werden.';
       setDayDetailsError(msg);
     } finally {
@@ -334,6 +335,7 @@ export function useDailyChallenge() {
       participantCacheRef.current.set(cacheKey, participant);
       setSelectedParticipantDetails(participant);
     } catch (err) {
+      console.error('Daily Live participant-sets RPC failed:', err);
       const msg = err instanceof Error ? err.message : 'Teilnehmerdetails konnten nicht geladen werden.';
       setParticipantDetailsError(msg);
     } finally {
@@ -347,84 +349,6 @@ export function useDailyChallenge() {
     await refreshStatus();
     await Promise.all([refreshLeaderboard(), refreshMySets()]);
   }, [refreshStatus, refreshLeaderboard, refreshMySets]);
-
-  // ── updateSet ─────────────────────────────────────────────────────────────
-  // Ändert die Wiederholungszahl über das zugrundeliegende workout_entry.
-  // Der DB-Trigger synct daily_challenge_entries automatisch.
-  const updateSet = useCallback(async (
-    entryId: string,
-    repetitions: number,
-  ): Promise<{ ok: boolean }> => {
-    if (!exerciseId || !user) return { ok: false };
-    if (isEditingRef.current) return { ok: false };
-    isEditingRef.current = true;
-    setIsEditingSet(true);
-    setActionError(null);
-    try {
-      const { data, error } = await supabase.rpc('update_challenge_set', {
-        p_entry_id:    entryId,
-        p_repetitions: repetitions,
-      });
-      if (error) throw error;
-      if (data?.error) {
-        const msg = DC_ERROR_MESSAGES[data.error] ?? DC_ERROR_MESSAGES.UNKNOWN;
-        setActionError(msg);
-        toast.error(msg);
-        return { ok: false };
-      }
-      toast.success(`Satz aktualisiert: ${repetitions} Wdh.`);
-      await Promise.all([refreshLeaderboard(), refreshMySets()]);
-      // Dashboard + Aktivitätsverlauf informieren (workout_entry wurde geändert)
-      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
-      return { ok: true };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
-      setActionError(msg);
-      toast.error(msg);
-      return { ok: false };
-    } finally {
-      isEditingRef.current = false;
-      setIsEditingSet(false);
-    }
-  }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
-
-  // ── deleteSet ─────────────────────────────────────────────────────────────
-  // Löscht über das zugrundeliegende workout_entry; Trigger entfernt daily_challenge_entries.
-  const deleteSet = useCallback(async (
-    entryId: string,
-  ): Promise<{ ok: boolean }> => {
-    if (!exerciseId || !user) return { ok: false };
-    if (isDeletingRef.current) return { ok: false };
-    isDeletingRef.current = true;
-    setIsDeletingSet(true);
-    setActionError(null);
-    try {
-      const { data, error } = await supabase.rpc('delete_challenge_set', {
-        p_entry_id: entryId,
-      });
-      if (error) throw error;
-      if (data?.error) {
-        const msg = DC_ERROR_MESSAGES[data.error] ?? DC_ERROR_MESSAGES.UNKNOWN;
-        setActionError(msg);
-        toast.error(msg);
-        return { ok: false };
-      }
-      toast.success('Satz gelöscht.');
-      await Promise.all([refreshLeaderboard(), refreshMySets()]);
-      // workout_entry wurde gelöscht → Dashboard, Aktivität und DrawerStatsContext informieren
-      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
-      window.dispatchEvent(new CustomEvent('challengeSetDeleted'));
-      return { ok: true };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
-      setActionError(msg);
-      toast.error(msg);
-      return { ok: false };
-    } finally {
-      isDeletingRef.current = false;
-      setIsDeletingSet(false);
-    }
-  }, [exerciseId, user, refreshLeaderboard, refreshMySets, toast]);
 
   // ── Effects ───────────────────────────────────────────────────────────────
 
@@ -440,16 +364,22 @@ export function useDailyChallenge() {
     void refreshMySets();
   }, [challengeDate, user, refreshLeaderboard, refreshMySets]);
 
-  // Realtime-Subscription auf daily_challenge_entries (INSERT + UPDATE + DELETE)
-  // → Rangliste + Sätze automatisch aktuell halten wenn Challenge läuft.
+  // Realtime-Subscription auf live_activity (INSERT + UPDATE)
+  // → Rangliste + Sätze automatisch aktuell halten, sobald irgendein Nutzer
+  //   einen Satz erstellt, bearbeitet oder löscht.
   //
-  // Warum event: '*' statt nur 'INSERT':
-  //   Nach einem Edit (UPDATE) oder Delete (DELETE) durch die eigene Hook-Instanz
-  //   (z. B. im Modal) bekommen andere Instanzen (z. B. Dashboard) kein Signal,
-  //   weil update/deleteSet() nur den lokalen State refreshen. Realtime auf '*'
-  //   stellt sicher, dass alle Instanzen nach jeder Mutation synchron bleiben.
-  //
-  // Voraussetzung: ALTER PUBLICATION supabase_realtime ADD TABLE daily_challenge_entries;
+  // Warum live_activity statt workout_entries direkt:
+  //   workout_entries hat RLS "nur eigene Zeilen" (workout_select_own).
+  //   Supabase Realtime erzwingt RLS bei Postgres-Changes-Subscriptions für
+  //   authenticated-Clients — ein Client würde also NIE die Events anderer
+  //   Nutzer erhalten, nur seine eigenen. Für eine gemeinsame Live-Rangliste
+  //   ist das nutzlos. live_activity ist eine bereits bestehende, öffentlich
+  //   lesbare Aggregat-Tabelle (RLS: SELECT true für alle authenticated), die
+  //   bei jedem workout_entries-Insert/-Update/-Delete automatisch per
+  //   Trigger aktualisiert wird (siehe 20260716_arena_feed_v2.sql) und dient
+  //   hier nur als Signal ("irgendwas hat sich geändert") — die eigentlichen
+  //   Daten kommen weiterhin aus get_daily_challenge_leaderboard/
+  //   get_my_challenge_sets (direkt aus workout_entries, SECURITY DEFINER).
   useEffect(() => {
     if (channelRef.current) {
       void supabase.removeChannel(channelRef.current);
@@ -457,7 +387,7 @@ export function useDailyChallenge() {
     }
     if (!isActive || !exerciseId || !challengeDate) return;
 
-    const channelName = `${channelIdRef.current}_entries_${exerciseId}_${challengeDate}`;
+    const channelName = `${channelIdRef.current}_live_activity_${exerciseId}_${challengeDate}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -465,22 +395,16 @@ export function useDailyChallenge() {
         {
           event:  '*',
           schema: 'public',
-          table:  'daily_challenge_entries',
+          table:  'live_activity',
           filter: `exercise_id=eq.${exerciseId}`,
         },
-        (payload) => {
+        () => {
           // Debounce: bei mehreren schnellen Events in Folge nur einmal refreshen.
           if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
           realtimeDebounceRef.current = setTimeout(() => {
             realtimeDebounceRef.current = null;
             void refreshLeaderboard();
-            // Bei INSERT: mySets werden von logSet() direkt refresht (eigener Insert)
-            // oder ändern sich nicht (fremder Insert) → kein Refresh nötig.
-            // Bei UPDATE/DELETE: andere Hook-Instanzen (z. B. Dashboard) haben
-            // mySets noch veraltet → explizit refreshen.
-            if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-              void refreshMySets();
-            }
+            void refreshMySets();
           }, 300);
         }
       )
@@ -564,8 +488,6 @@ export function useDailyChallenge() {
     isLoadingHistory,
     isLoadingDayDetails,
     isLoadingParticipantDetails,
-    isEditingSet,
-    isDeletingSet,
 
     // Fehlerzustände
     statusError,
@@ -574,7 +496,6 @@ export function useDailyChallenge() {
     historyError,
     dayDetailsError,
     participantDetailsError,
-    actionError,
 
     // Aktionen
     refreshStatus,
@@ -584,8 +505,6 @@ export function useDailyChallenge() {
     loadHistoryDay,
     loadHistoryParticipant,
     refreshToday,
-    updateSet,
-    deleteSet,
   };
 }
 
