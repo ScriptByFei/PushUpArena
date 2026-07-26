@@ -61,7 +61,7 @@ export interface Database {
           slug: string;
           unit: string;
           created_at: string;
-          /** true = diese Übung hat eine aktive Daily Live Challenge */
+          /** true = diese Übung hat ein aktives Daily Live */
           is_challenge_enabled: boolean;
         };
         Insert: { name: string; slug: string; unit?: string; is_challenge_enabled?: boolean };
@@ -334,21 +334,9 @@ export interface Database {
           challenge_date: string;              // 'YYYY-MM-DD'
           starts_at: string;                   // ISO timestamptz
           ends_at: string;
-          has_joined: boolean;
           server_now: string;                  // ISO timestamptz
           seconds_until_start: number;         // integer
           seconds_until_end: number;           // integer
-          join_deadline_passed: boolean;       // true ab 16:20 Uhr Berliner Zeit
-          seconds_until_join_deadline: number; // negativ wenn abgelaufen
-        };
-      };
-      join_daily_challenge: {
-        Args: { p_exercise_id: string };
-        Returns: {
-          status?: 'JOINED' | 'ALREADY_JOINED';
-          error?: string;
-          participation_id?: string;
-          imported_amount?: number;  // Anzahl importierter Wdh. beim Beitritt (0 wenn keine)
         };
       };
       log_challenge_set: {
@@ -381,7 +369,6 @@ export interface Database {
           average_set: string | null;   // numeric(6,2) → string in JS
           first_set_at: string | null;
           last_set_at: string | null;
-          joined_at: string;
           rank: number;                 // bigint safely fits in number
           is_me: boolean;
         }[];

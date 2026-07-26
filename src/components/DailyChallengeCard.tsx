@@ -1,12 +1,11 @@
 /**
  * DailyChallengeCard — kompakte Live-Status-Karte für das Dashboard.
  *
- * Vier Zustände (alle animations-geschmeidig via Framer Motion):
+ * Jeder Nutzer ist automatisch im Daily Live. Zwei Zustände (alle
+ * animations-geschmeidig via Framer Motion):
  *
- *   NOT_JOINED  – Challenge läuft, User noch nicht dabei
- *   JOINED      – Challenge läuft, User nimmt teil (Rang, Fortschritt)
- *   ENDED_PART  – Challenge beendet, User hat teilgenommen (Ergebnis)
- *   ENDED_NONE  – Challenge beendet, User hat nicht teilgenommen (Sieger)
+ *   AKTIV    – Daily Live läuft (Rang, Fortschritt)
+ *   BEENDET  – Tag ist vorbei (Ergebnis)
  *
  * Daten kommen als Props von Dashboard.tsx (Hook-Instanz dort oben).
  * Zahlen-Animationen laufen direkt auf dem DOM (kein React-Rerender).
@@ -120,12 +119,8 @@ const CARD = 'overflow-hidden rounded-2xl border border-ink-700 bg-ink-800/70 px
 export interface DailyChallengeCardProps {
   /** Vollständiger Status-Return von get_daily_challenge_status */
   status: DailyChallengeStatus | null;
-  /** Aktuelle Rangliste (leer wenn noch keine Teilnehmer) */
+  /** Aktuelle Rangliste (immer alle Nutzer, auch mit 0 Sätzen) */
   leaderboard: DailyChallengeLeaderboardEntry[];
-  /** Ist gerade ein join-Request unterwegs? */
-  isJoining: boolean;
-  /** Teilnehmen-Aktion */
-  onJoin: () => void;
   /** Öffnet das DailyChallengeModal */
   onOpen: () => void;
   /** Einheit der Übung, z. B. "Wdh." */
@@ -137,18 +132,14 @@ export interface DailyChallengeCardProps {
 export function DailyChallengeCard({
   status,
   leaderboard,
-  isJoining,
-  onJoin,
   onOpen,
   exerciseUnit = 'Wdh.',
 }: DailyChallengeCardProps) {
 
   // ── Abgeleitete Werte ──────────────────────────────────────────────────────
 
-  const isActive           = status?.isActive           ?? false;
-  const hasJoined          = status?.hasJoined          ?? false;
-  const joinDeadlinePassed = status?.joinDeadlinePassed ?? false;
-  const isEnded            = status !== null && !isActive && status.serverNow >= status.endsAt;
+  const isActive = status?.isActive ?? false;
+  const isEnded  = status !== null && !isActive && status.serverNow >= status.endsAt;
 
   // Karte nur anzeigen für laufende oder heute beendete Challenges
   const berlinToday = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
@@ -161,7 +152,7 @@ export function DailyChallengeCard({
   const myTotal        = myEntry?.totalRepetitions ?? 0;
   const leaderTotal    = leader?.totalRepetitions ?? 0;
   const gapToFirst     = leaderTotal > myTotal ? leaderTotal - myTotal : 0;
-  const isLeading      = hasJoined && myTotal > 0 && myRank === 1;
+  const isLeading      = myTotal > 0 && myRank === 1;
 
   // Nicht zeigen wenn keine relevante Challenge
   if (!isActive && !(isEnded && isToday)) return null;
@@ -180,13 +171,13 @@ export function DailyChallengeCard({
         <div className="flex items-center gap-2">
           <span className="text-[13px] leading-none">🏁</span>
           <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-slate-500">
-            Daily Live Challenge · Beendet
+            Daily Live · Beendet
           </span>
         </div>
 
         {/* Ergebnis-Zeile */}
         <div className="mt-1.5 flex items-center justify-between gap-3">
-          {hasJoined && myRank != null ? (
+          {myRank != null ? (
             <span className="text-[13.5px] font-semibold text-slate-200">
               {rankLabel(myRank)} Platz {myRank}&thinsp;·&thinsp;{myTotal.toLocaleString('de-DE')} {exerciseUnit}
             </span>
@@ -209,50 +200,7 @@ export function DailyChallengeCard({
     );
   }
 
-  // ── Aktiv, noch nicht beigetreten ─────────────────────────────────────────
-
-  if (!hasJoined) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: -4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className={CARD}
-      >
-        <div className="flex items-center justify-between gap-3">
-          {/* Label + Hinweis */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <LiveDot />
-              <span className="text-[13px] font-semibold text-slate-100">Daily Live Challenge</span>
-            </div>
-            <p className="mt-0.5 text-[11.5px] text-slate-500">
-              {joinDeadlinePassed
-                ? 'Die Teilnahme für heute ist beendet.'
-                : participantCount > 0
-                  ? `${participantCount} Teilnehmer · Bereits absolvierte Wdh. werden übernommen.`
-                  : 'Teilnahme bis 16:20 Uhr möglich. Bereits absolvierte Wdh. werden übernommen.'}
-            </p>
-          </div>
-
-          {/* Join-Button — deaktiviert nach 16:20 */}
-          <button
-            onClick={joinDeadlinePassed ? undefined : onJoin}
-            disabled={isJoining || joinDeadlinePassed}
-            className={`shrink-0 rounded-xl px-4 py-2 text-[12px] font-semibold text-white transition active:scale-95 disabled:opacity-60 ${
-              joinDeadlinePassed
-                ? 'bg-ink-700 cursor-not-allowed'
-                : 'bg-brand-600 hover:bg-brand-500'
-            }`}
-          >
-            {isJoining ? '…' : joinDeadlinePassed ? 'Beendet' : 'Teilnehmen'}
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // ── Aktiv, teilnehmend ─────────────────────────────────────────────────────
+  // ── Aktiv ──────────────────────────────────────────────────────────────────
 
   return (
     <motion.button
@@ -266,7 +214,7 @@ export function DailyChallengeCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <LiveDot />
-          <span className="truncate text-[13px] font-semibold text-slate-100">Daily Live Challenge</span>
+          <span className="truncate text-[13px] font-semibold text-slate-100">Daily Live</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {myRank != null && (

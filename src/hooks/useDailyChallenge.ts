@@ -2,7 +2,7 @@
 //
 // Architektur-Entscheidungen:
 //  • Kein React Query — analog zu useLeaderboard / useWorkoutLogger
-//  • Die Daily Live Challenge ist IMMER für Push-ups (CHALLENGE_EXERCISE_SLUG).
+//  • Daily Live ist IMMER für Push-ups (CHALLENGE_EXERCISE_SLUG).
 //    Sie ist unabhängig von der aktuell ausgewählten Übung des Users.
 //    Andere Übungen erhalten später eigene Challenge-Hooks/-Instanzen.
 //  • Push-up Exercise-ID wird einmalig per Slug geladen (Modul-Level-Cache);
@@ -25,7 +25,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 
 // ── Push-up als exklusive Challenge-Übung ─────────────────────────────────────
-// Die Daily Live Challenge ist ausschließlich für Push-ups.
+// Daily Live ist ausschließlich für Push-ups.
 // Slug entspricht dem exercises.slug in der DB.
 // Für zukünftige Challenges: separater Hook mit anderem Slug.
 const CHALLENGE_EXERCISE_SLUG = 'pushups';
@@ -116,13 +116,11 @@ export function useDailyChallenge() {
   const [participantDetailsError, setParticipantDetailsError]     = useState<string | null>(null);
 
   // ── Aktions-States ────────────────────────────────────────────────────────
-  const [isJoining, setIsJoining]                 = useState(false);
   const [isEditingSet, setIsEditingSet]           = useState(false);
   const [isDeletingSet, setIsDeletingSet]         = useState(false);
   const [actionError, setActionError]             = useState<string | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const isJoiningRef              = useRef(false);   // parallele joinChallenge-Aufrufe verhindern
   const isEditingRef              = useRef(false);   // parallele updateSet-Aufrufe verhindern
   const isDeletingRef             = useRef(false);   // parallele deleteSet-Aufrufe verhindern
   const currentChallengeDateRef   = useRef<string | null>(null);
@@ -143,7 +141,6 @@ export function useDailyChallenge() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const isActive      = status?.isActive  ?? false;
-  const hasJoined     = status?.hasJoined ?? false;
   const challengeDate = status?.challengeDate ?? null;
 
   // ── refreshStatus ─────────────────────────────────────────────────────────
@@ -351,46 +348,6 @@ export function useDailyChallenge() {
     await Promise.all([refreshLeaderboard(), refreshMySets()]);
   }, [refreshStatus, refreshLeaderboard, refreshMySets]);
 
-  // ── joinChallenge ─────────────────────────────────────────────────────────
-  const joinChallenge = useCallback(async () => {
-    if (!exerciseId || !user) return;
-    if (isJoiningRef.current) return;
-    isJoiningRef.current = true;
-    setIsJoining(true);
-    setActionError(null);
-    try {
-      const { data, error } = await supabase.rpc('join_daily_challenge', {
-        p_exercise_id: exerciseId,
-      });
-      if (error) throw error;
-      if (data?.error) {
-        const msg = DC_ERROR_MESSAGES[data.error] ?? DC_ERROR_MESSAGES.UNKNOWN;
-        setActionError(msg);
-        toast.error(msg);
-        return;
-      }
-      // Alle abhängigen Bereiche gleichzeitig aktualisieren
-      await Promise.all([refreshStatus(), refreshLeaderboard(), refreshMySets()]);
-      // DrawerStatsContext (Dashboard) informieren: importierte Wdh. ändern Tagesstand
-      window.dispatchEvent(new CustomEvent('workoutEntriesChanged'));
-      if (data?.status === 'JOINED') {
-        const imported = data.imported_amount ?? 0;
-        if (imported > 0) {
-          toast.success(`Du nimmst teil! ${imported} Wdh. aus dem heutigen Training wurden übernommen. 🔥`);
-        } else {
-          toast.success('Du nimmst heute an der Daily Challenge teil! 🔥');
-        }
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : DC_ERROR_MESSAGES.UNKNOWN;
-      setActionError(msg);
-      toast.error(msg);
-    } finally {
-      isJoiningRef.current = false;
-      setIsJoining(false);
-    }
-  }, [exerciseId, user, refreshStatus, refreshLeaderboard, refreshMySets, toast]);
-
   // ── updateSet ─────────────────────────────────────────────────────────────
   // Ändert die Wiederholungszahl über das zugrundeliegende workout_entry.
   // Der DB-Trigger synct daily_challenge_entries automatisch.
@@ -480,8 +437,8 @@ export function useDailyChallenge() {
   useEffect(() => {
     if (!challengeDate || !user) return;
     void refreshLeaderboard();
-    if (hasJoined) void refreshMySets();
-  }, [challengeDate, hasJoined, user, refreshLeaderboard, refreshMySets]);
+    void refreshMySets();
+  }, [challengeDate, user, refreshLeaderboard, refreshMySets]);
 
   // Realtime-Subscription auf daily_challenge_entries (INSERT + UPDATE + DELETE)
   // → Rangliste + Sätze automatisch aktuell halten wenn Challenge läuft.
@@ -498,7 +455,7 @@ export function useDailyChallenge() {
       void supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
-    if (!isActive || !hasJoined || !exerciseId || !challengeDate) return;
+    if (!isActive || !exerciseId || !challengeDate) return;
 
     const channelName = `${channelIdRef.current}_entries_${exerciseId}_${challengeDate}`;
     const channel = supabase
@@ -541,7 +498,7 @@ export function useDailyChallenge() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [isActive, hasJoined, exerciseId, challengeDate, refreshLeaderboard, refreshMySets]);
+  }, [isActive, exerciseId, challengeDate, refreshLeaderboard, refreshMySets]);
 
   // Sichtbarkeits-Änderung: Status neu laden nach langer Pause ODER Tageswechsel.
   //
@@ -588,13 +545,10 @@ export function useDailyChallenge() {
     // Status
     status,
     isActive,
-    hasJoined,
     challengeDate,
     startsAt:             status?.startsAt             ?? null,
     endsAt:               status?.endsAt               ?? null,
     serverNow:            status?.serverNow            ?? null,
-    /** true ab 16:20 Uhr Berliner Zeit — Beitreten nicht mehr möglich */
-    joinDeadlinePassed:   status?.joinDeadlinePassed   ?? false,
 
     // Daten
     leaderboard,
@@ -610,7 +564,6 @@ export function useDailyChallenge() {
     isLoadingHistory,
     isLoadingDayDetails,
     isLoadingParticipantDetails,
-    isJoining,
     isEditingSet,
     isDeletingSet,
 
@@ -631,7 +584,6 @@ export function useDailyChallenge() {
     loadHistoryDay,
     loadHistoryParticipant,
     refreshToday,
-    joinChallenge,
     updateSet,
     deleteSet,
   };

@@ -1,4 +1,4 @@
-// Domain-Typen und Mapper für die Daily Challenge.
+// Domain-Typen und Mapper für Daily Live.
 // Raw-Formen kommen aus database.types.ts (snake_case, Daten als strings).
 // Die hier definierten Typen werden in Hooks und UI-Komponenten verwendet.
 
@@ -16,8 +16,6 @@ type ParticipantSetRaw = Database['public']['Functions']['get_daily_challenge_pa
 // ── Fehlercodes ────────────────────────────────────────────────────────────
 export type DailyChallengeError =
   | 'CHALLENGE_NOT_ACTIVE'
-  | 'NOT_JOINED'
-  | 'ALREADY_JOINED'
   | 'INVALID_REPETITIONS'
   | 'COOLDOWN_ACTIVE'
   | 'UNAUTHENTICATED'
@@ -26,22 +24,18 @@ export type DailyChallengeError =
   | 'DUPLICATE_REQUEST'
   | 'ENTRY_NOT_FOUND'
   | 'EDIT_WINDOW_EXPIRED'
-  | 'JOIN_DEADLINE_PASSED'
   | 'UNKNOWN';
 
 export const DC_ERROR_MESSAGES: Record<string, string> = {
-  CHALLENGE_NOT_ACTIVE:    'Die Daily Challenge ist gerade nicht aktiv.',
-  NOT_JOINED:              'Bitte nimm zuerst an der Challenge teil.',
-  ALREADY_JOINED:          'Du nimmst bereits an der Challenge teil.',
+  CHALLENGE_NOT_ACTIVE:    'Daily Live ist gerade nicht aktiv.',
   INVALID_REPETITIONS:     'Ein Satz muss 10–100 Wiederholungen enthalten.',
   COOLDOWN_ACTIVE:         'Bitte warte noch kurz vor dem nächsten Satz.',
   UNAUTHENTICATED:         'Bitte melde dich erneut an.',
   INVALID_EXERCISE:        'Ungültige Übung.',
-  EXERCISE_NOT_IN_CHALLENGE: 'Diese Übung hat keine aktive Daily Challenge.',
+  EXERCISE_NOT_IN_CHALLENGE: 'Diese Übung hat kein aktives Daily Live.',
   DUPLICATE_REQUEST:       'Dieser Satz wurde bereits verarbeitet.',
   ENTRY_NOT_FOUND:         'Dieser Satz wurde nicht gefunden.',
   EDIT_WINDOW_EXPIRED:     'Das Bearbeitungsfenster ist abgelaufen. Dieser Satz ist gesperrt.',
-  JOIN_DEADLINE_PASSED:    'Die Teilnahme für heute ist beendet. Neue Teilnahme ist morgen ab 00:00 Uhr wieder möglich.',
   UNKNOWN:                 'Aktion fehlgeschlagen. Bitte versuche es erneut.',
 };
 
@@ -52,13 +46,8 @@ export interface DailyChallengeStatus {
   startsAt: Date;
   endsAt: Date;
   serverNow: Date;
-  hasJoined: boolean;
   secondsUntilStart: number;
   secondsUntilEnd: number;
-  /** true ab 16:20 Uhr Berliner Zeit — Beitritt dann nicht mehr möglich */
-  joinDeadlinePassed: boolean;
-  /** Sekunden bis zur 16:20-Deadline (negativ wenn abgelaufen) */
-  secondsUntilJoinDeadline: number;
 }
 
 export interface DailyChallengeLeaderboardEntry {
@@ -72,7 +61,6 @@ export interface DailyChallengeLeaderboardEntry {
   averageSet: number | null;  // aus string (numeric) geparst
   firstSetAt: Date | null;
   lastSetAt: Date | null;
-  joinedAt: Date;
   rank: number;
   isMe: boolean;
 }
@@ -167,11 +155,8 @@ export function mapStatus(raw: StatusRaw): DailyChallengeStatus {
     startsAt:                  new Date(raw.starts_at),
     endsAt:                    new Date(raw.ends_at),
     serverNow:                 new Date(raw.server_now),
-    hasJoined:                 raw.has_joined,
     secondsUntilStart:         raw.seconds_until_start,
     secondsUntilEnd:           raw.seconds_until_end,
-    joinDeadlinePassed:        raw.join_deadline_passed,
-    secondsUntilJoinDeadline:  raw.seconds_until_join_deadline,
   };
 }
 
@@ -187,7 +172,6 @@ export function mapLeaderboardEntry(raw: LbRowRaw): DailyChallengeLeaderboardEnt
     averageSet:       raw.average_set != null ? parseFloat(raw.average_set) : null,
     firstSetAt:       raw.first_set_at  ? new Date(raw.first_set_at)  : null,
     lastSetAt:        raw.last_set_at   ? new Date(raw.last_set_at)   : null,
-    joinedAt:         new Date(raw.joined_at),
     rank:             Number(raw.rank),
     isMe:             raw.is_me,
   };

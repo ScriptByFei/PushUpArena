@@ -109,7 +109,7 @@ interface NavItemDef {
   to?:       string;
   /** Present → action item; called after onClose(). */
   onAction?: () => void;
-  /** Slightly elevated label colour (e.g. Daily Live Challenge). */
+  /** Slightly elevated label colour (e.g. Daily Live). */
   featured?: boolean;
 }
 
@@ -494,7 +494,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           to: '/',
         },
         {
-          id: 'challenge', label: 'Daily Live Challenge',
+          id: 'challenge', label: 'Daily Live',
           icon: <BoltIcon className={T.icon} />,
           onAction: onOpenDailyChallenge,
           featured: true,

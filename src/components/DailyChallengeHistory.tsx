@@ -167,7 +167,7 @@ export function HistoryList({
       <Card>
         <CardTitle>Noch kein Challenge-Verlauf</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
-          Abgeschlossene Daily Challenges werden hier angezeigt.
+          Abgeschlossene Daily-Live-Tage werden hier angezeigt.
         </p>
       </Card>
     );

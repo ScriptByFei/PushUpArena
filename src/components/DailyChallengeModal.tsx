@@ -6,7 +6,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardTitle } from '@/components/ui/Card';
-import { Spinner } from '@/components/ui/Spinner';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useCountdown } from '@/hooks/useCountdown';
 import { formatBerlinTime } from '@/lib/date';
@@ -33,7 +32,7 @@ function formatCountdown(totalSeconds: number): string {
 
 // ── Isolierter Countdown ───────────────────────────────────────────────────
 // Nur diese Komponente löst jede Sekunde einen Re-Render aus.
-// Alle Geschwister (TeilnahmeCard, SatzEingabeCard, …) bleiben stabil.
+// Alle Geschwister (PerformanceCard, LeaderboardCard, …) bleiben stabil.
 
 function DailyChallengeCountdown({
   targetTime,
@@ -105,130 +104,11 @@ function StatusCard({
         onEnd={onCountdownEnd}
       />
       {isActive ? (
-        <>
-          <p className="mt-1.5 text-xs text-slate-500">Live bis Mitternacht</p>
-          <p className="text-xs text-slate-500">Anmeldung bis 16:20 Uhr</p>
-        </>
+        <p className="mt-1.5 text-xs text-slate-500">Live bis Mitternacht</p>
       ) : (
-        <p className="mt-1.5 text-xs text-slate-500">Die nächste Challenge startet um Mitternacht.</p>
+        <p className="mt-1.5 text-xs text-slate-500">Das nächste Daily Live startet um Mitternacht.</p>
       )}
     </Card>
-  );
-}
-
-// ── Teilnahmekarte ─────────────────────────────────────────────────────────
-
-const RULES = [
-  'Sätze eintragen über Dashboard (Schnell eintragen) oder das Menü.',
-  'Nur Sätze mit 10 bis 100 Wiederholungen werden gewertet.',
-  'Bereits heute absolvierte Wdh. werden direkt übernommen.',
-  'Sätze können bis zu 30 Minuten nach Erstellung über das Dashboard bearbeitet oder gelöscht werden.',
-] as const;
-
-function TeilnahmeCard({
-  isActive,
-  hasJoined,
-  isJoining,
-  actionError,
-  joinChallenge,
-}: {
-  isActive: boolean;
-  hasJoined: boolean;
-  isJoining: boolean;
-  actionError: string | null;
-  joinChallenge: () => Promise<void>;
-}) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
-  const handleConfirmJoin = async () => {
-    await joinChallenge();
-    setConfirmOpen(false);
-  };
-
-  if (!isActive) {
-    return (
-      <Card>
-        <CardTitle>Teilnahme</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">Anmeldung täglich von 00:00 bis 16:20 Uhr möglich.</p>
-      </Card>
-    );
-  }
-
-  if (hasJoined) {
-    return (
-      <Card>
-        <CardTitle>Teilnahme</CardTitle>
-        <p className="mt-2 text-sm font-medium text-brand-300">Du nimmst heute teil.</p>
-      </Card>
-    );
-  }
-
-  return (
-    <>
-      <Card>
-        <CardTitle>Teilnahme</CardTitle>
-        <ul className="mt-2.5 space-y-1.5">
-          {RULES.map(rule => (
-            <li key={rule} className="flex items-start gap-2 text-sm text-slate-400">
-              <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-600" />
-              {rule}
-            </li>
-          ))}
-        </ul>
-        {actionError && <p className="mt-3 text-sm text-red-400">{actionError}</p>}
-        <button
-          onClick={() => setConfirmOpen(true)}
-          disabled={isJoining}
-          className="mt-4 w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-500 active:bg-brand-700 disabled:opacity-50"
-        >
-          Heute teilnehmen
-        </button>
-      </Card>
-
-      {confirmOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-join-title"
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setConfirmOpen(false)}
-          onKeyDown={e => {
-            if (e.key === 'Escape') {
-              e.stopPropagation();
-              setConfirmOpen(false);
-            }
-          }}
-        >
-          <div
-            className="w-full max-w-md rounded-t-3xl border-t border-ink-700 bg-ink-900 px-6 pb-10 pt-5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-600" />
-            <p id="confirm-join-title" className="text-center text-base font-bold text-slate-100">Daily Challenge starten?</p>
-            <p className="mt-2 mb-6 text-center text-sm text-slate-400">
-              Nach der Teilnahme werden deine Sätze dauerhaft für den heutigen Challenge-Tag gespeichert.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmOpen(false)}
-                disabled={isJoining}
-                className="flex-1 rounded-2xl border border-ink-600 py-3 text-sm font-semibold text-slate-300 transition hover:bg-ink-700 disabled:opacity-50"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={() => void handleConfirmJoin()}
-                disabled={isJoining}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-500 disabled:opacity-60"
-              >
-                {isJoining && <Spinner size="sm" />}
-                Teilnahme bestätigen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 
@@ -267,7 +147,6 @@ function StatCell({ label, value }: { label: string; value: string }) {
 // ── Leistungskarte ─────────────────────────────────────────────────────────
 
 interface PerformanceCardProps {
-  hasJoined: boolean;
   mySets: DailyChallengeSet[];
   isLoadingMySets: boolean;
   setsError: string | null;
@@ -275,7 +154,6 @@ interface PerformanceCardProps {
 }
 
 function PerformanceCard({
-  hasJoined,
   mySets,
   isLoadingMySets,
   setsError,
@@ -316,17 +194,6 @@ function PerformanceCard({
             <div className="h-10 rounded-md bg-ink-700" />
           </div>
         </div>
-      </Card>
-    );
-  }
-
-  if (!hasJoined) {
-    return (
-      <Card>
-        <CardTitle>Deine Leistung</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">
-          Nimm heute teil, um deine Challenge-Leistung zu sehen.
-        </p>
       </Card>
     );
   }
@@ -373,7 +240,6 @@ function PerformanceCard({
 // ── MySetsCard ─────────────────────────────────────────────────────────────
 
 interface MySetsCardProps {
-  hasJoined: boolean;
   mySets: DailyChallengeSet[];
   isLoadingMySets: boolean;
   setsError: string | null;
@@ -381,7 +247,6 @@ interface MySetsCardProps {
 }
 
 function MySetsCard({
-  hasJoined,
   mySets,
   isLoadingMySets,
   setsError,
@@ -420,17 +285,6 @@ function MySetsCard({
             </div>
           ))}
         </div>
-      </Card>
-    );
-  }
-
-  if (!hasJoined) {
-    return (
-      <Card>
-        <CardTitle>Deine Sätze</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">
-          Nach deiner Teilnahme werden deine Sätze hier angezeigt.
-        </p>
       </Card>
     );
   }
@@ -509,20 +363,16 @@ interface HeuteTabProps {
   // hasStatus = false solange der initiale Statusabruf noch läuft (status === null)
   hasStatus: boolean;
   isActive: boolean;
-  hasJoined: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
   serverNow: Date | null;
   onCountdownEnd: () => void;
-  isJoining: boolean;
   isLoadingMySets: boolean;
   isLoadingLeaderboard: boolean;
-  actionError: string | null;
   setsError: string | null;
   leaderboardError: string | null;
   mySets: DailyChallengeSet[];
   leaderboard: DailyChallengeLeaderboardEntry[];
-  joinChallenge: () => Promise<void>;
   refreshMySets: () => Promise<void>;
   refreshLeaderboard: () => Promise<void>;
 }
@@ -530,58 +380,37 @@ interface HeuteTabProps {
 function HeuteTab({
   hasStatus,
   isActive,
-  hasJoined,
   startsAt,
   endsAt,
   serverNow,
   onCountdownEnd,
-  isJoining,
   isLoadingMySets,
   isLoadingLeaderboard,
-  actionError,
   setsError,
   leaderboardError,
   mySets,
   leaderboard,
-  joinChallenge,
   refreshMySets,
   refreshLeaderboard,
 }: HeuteTabProps) {
-  // actionError aus joinChallenge soll nicht in SatzEingabeCard erscheinen.
-  // SatzEingabeCard verwendet intern hasTried-Guard — hier wird die gleiche
-  // actionError-Referenz weitergegeben; die Karte filtert selbst.
-  //
   // Skeleton nur beim initialen Laden (hasStatus = false).
   // Hintergrund-Refreshes (onCountdownEnd) aktualisieren status still →
-  // kein Skeleton-Flash, kein Unmount von TeilnahmeCard.
+  // kein Skeleton-Flash.
   return (
     <div className="flex flex-col gap-3">
       {!hasStatus ? (
-        <>
-          <CardSkeleton />
-          <CardSkeleton />
-        </>
+        <CardSkeleton />
       ) : (
-        <>
-          <StatusCard
-            isActive={isActive}
-            startsAt={startsAt}
-            endsAt={endsAt}
-            serverNow={serverNow}
-            onCountdownEnd={onCountdownEnd}
-          />
-          <TeilnahmeCard
-            isActive={isActive}
-            hasJoined={hasJoined}
-            isJoining={isJoining}
-            actionError={actionError}
-            joinChallenge={joinChallenge}
-          />
-        </>
+        <StatusCard
+          isActive={isActive}
+          startsAt={startsAt}
+          endsAt={endsAt}
+          serverNow={serverNow}
+          onCountdownEnd={onCountdownEnd}
+        />
       )}
 
       <PerformanceCard
-        hasJoined={hasJoined}
         mySets={mySets}
         isLoadingMySets={isLoadingMySets}
         setsError={setsError}
@@ -589,14 +418,12 @@ function HeuteTab({
       />
       <LeaderboardCard
         isActive={isActive}
-        hasJoined={hasJoined}
         leaderboard={leaderboard}
         isLoadingLeaderboard={isLoadingLeaderboard}
         leaderboardError={leaderboardError}
         refreshLeaderboard={refreshLeaderboard}
       />
       <MySetsCard
-        hasJoined={hasJoined}
         mySets={mySets}
         isLoadingMySets={isLoadingMySets}
         setsError={setsError}
@@ -703,16 +530,13 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
   const {
     status,
     isActive,
-    hasJoined,
     startsAt,
     endsAt,
     serverNow,
     leaderboard,
     mySets,
-    isJoining,
     isLoadingMySets,
     isLoadingLeaderboard,
-    actionError,
     setsError,
     leaderboardError,
     history,
@@ -724,7 +548,6 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     selectedParticipantDetails,
     isLoadingParticipantDetails,
     participantDetailsError,
-    joinChallenge,
     refreshStatus,
     refreshMySets,
     refreshLeaderboard,
@@ -804,7 +627,7 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-50 flex flex-col bg-ink-950"
       role="dialog"
       aria-modal="true"
-      aria-label="Daily Challenge"
+      aria-label="Daily Live"
       onKeyDown={handleKeyDown}
     >
       <div style={{ paddingTop: 'env(safe-area-inset-top)' }} />
@@ -812,7 +635,7 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
       {/* Header */}
       <div className="shrink-0 border-b border-ink-800 px-4 pb-0 pt-2">
         <div className="flex items-center justify-between pb-3">
-          <h2 className="text-lg font-extrabold text-slate-100">Daily Challenge</h2>
+          <h2 className="text-lg font-extrabold text-slate-100">Daily Live</h2>
           <button
             onClick={onClose}
             className="rounded-xl p-2 text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
@@ -821,7 +644,7 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
             <CloseIcon />
           </button>
         </div>
-        <div role="tablist" aria-label="Challenge-Ansicht" className="flex gap-1">
+        <div role="tablist" aria-label="Daily-Live-Ansicht" className="flex gap-1">
           <TabPill label="Heute"   active={activeTab === 'heute'}   onClick={() => setActiveTab('heute')}   />
           <TabPill label="Verlauf" active={activeTab === 'verlauf'} onClick={() => setActiveTab('verlauf')} />
         </div>
@@ -836,20 +659,16 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
           <HeuteTab
             hasStatus={status !== null}
             isActive={isActive}
-            hasJoined={hasJoined}
             startsAt={startsAt}
             endsAt={endsAt}
             serverNow={serverNow}
             onCountdownEnd={handleCountdownEnd}
-            isJoining={isJoining}
             isLoadingMySets={isLoadingMySets}
             isLoadingLeaderboard={isLoadingLeaderboard}
-            actionError={actionError}
             setsError={setsError}
             leaderboardError={leaderboardError}
             mySets={mySets}
             leaderboard={leaderboard}
-            joinChallenge={joinChallenge}
             refreshMySets={refreshMySets}
             refreshLeaderboard={refreshLeaderboard}
           />

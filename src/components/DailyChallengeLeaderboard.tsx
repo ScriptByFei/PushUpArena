@@ -1,4 +1,4 @@
-// Live-Rangliste für die Daily Challenge.
+// Live-Rangliste für Daily Live.
 // Reine Props-Komponente — kein eigener Supabase-Zugriff, kein useDailyChallenge.
 // Daten kommen ausschließlich aus dem Hook über DailyChallengeModal.
 
@@ -132,7 +132,6 @@ function LeaderboardRowSkeleton({ wide }: { wide?: boolean }) {
 
 export interface LeaderboardCardProps {
   isActive: boolean;
-  hasJoined: boolean;
   leaderboard: DailyChallengeLeaderboardEntry[];
   isLoadingLeaderboard: boolean;
   leaderboardError: string | null;
@@ -141,7 +140,6 @@ export interface LeaderboardCardProps {
 
 export function LeaderboardCard({
   isActive,
-  hasJoined,
   leaderboard,
   isLoadingLeaderboard,
   leaderboardError,
@@ -152,7 +150,7 @@ export function LeaderboardCard({
     return (
       <Card>
         <CardTitle>Live-Rangliste</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">Die Rangliste wird aktiv, sobald Teilnehmer beitreten.</p>
+        <p className="mt-2 text-sm text-slate-500">Die Rangliste wird um Mitternacht aktiv.</p>
       </Card>
     );
   }
@@ -190,29 +188,20 @@ export function LeaderboardCard({
     );
   }
 
-  // Leer
+  // Leer (defensiv — die Rangliste enthält normalerweise immer alle Nutzer)
   if (leaderboard.length === 0) {
     return (
       <Card>
         <CardTitle>Live-Rangliste</CardTitle>
-        {hasJoined ? (
-          // User hat teilgenommen, aber ist nicht in der Liste — inkonsistenter Zustand
-          <>
-            <p className="mt-2 text-sm text-slate-500">
-              Du solltest bereits gelistet sein — lade die Rangliste neu.
-            </p>
-            <button
-              onClick={() => void refreshLeaderboard()}
-              className="mt-3 rounded-xl border border-ink-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
-            >
-              Aktualisieren
-            </button>
-          </>
-        ) : (
-          <p className="mt-2 text-sm text-slate-500">
-            Noch keine Teilnehmer. Sei der Erste!
-          </p>
-        )}
+        <p className="mt-2 text-sm text-slate-500">
+          Die Rangliste konnte nicht geladen werden.
+        </p>
+        <button
+          onClick={() => void refreshLeaderboard()}
+          className="mt-3 rounded-xl border border-ink-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
+        >
+          Aktualisieren
+        </button>
       </Card>
     );
   }

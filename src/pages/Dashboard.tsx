@@ -106,7 +106,7 @@ export default function Dashboard() {
   const restDay = useRestDayInfo(exercise?.id);
   const toast = useToast();
 
-  // Daily Challenge — eigene Hook-Instanz für Dashboard (eindeutige Channel-ID)
+  // Daily Live — eigene Hook-Instanz für Dashboard (eindeutige Channel-ID)
   const challenge = useDailyChallenge();
 
   const [streakInfoOpen, setStreakInfoOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function Dashboard() {
   // Challenge-Karte nach jeder workout_entries-Mutation sofort neu laden.
   // Dieses Event wird geworfen von:
   //   • useWorkouts (addEntry, updateEntry, deleteEntry) → Workout-Verlauf & Track-Page
-  //   • useDailyChallenge (joinChallenge, updateSet, deleteSet) → Challenge-Modal
+  //   • useDailyChallenge (updateSet, deleteSet) → Challenge-Modal
   //   • undoLast() hier unten → Rückgängig-Button
   // So bleibt die Karte immer synchron – ohne setTimeout und ohne Realtime-Latenz.
   useEffect(() => {
@@ -245,13 +245,11 @@ export default function Dashboard() {
         <StatTile label="Gesamt" value={statsLoading ? '–' : stats.total_amount} />
       </div>
 
-      {/* Daily Live Challenge — nur für Push-up sichtbar */}
+      {/* Daily Live — nur für Push-up sichtbar */}
       {exercise.is_challenge_enabled && (
         <DailyChallengeCard
           status={challenge.status}
           leaderboard={challenge.leaderboard}
-          isJoining={challenge.isJoining}
-          onJoin={challenge.joinChallenge}
           onOpen={openChallengeModal}
           exerciseUnit={unit}
         />
