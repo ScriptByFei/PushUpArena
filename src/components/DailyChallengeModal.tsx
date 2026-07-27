@@ -41,7 +41,7 @@ function DailyChallengeCountdown({
 }) {
   const seconds = useCountdown(targetTime, serverNow, onEnd);
   return (
-    <p className="mt-1.5 font-mono tabular-nums text-3xl font-bold tracking-tight text-slate-100">
+    <p className="mt-1.5 font-mono tabular-nums text-4xl font-extrabold tracking-tight text-white [text-shadow:0_0_18px_rgba(129,140,248,0.4)]">
       {formatCountdown(seconds)}
     </p>
   );
@@ -61,11 +61,17 @@ function CloseIcon() {
 
 type Tab = 'live' | 'sets';
 
+// ── Gemeinsamer Karten-Look (Glow + dezenter Verlauf) ───────────────────────
+// Nur innerhalb von Daily Live verwendet — die globale .card-Klasse in
+// index.css bleibt unangetastet (wirkt sonst app-weit).
+
+const PREMIUM_CARD = 'border-ink-600/60 shadow-glow bg-gradient-to-b from-ink-800/85 to-ink-800/55';
+
 // ── Skeleton ───────────────────────────────────────────────────────────────
 
 function CardSkeleton() {
   return (
-    <Card>
+    <Card className={PREMIUM_CARD}>
       <div className="animate-pulse space-y-2.5">
         <div className="h-3.5 w-20 rounded-md bg-ink-700" />
         <div className="h-9 w-36 rounded-md bg-ink-700" />
@@ -92,17 +98,33 @@ function StatusCard({
 }) {
   const targetTime = isActive ? endsAt : startsAt;
   return (
-    <Card>
-      <CardTitle>{isActive ? 'Challenge läuft' : 'Challenge pausiert'}</CardTitle>
+    <Card
+      className={
+        isActive
+          ? 'border-brand-500/30 bg-gradient-to-br from-brand-900/50 via-ink-800/80 to-ink-800/60 shadow-glow'
+          : PREMIUM_CARD
+      }
+    >
+      <div className="flex items-center gap-2">
+        <CardTitle className={isActive ? '!text-brand-200' : ''}>
+          {isActive ? 'Challenge läuft' : 'Challenge pausiert'}
+        </CardTitle>
+        {isActive && (
+          <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            Live
+          </span>
+        )}
+      </div>
       <DailyChallengeCountdown
         targetTime={targetTime}
         serverNow={serverNow}
         onEnd={onCountdownEnd}
       />
       {isActive ? (
-        <p className="mt-1.5 text-xs text-slate-500">Live bis Mitternacht</p>
+        <p className="mt-1.5 text-xs text-slate-400">Live bis Mitternacht</p>
       ) : (
-        <p className="mt-1.5 text-xs text-slate-500">Das nächste Daily Live startet um Mitternacht.</p>
+        <p className="mt-1.5 text-xs text-slate-400">Das nächste Daily Live startet um Mitternacht.</p>
       )}
     </Card>
   );
@@ -131,11 +153,23 @@ function computeStats(sets: DailyChallengeSet[]): ChallengeStats | null {
   };
 }
 
-function StatCell({ label, value }: { label: string; value: string }) {
+function StatCell({
+  label,
+  value,
+  dotClassName,
+}: {
+  label: string;
+  value: string;
+  /** Farbe des kleinen Indikator-Punkts vor dem Label, z. B. "bg-blue-400" */
+  dotClassName: string;
+}) {
   return (
     <div>
-      <p className="tabular-nums text-lg font-bold leading-none text-slate-100">{value}</p>
-      <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+      <p className="tabular-nums text-lg font-bold leading-none text-white">{value}</p>
+      <div className="mt-1.5 flex items-center gap-1.5">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClassName}`} aria-hidden="true" />
+        <p className="text-xs text-slate-400">{label}</p>
+      </div>
     </div>
   );
 }
@@ -160,7 +194,7 @@ function PerformanceCard({
 
   if (setsError) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Deine Leistung</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
           Deine Leistung konnte nicht geladen werden.
@@ -178,7 +212,7 @@ function PerformanceCard({
   // Skeleton nur beim initialen Laden (kein Flash bei Hintergrund-Refresh)
   if (isLoadingMySets && mySets.length === 0) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <div className="animate-pulse space-y-3">
           <div className="h-3.5 w-28 rounded-md bg-ink-700" />
           <div className="h-8 w-16 rounded-md bg-ink-700" />
@@ -196,7 +230,7 @@ function PerformanceCard({
 
   if (!stats) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Deine Leistung</CardTitle>
         <p className="mt-2 text-sm text-slate-500">Noch kein Satz eingetragen.</p>
         <p className="mt-1 text-xs text-slate-600">
@@ -206,26 +240,25 @@ function PerformanceCard({
     );
   }
 
+  const averageSetValue = stats.averageSet.toLocaleString('de-DE', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
   return (
-    <Card>
+    <Card className={PREMIUM_CARD}>
       <CardTitle>Deine Leistung</CardTitle>
-      {/* Gesamtwiederholungen – prominentester Wert */}
-      <p className="mt-1.5 tabular-nums text-3xl font-bold tracking-tight text-slate-100">
+      {/* Gesamtwiederholungen – prominentester Wert, in Primary Brand Color */}
+      <p className="mt-1.5 tabular-nums text-3xl font-extrabold tracking-tight text-brand-300 [text-shadow:0_0_20px_rgba(99,102,241,0.35)]">
         {stats.totalRepetitions}
       </p>
-      <p className="text-xs text-slate-500">Wiederholungen gesamt</p>
-      {/* 2×2-Raster */}
-      <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-ink-800 pt-3.5">
-        <StatCell label="Sätze"          value={String(stats.setCount)} />
-        <StatCell label="Bester Satz"    value={String(stats.maxSet)}   />
-        <StatCell label="Kleinster Satz" value={String(stats.minSet)}   />
-        <StatCell
-          label="Ø pro Satz"
-          value={stats.averageSet.toLocaleString('de-DE', {
-            minimumFractionDigits: 1,
-            maximumFractionDigits: 1,
-          })}
-        />
+      <p className="text-xs text-slate-400">Wiederholungen gesamt</p>
+      {/* 2×2-Raster: Sätze / Ø pro Satz (oben) — Kleinster / Bester Satz (unten) */}
+      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-ink-700/60 pt-4">
+        <StatCell label="Sätze"          value={String(stats.setCount)} dotClassName="bg-blue-400" />
+        <StatCell label="Ø pro Satz"     value={averageSetValue}        dotClassName="bg-teal-400" />
+        <StatCell label="Kleinster Satz" value={String(stats.minSet)}   dotClassName="bg-orange-400" />
+        <StatCell label="Bester Satz"    value={String(stats.maxSet)}   dotClassName="bg-amber-400" />
       </div>
     </Card>
   );
@@ -250,7 +283,7 @@ function MySetsCard({
 }: MySetsCardProps) {
   if (setsError) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Deine Sätze</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
           Deine Sätze konnten nicht geladen werden.
@@ -268,7 +301,7 @@ function MySetsCard({
   // Skeleton nur beim initialen Laden
   if (isLoadingMySets && mySets.length === 0) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <div className="animate-pulse">
           <div className="mb-3 h-3.5 w-20 rounded-md bg-ink-700" />
           {[0, 1, 2].map(i => (
@@ -287,7 +320,7 @@ function MySetsCard({
 
   if (mySets.length === 0) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Noch keine Sätze heute</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
           Deine heutigen Push-up-Sätze erscheinen hier automatisch.
@@ -299,7 +332,7 @@ function MySetsCard({
   const total = mySets.length;
 
   return (
-    <Card>
+    <Card className={PREMIUM_CARD}>
       <CardTitle>Deine Sätze</CardTitle>
       <ul className="mt-1.5 divide-y divide-ink-800">
         {mySets.map((set, i) => {
@@ -314,7 +347,7 @@ function MySetsCard({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="tabular-nums text-lg font-bold leading-none text-slate-100">
+                  <p className="tabular-nums text-lg font-bold leading-none text-white">
                     {set.repetitions}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-500">Wdh.</p>

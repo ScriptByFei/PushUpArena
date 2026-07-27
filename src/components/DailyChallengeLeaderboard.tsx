@@ -7,34 +7,44 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { formatBerlinTime } from '@/lib/date';
 import type { DailyChallengeLeaderboardEntry } from '@/lib/dailyChallenge.types';
 
+// ── Gemeinsamer Karten-Look (Glow + dezenter Verlauf) ───────────────────────
+// Nur innerhalb von Daily Live verwendet — die globale .card-Klasse in
+// index.css bleibt unangetastet (wirkt sonst app-weit).
+
+const PREMIUM_CARD = 'border-ink-600/60 shadow-glow bg-gradient-to-b from-ink-800/85 to-ink-800/55';
+
 // ── Rang-Stil-Helfer ───────────────────────────────────────────────────────
+// Platz 1 = Gold, Platz 2 = Silber, Platz 3 = Bronze — deutlich gesättigter
+// als die übrigen Plätze, mit leichtem Glow via drop-shadow.
 
 function rankTextColor(rank: number): string {
-  if (rank === 1) return 'text-amber-400';
-  if (rank === 2) return 'text-slate-400';
-  if (rank === 3) return 'text-orange-400';
+  if (rank === 1) return 'text-amber-300 [filter:drop-shadow(0_0_6px_rgba(251,191,36,0.5))]';
+  if (rank === 2) return 'text-slate-200 [filter:drop-shadow(0_0_6px_rgba(203,213,225,0.35))]';
+  if (rank === 3) return 'text-orange-300 [filter:drop-shadow(0_0_6px_rgba(251,146,60,0.4))]';
   return 'text-slate-500';
 }
 
 function rowClassName(rank: number, isMe: boolean): string {
-  const base = 'rounded-xl border px-3 py-2.5';
+  const base = 'rounded-xl border px-3 py-2.5 transition-colors';
+  // Eigener Eintrag: dezenter Brand-Rahmen + Glow, unabhängig vom Platz.
+  const meRing = isMe ? ' ring-2 ring-brand-400/50 shadow-glow' : '';
   if (rank === 1) {
     return isMe
-      ? `${base} border-amber-500/30 bg-amber-500/5 ring-1 ring-brand-500/30`
-      : `${base} border-amber-500/30 bg-amber-500/5`;
+      ? `${base} border-amber-400/60 bg-gradient-to-r from-amber-500/15 to-amber-500/5${meRing}`
+      : `${base} border-amber-400/50 bg-gradient-to-r from-amber-500/12 to-amber-500/4`;
   }
   if (rank === 2) {
     return isMe
-      ? `${base} border-slate-400/25 bg-brand-400/8 ring-1 ring-brand-500/25`
-      : `${base} border-slate-400/25 bg-slate-400/4`;
+      ? `${base} border-slate-300/50 bg-gradient-to-r from-slate-300/12 to-slate-300/4${meRing}`
+      : `${base} border-slate-300/40 bg-gradient-to-r from-slate-300/10 to-slate-300/3`;
   }
   if (rank === 3) {
     return isMe
-      ? `${base} border-orange-500/25 bg-brand-400/8 ring-1 ring-brand-500/25`
-      : `${base} border-orange-500/25 bg-orange-500/4`;
+      ? `${base} border-orange-400/55 bg-gradient-to-r from-orange-500/14 to-orange-500/4${meRing}`
+      : `${base} border-orange-400/45 bg-gradient-to-r from-orange-500/10 to-orange-500/3`;
   }
   return isMe
-    ? `${base} border-brand-500/30 bg-brand-400/8`
+    ? `${base} border-brand-500/40 bg-brand-400/8${meRing}`
     : `${base} border-ink-800`;
 }
 
@@ -100,7 +110,7 @@ export function LeaderboardRow({ entry }: { entry: DailyChallengeLeaderboardEntr
 
         {/* Gesamtwiederholungen */}
         <div className="shrink-0 text-right">
-          <p className="tabular-nums text-base font-bold leading-none text-slate-100">
+          <p className="tabular-nums text-base font-bold leading-none text-brand-300">
             {totalRepetitions}
           </p>
           <p className="mt-0.5 text-[10px] text-slate-600">Wdh.</p>
@@ -148,7 +158,7 @@ export function LeaderboardCard({
   // Challenge noch nicht aktiv
   if (!isActive) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Live-Rangliste</CardTitle>
         <p className="mt-2 text-sm text-slate-500">Die Rangliste wird um Mitternacht aktiv.</p>
       </Card>
@@ -158,7 +168,7 @@ export function LeaderboardCard({
   // Fehler
   if (leaderboardError) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Live-Rangliste</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
           Die Live-Rangliste konnte nicht geladen werden.
@@ -176,7 +186,7 @@ export function LeaderboardCard({
   // Skeleton — nur beim initialen Laden (keine Daten vorhanden)
   if (isLoadingLeaderboard && leaderboard.length === 0) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Live-Rangliste</CardTitle>
         <ul className="mt-2 space-y-2">
           <LeaderboardRowSkeleton wide />
@@ -193,7 +203,7 @@ export function LeaderboardCard({
   // gefiltert in get_daily_challenge_leaderboard).
   if (leaderboard.length === 0) {
     return (
-      <Card>
+      <Card className={PREMIUM_CARD}>
         <CardTitle>Live-Rangliste</CardTitle>
         <p className="mt-2 text-sm text-slate-500">
           Noch keine Sätze heute. Sei der Erste!
@@ -205,7 +215,7 @@ export function LeaderboardCard({
   const participantCount = leaderboard.length;
 
   return (
-    <Card>
+    <Card className={PREMIUM_CARD}>
       {/* Titel + Teilnehmeranzahl */}
       <div className="flex items-baseline justify-between">
         <CardTitle>Live-Rangliste</CardTitle>
