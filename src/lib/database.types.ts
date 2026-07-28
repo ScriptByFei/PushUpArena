@@ -21,6 +21,11 @@ export interface Database {
           quiet_hours_start: number;
           quiet_hours_end: number;
           quick_amounts: number[] | null;
+          age: number | null;
+          height_cm: number | null;
+          weight_kg: number | null;
+          average_daily_steps: number | null;
+          calorie_deficit_target: 'leicht' | 'moderat' | 'hoeher';
           created_at: string;
           updated_at: string;
         };
@@ -51,6 +56,11 @@ export interface Database {
           quiet_hours_start?: number;
           quiet_hours_end?: number;
           quick_amounts?: number[] | null;
+          age?: number | null;
+          height_cm?: number | null;
+          weight_kg?: number | null;
+          average_daily_steps?: number | null;
+          calorie_deficit_target?: 'leicht' | 'moderat' | 'hoeher';
         };
         Relationships: [];
       };

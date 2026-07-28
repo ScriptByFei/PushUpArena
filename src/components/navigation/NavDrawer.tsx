@@ -60,6 +60,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { Avatar } from '@/components/ui/Avatar';
 import {
   BoltIcon,
+  CalculatorIcon,
   HomeIcon,
   LogoutIcon,
   PlusIcon,
@@ -528,6 +529,11 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           id: 'achievements', label: 'Erfolge',
           icon: <TrophyIcon className={T.icon} />,
           to: '/achievements',
+        },
+        {
+          id: 'calorie-calculator', label: 'Kalorienrechner',
+          icon: <CalculatorIcon className={T.icon} />,
+          to: '/calorie-calculator',
         },
         {
           id: 'settings', label: 'Einstellungen',

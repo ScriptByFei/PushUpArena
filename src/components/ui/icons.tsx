@@ -210,3 +210,19 @@ export const MenuIcon = (p: IconProps) => (
     <path d="M3 6h18M3 12h18M3 18h18" />
   </svg>
 );
+
+export const CalculatorIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="4" y="2" width="16" height="20" rx="2" />
+    <line x1="8" y1="6" x2="16" y2="6" />
+    <line x1="8" y1="11" x2="8" y2="11.01" />
+    <line x1="12" y1="11" x2="12" y2="11.01" />
+    <line x1="16" y1="11" x2="16" y2="11.01" />
+    <line x1="8" y1="15" x2="8" y2="15.01" />
+    <line x1="12" y1="15" x2="12" y2="15.01" />
+    <line x1="16" y1="15" x2="16" y2="15.01" />
+    <line x1="8" y1="19" x2="8" y2="19.01" />
+    <line x1="12" y1="19" x2="12" y2="19.01" />
+    <line x1="16" y1="19" x2="16" y2="19.01" />
+  </svg>
+);
