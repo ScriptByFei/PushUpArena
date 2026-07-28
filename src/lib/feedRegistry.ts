@@ -7,7 +7,7 @@
  *   2. Create the corresponding DB logic (trigger / edge function) that inserts
  *      the event — priority/visibility/expires_at there must mirror this entry
  *      (see feed_event_priority / feed_event_visibility / feed_event_ttl in
- *      supabase/migrations/20260716_arena_feed_v2.sql).
+ *      supabase/migrations/20260716000001_arena_feed_v2.sql).
  *
  * Priority (1–10, higher = shown first / surfaced more prominently):
  *   10  1000-rep day, first 1000er day, 365d streak, 100k total

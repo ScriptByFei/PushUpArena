@@ -23,17 +23,21 @@ Row Level Security, Seed-Daten, Google-Login und die Account-Löschungs-Funktion
 Die SQL-Dateien liegen in `supabase/migrations/` und müssen **in dieser Reihenfolge**
 ausgeführt werden:
 
-| Datei                          | Inhalt                                        |
-| ------------------------------ | --------------------------------------------- |
-| `0001_initial_schema.sql`      | Tabellen, Indizes, RLS aktivieren             |
-| `0002_rls_policies.sql`        | Row-Level-Security-Policies + Grants          |
-| `0003_functions_triggers.sql`  | Funktionen, Trigger, sicheres Leaderboard     |
-| `0004_seed.sql`                | Übung „Pushups" + Badge-Katalog               |
+| Datei                                          | Inhalt                                        |
+| ---------------------------------------------- | --------------------------------------------- |
+| `20260701000001_initial_schema.sql`            | Tabellen, Indizes, RLS aktivieren             |
+| `20260701000002_rls_policies.sql`              | Row-Level-Security-Policies + Grants          |
+| `20260701000003_functions_triggers.sql`        | Funktionen, Trigger, sicheres Leaderboard     |
+| `20260701000004_seed.sql`                      | Übung „Pushups" + Badge-Katalog               |
+
+Alle Migrationsdateien sind nach dem Schema `YYYYMMDDHHMMSS_beschreibung.sql`
+benannt und sortieren dadurch eindeutig chronologisch (siehe restliche Dateien
+in `supabase/migrations/`).
 
 ### Variante A – SQL-Editor (am schnellsten)
 
 1. Supabase-Dashboard → **SQL Editor → New query**.
-2. Inhalt von `0001…` einfügen, **Run**. Anschließend `0002…`, `0003…`, `0004…`.
+2. Migrationsdateien in alphabetischer/chronologischer Reihenfolge einfügen und **Run**.
 
 ### Variante B – Supabase CLI
 

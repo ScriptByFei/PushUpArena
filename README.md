@@ -64,7 +64,7 @@ VITE_SUPABASE_ANON_KEY=<dein-anon-key>
 
 ### 3. Backend einrichten
 
-Migrationen `0001`–`0004` aus `supabase/migrations/` einspielen und (optional) Google-Login
+Migrationen aus `supabase/migrations/` einspielen und (optional) Google-Login
 sowie die Edge Function aktivieren. **Komplette Anleitung:** [`supabase/README.md`](supabase/README.md).
 
 ### 4. Starten
@@ -94,7 +94,7 @@ PushupArena/
 │   ├── components/            # ui/ (Button, Card, …), layout/, ProtectedRoute, QuickAdd
 │   └── pages/                 # auth/, Dashboard, Track, Friends, Leaderboard, Profile, …
 └── supabase/
-    ├── migrations/            # 0001 Schema · 0002 RLS · 0003 Funktionen · 0004 Seed
+    ├── migrations/            # YYYYMMDDHHMMSS_beschreibung.sql, chronologisch sortiert
     ├── functions/             # Edge Function: delete-account (DSGVO)
     └── README.md              # Supabase-Setup + Google-Login + Edge Function
 ```
