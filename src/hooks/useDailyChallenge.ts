@@ -307,6 +307,10 @@ export function useDailyChallenge() {
 
   // ── Public API ────────────────────────────────────────────────────────────
   return {
+    // Push-up Exercise-ID — für Aufrufe außerhalb dieses Hooks (z. B.
+    // Teilnehmerdetail-RPC), die denselben p_exercise_id-Wert brauchen.
+    exerciseId,
+
     // Status
     status,
     isActive,

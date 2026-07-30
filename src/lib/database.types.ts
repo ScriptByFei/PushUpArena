@@ -438,6 +438,15 @@ export interface Database {
           created_at: string;
         }[];
       };
+      get_daily_challenge_participant_sets_today: {
+        Args: { p_exercise_id: string; p_user_id: string };
+        Returns: {
+          entry_id: string;
+          set_number: number;
+          repetitions: number;
+          created_at: string;
+        }[];
+      };
     };
     Enums: {
       friend_request_status: FriendRequestStatus;

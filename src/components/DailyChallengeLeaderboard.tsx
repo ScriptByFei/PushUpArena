@@ -4,8 +4,17 @@
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Card, CardTitle } from '@/components/ui/Card';
-import { formatBerlinTime } from '@/lib/date';
 import type { DailyChallengeLeaderboardEntry } from '@/lib/dailyChallenge.types';
+
+// Durchschnitt pro Satz, immer mit einer Nachkommastelle — konsistent mit
+// der Formatierung in "Deine Position" (DailyChallengeModal.tsx).
+function formatAverage(averageSet: number | null): string {
+  if (averageSet == null) return '—';
+  return averageSet.toLocaleString('de-DE', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
 
 // ── Gemeinsamer Karten-Look (Glow + dezenter Verlauf) ───────────────────────
 // Nur innerhalb von Daily Live verwendet — die globale .card-Klasse in
@@ -50,7 +59,14 @@ function rowClassName(rank: number, isMe: boolean): string {
 
 // ── Einzelner Ranglisten-Eintrag ───────────────────────────────────────────
 
-export function LeaderboardRow({ entry }: { entry: DailyChallengeLeaderboardEntry }) {
+export function LeaderboardRow({
+  entry,
+  onSelect,
+}: {
+  entry: DailyChallengeLeaderboardEntry;
+  /** Öffnet die Teilnehmerdetail-Ansicht. Ohne Handler ist die Zeile nicht klickbar. */
+  onSelect?: (entry: DailyChallengeLeaderboardEntry) => void;
+}) {
   const {
     rank,
     displayName,
@@ -58,64 +74,72 @@ export function LeaderboardRow({ entry }: { entry: DailyChallengeLeaderboardEntr
     totalRepetitions,
     setCount,
     maxSet,
-    lastSetAt,
+    averageSet,
     isMe,
   } = entry;
 
   const hasAnySets = setCount > 0;
 
-  return (
-    <li className={rowClassName(rank, isMe)}>
-      <div className="flex items-center gap-2.5">
-        {/* Platz */}
-        <span
-          className={`w-5 shrink-0 text-center text-sm font-bold tabular-nums ${rankTextColor(rank)}`}
-        >
-          {rank}
-        </span>
+  const content = (
+    <div className="flex items-center gap-2.5">
+      {/* Platz */}
+      <span
+        className={`w-5 shrink-0 text-center text-sm font-bold tabular-nums ${rankTextColor(rank)}`}
+      >
+        {rank}
+      </span>
 
-        {/* Avatar */}
-        <Avatar url={avatarUrl} name={displayName} size={32} />
+      {/* Avatar */}
+      <Avatar url={avatarUrl} name={displayName} size={32} />
 
-        {/* Name + Meta */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-slate-100">
-              {displayName}
+      {/* Name + Meta */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="min-w-0 truncate text-sm font-semibold text-slate-100">
+            {displayName}
+          </span>
+          {isMe && (
+            <span className="shrink-0 rounded bg-brand-400/15 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-400">
+              Du
             </span>
-            {isMe && (
-              <span className="shrink-0 rounded bg-brand-400/15 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-400">
-                Du
-              </span>
-            )}
-          </div>
-
-          {hasAnySets ? (
-            <>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {setCount} {setCount === 1 ? 'Satz' : 'Sätze'}
-                {' · '}
-                Bester Satz {maxSet ?? '–'}
-              </p>
-              {lastSetAt && (
-                <p className="mt-0.5 tabular-nums text-xs text-slate-600">
-                  Letzter Satz {formatBerlinTime(lastSetAt)} Uhr
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="mt-0.5 text-xs text-slate-500">Noch kein Satz</p>
           )}
         </div>
 
-        {/* Gesamtwiederholungen */}
-        <div className="shrink-0 text-right">
-          <p className="tabular-nums text-base font-bold leading-none text-brand-300">
-            {totalRepetitions}
+        {hasAnySets ? (
+          <p className="mt-0.5 truncate text-xs text-slate-500">
+            {setCount} {setCount === 1 ? 'Satz' : 'Sätze'}
+            {' · Ø '}{formatAverage(averageSet)}
+            {' · Best '}{maxSet ?? '–'}
           </p>
-          <p className="mt-0.5 text-[10px] text-slate-600">Wdh.</p>
-        </div>
+        ) : (
+          <p className="mt-0.5 text-xs text-slate-500">Noch kein Satz</p>
+        )}
       </div>
+
+      {/* Gesamtwiederholungen */}
+      <div className="shrink-0 text-right">
+        <p className="tabular-nums text-base font-bold leading-none text-brand-300">
+          {totalRepetitions}
+        </p>
+        <p className="mt-0.5 text-[10px] text-slate-600">Wdh.</p>
+      </div>
+    </div>
+  );
+
+  if (!onSelect || !hasAnySets) {
+    return <li className={rowClassName(rank, isMe)}>{content}</li>;
+  }
+
+  return (
+    <li className={rowClassName(rank, isMe)}>
+      <button
+        type="button"
+        onClick={() => onSelect(entry)}
+        className="-m-0.5 w-[calc(100%+0.25rem)] rounded-lg p-0.5 text-left transition active:scale-[0.99]"
+        aria-label={`Sätze von ${displayName} anzeigen`}
+      >
+        {content}
+      </button>
     </li>
   );
 }
@@ -146,6 +170,8 @@ export interface LeaderboardCardProps {
   isLoadingLeaderboard: boolean;
   leaderboardError: string | null;
   refreshLeaderboard: () => Promise<void>;
+  /** Öffnet die Teilnehmerdetail-Ansicht für den angetippten Eintrag. */
+  onSelectParticipant?: (entry: DailyChallengeLeaderboardEntry) => void;
 }
 
 export function LeaderboardCard({
@@ -154,6 +180,7 @@ export function LeaderboardCard({
   isLoadingLeaderboard,
   leaderboardError,
   refreshLeaderboard,
+  onSelectParticipant,
 }: LeaderboardCardProps) {
   // Challenge noch nicht aktiv
   if (!isActive) {
@@ -227,7 +254,7 @@ export function LeaderboardCard({
       {/* Einträge — serverseitige Sortierung nach rank */}
       <ul className="mt-2 space-y-2">
         {leaderboard.map(entry => (
-          <LeaderboardRow key={entry.userId} entry={entry} />
+          <LeaderboardRow key={entry.userId} entry={entry} onSelect={onSelectParticipant} />
         ))}
       </ul>
     </Card>

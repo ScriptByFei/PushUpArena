@@ -1,36 +1,36 @@
-// DailyChallengeModal – reine Live-Ansicht des heutigen Trainingstages.
+// DailyChallengeModal – echter Tageswettkampf, kein Aktivitätsfeed
+// (Abgrenzung zu Arena Live: "Was passiert gerade?" vs. "Wer gewinnt heute?").
 // Hook-Instanz: einmal in DailyChallengeModal, Daten als Props weiter.
-// Countdown in eigener DailyChallengeCountdown-Komponente → kein sekündlicher
+// Countdown in eigener HeaderRemainingTime-Komponente → kein sekündlicher
 // Re-Render des Modal-Baums mehr.
-// Zwei Tabs: "Live" (Status, Deine Leistung, Live-Rangliste) und
-// "Deine Sätze" (Satzliste des heutigen Tages). Kein Verlauf mehr.
+// Drei Tabs: "Live" (Deine Position, Dein Duell, Rangliste, Performance,
+// Tages-Stats), "Deine Sätze" (Satzliste des heutigen Tages) und "Verlauf"
+// (Wettkampfergebnisse vergangener Tage).
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardTitle } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useCountdown } from '@/hooks/useCountdown';
 import { formatBerlinTime } from '@/lib/date';
+import { supabase } from '@/lib/supabase';
 import { LeaderboardCard } from '@/components/DailyChallengeLeaderboard';
-import type {
-  DailyChallengeLeaderboardEntry,
-  DailyChallengeSet,
+import { DayResultSheet, HistoryList } from '@/components/DailyChallengeHistory';
+import {
+  mapParticipantSet,
+  type DailyChallengeLeaderboardEntry,
+  type DailyChallengeParticipantSet,
+  type DailyChallengeSet,
 } from '@/lib/dailyChallenge.types';
 
-// ── Hilfsfunktionen ────────────────────────────────────────────────────────
+// ── Header-Restzeit ("Noch 12:34 Std.") ─────────────────────────────────────
+// Eigene isolierte Komponente: nur sie rendert jede Sekunde neu, der
+// restliche Header-Baum bleibt stabil. Übernimmt seit dem UI-Polish (Phase 12)
+// auch den onEnd-Callback (Statusabruf bei Tageswechsel) — die frühere,
+// separate StatusCard mit großem Countdown wurde entfernt, da sie den Header
+// nur noch duplizierte.
 
-function formatCountdown(totalSeconds: number): string {
-  const s = Math.max(0, Math.floor(totalSeconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [h, m, sec].map(n => String(n).padStart(2, '0')).join(':');
-}
-
-// ── Isolierter Countdown ───────────────────────────────────────────────────
-// Nur diese Komponente löst jede Sekunde einen Re-Render aus.
-// Alle Geschwister (PerformanceCard, LeaderboardCard, …) bleiben stabil.
-
-function DailyChallengeCountdown({
+function HeaderRemainingTime({
   targetTime,
   serverNow,
   onEnd,
@@ -40,9 +40,13 @@ function DailyChallengeCountdown({
   onEnd?: () => void;
 }) {
   const seconds = useCountdown(targetTime, serverNow, onEnd);
+  if (!targetTime || !serverNow) return null;
+  const s = Math.max(0, Math.floor(seconds));
+  const h = String(Math.floor(s / 3600)).padStart(2, '0');
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
   return (
-    <p className="mt-1.5 font-mono tabular-nums text-4xl font-extrabold tracking-tight text-white [text-shadow:0_0_18px_rgba(129,140,248,0.4)]">
-      {formatCountdown(seconds)}
+    <p className="mt-1 text-xs tabular-nums text-slate-500">
+      Noch {h}:{m} Std.
     </p>
   );
 }
@@ -59,7 +63,7 @@ function CloseIcon() {
 
 // ── Tab-Typen ──────────────────────────────────────────────────────────────
 
-type Tab = 'live' | 'sets';
+type Tab = 'live' | 'sets' | 'history';
 
 // ── Gemeinsamer Karten-Look (Glow + dezenter Verlauf) ───────────────────────
 // Nur innerhalb von Daily Live verwendet — die globale .card-Klasse in
@@ -67,91 +71,7 @@ type Tab = 'live' | 'sets';
 
 const PREMIUM_CARD = 'border-ink-600/60 shadow-glow bg-gradient-to-b from-ink-800/85 to-ink-800/55';
 
-// ── Skeleton ───────────────────────────────────────────────────────────────
-
-function CardSkeleton() {
-  return (
-    <Card className={PREMIUM_CARD}>
-      <div className="animate-pulse space-y-2.5">
-        <div className="h-3.5 w-20 rounded-md bg-ink-700" />
-        <div className="h-9 w-36 rounded-md bg-ink-700" />
-        <div className="h-3 w-44 rounded-md bg-ink-700" />
-      </div>
-    </Card>
-  );
-}
-
-// ── Statuskarte ────────────────────────────────────────────────────────────
-
-function StatusCard({
-  isActive,
-  startsAt,
-  endsAt,
-  serverNow,
-  onCountdownEnd,
-}: {
-  isActive: boolean;
-  startsAt: Date | null;
-  endsAt: Date | null;
-  serverNow: Date | null;
-  onCountdownEnd: () => void;
-}) {
-  const targetTime = isActive ? endsAt : startsAt;
-  return (
-    <Card
-      className={
-        isActive
-          ? 'border-brand-500/30 bg-gradient-to-br from-brand-900/50 via-ink-800/80 to-ink-800/60 shadow-glow'
-          : PREMIUM_CARD
-      }
-    >
-      <div className="flex items-center gap-2">
-        <CardTitle className={isActive ? '!text-brand-200' : ''}>
-          {isActive ? 'Challenge läuft' : 'Challenge pausiert'}
-        </CardTitle>
-        {isActive && (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            Live
-          </span>
-        )}
-      </div>
-      <DailyChallengeCountdown
-        targetTime={targetTime}
-        serverNow={serverNow}
-        onEnd={onCountdownEnd}
-      />
-      {isActive ? (
-        <p className="mt-1.5 text-xs text-slate-400">Live bis Mitternacht</p>
-      ) : (
-        <p className="mt-1.5 text-xs text-slate-400">Das nächste Daily Live startet um Mitternacht.</p>
-      )}
-    </Card>
-  );
-}
-
-// ── Leistungs-Statistik ────────────────────────────────────────────────────
-
-interface ChallengeStats {
-  totalRepetitions: number;
-  setCount: number;
-  maxSet: number;
-  minSet: number;
-  averageSet: number;
-}
-
-function computeStats(sets: DailyChallengeSet[]): ChallengeStats | null {
-  if (sets.length === 0) return null;
-  const reps = sets.map(s => s.repetitions);
-  const total = reps.reduce((a, b) => a + b, 0);
-  return {
-    totalRepetitions: total,
-    setCount:         sets.length,
-    maxSet:           Math.max(...reps),
-    minSet:           Math.min(...reps),
-    averageSet:       total / sets.length,
-  };
-}
+// ── Wiederverwendbarer Stat-Baustein ────────────────────────────────────────
 
 function StatCell({
   label,
@@ -174,91 +94,292 @@ function StatCell({
   );
 }
 
-// ── Leistungskarte ─────────────────────────────────────────────────────────
+// ── Deine Position ─────────────────────────────────────────────────────────
+// Personalisierte Wettkampf-Karte: Rang, Gesamt-PushUps, Sätze/Ø/Best,
+// Abstand zu Platz 1 (bzw. Vorsprung, falls selbst Platz 1). Alle Werte
+// stammen aus der bereits geladenen, serverseitig sortierten Rangliste —
+// keine neue RPC nötig.
 
-interface PerformanceCardProps {
-  mySets: DailyChallengeSet[];
-  isLoadingMySets: boolean;
-  setsError: string | null;
-  refreshMySets: () => Promise<void>;
+function formatAverage(averageSet: number | null): string {
+  if (averageSet == null) return '—';
+  return averageSet.toLocaleString('de-DE', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 }
 
-function PerformanceCard({
-  mySets,
-  isLoadingMySets,
-  setsError,
-  refreshMySets,
-}: PerformanceCardProps) {
-  // Statistik nur neu berechnen wenn sich mySets ändert – kein Countdown-Einfluss
-  const stats = useMemo(() => computeStats(mySets), [mySets]);
+interface MyPositionCardProps {
+  leaderboard: DailyChallengeLeaderboardEntry[];
+  isLoadingLeaderboard: boolean;
+  leaderboardError: string | null;
+}
 
-  if (setsError) {
-    return (
-      <Card className={PREMIUM_CARD}>
-        <CardTitle>Deine Leistung</CardTitle>
-        <p className="mt-2 text-sm text-slate-500">
-          Deine Leistung konnte nicht geladen werden.
-        </p>
-        <button
-          onClick={() => void refreshMySets()}
-          className="mt-3 rounded-xl border border-ink-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-ink-700"
-        >
-          Erneut versuchen
-        </button>
-      </Card>
-    );
-  }
+function MyPositionCard({
+  leaderboard,
+  isLoadingLeaderboard,
+  leaderboardError,
+}: MyPositionCardProps) {
+  if (leaderboardError) return null; // Fehler wird bereits in LeaderboardCard angezeigt
 
-  // Skeleton nur beim initialen Laden (kein Flash bei Hintergrund-Refresh)
-  if (isLoadingMySets && mySets.length === 0) {
+  if (isLoadingLeaderboard && leaderboard.length === 0) {
     return (
       <Card className={PREMIUM_CARD}>
         <div className="animate-pulse space-y-3">
           <div className="h-3.5 w-28 rounded-md bg-ink-700" />
-          <div className="h-8 w-16 rounded-md bg-ink-700" />
-          <div className="h-3 w-40 rounded-md bg-ink-700" />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
-            <div className="h-10 rounded-md bg-ink-700" />
-            <div className="h-10 rounded-md bg-ink-700" />
-            <div className="h-10 rounded-md bg-ink-700" />
-            <div className="h-10 rounded-md bg-ink-700" />
-          </div>
+          <div className="h-9 w-16 rounded-md bg-ink-700" />
+          <div className="h-3 w-32 rounded-md bg-ink-700" />
         </div>
       </Card>
     );
   }
 
-  if (!stats) {
+  const me = leaderboard.find(e => e.isMe);
+
+  if (!me) {
     return (
       <Card className={PREMIUM_CARD}>
-        <CardTitle>Deine Leistung</CardTitle>
+        <CardTitle>Deine Position</CardTitle>
         <p className="mt-2 text-sm text-slate-500">Noch kein Satz eingetragen.</p>
         <p className="mt-1 text-xs text-slate-600">
-          Deine Statistik erscheint nach deinem ersten Satz.
+          Trag deinen ersten Satz ein, um in der Rangliste zu erscheinen.
         </p>
       </Card>
     );
   }
 
-  const averageSetValue = stats.averageSet.toLocaleString('de-DE', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+  const participantCount = leaderboard.length;
+  const leader = leaderboard.find(e => e.rank === 1) ?? null;
+  const second = leaderboard.find(e => e.rank === 2) ?? null;
+  const isLeader = me.rank === 1;
+
+  let footer: string;
+  if (isLeader && participantCount === 1) {
+    footer = 'Du führst aktuell als einziger Teilnehmer.';
+  } else if (isLeader && second) {
+    const lead = me.totalRepetitions - second.totalRepetitions;
+    footer = `Du führst mit ${lead.toLocaleString('de-DE')} PushUps Vorsprung.`;
+  } else if (leader) {
+    const gap = leader.totalRepetitions - me.totalRepetitions;
+    footer = `${gap.toLocaleString('de-DE')} bis Platz 1`;
+  } else {
+    footer = '';
+  }
+
+  // Farbschema (UI-Polish, Phase 12): Gold ausschließlich für Platz 1,
+  // sonst die bestehende Brand-Farbe für den eigenen Nutzer.
+  const rankColorClass = isLeader
+    ? 'text-amber-300 [text-shadow:0_0_20px_rgba(251,191,36,0.3)]'
+    : 'text-brand-300 [text-shadow:0_0_20px_rgba(99,102,241,0.3)]';
 
   return (
     <Card className={PREMIUM_CARD}>
-      <CardTitle>Deine Leistung</CardTitle>
-      {/* Gesamtwiederholungen – prominentester Wert, in Primary Brand Color */}
-      <p className="mt-1.5 tabular-nums text-3xl font-extrabold tracking-tight text-brand-300 [text-shadow:0_0_20px_rgba(99,102,241,0.35)]">
-        {stats.totalRepetitions}
+      <CardTitle>Deine Position</CardTitle>
+      <p className={`mt-1.5 tabular-nums text-3xl font-extrabold tracking-tight ${rankColorClass}`}>
+        #{me.rank}
       </p>
-      <p className="text-xs text-slate-400">Wiederholungen gesamt</p>
-      {/* 2×2-Raster: Sätze / Ø pro Satz (oben) — Kleinster / Bester Satz (unten) */}
-      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-ink-700/60 pt-4">
-        <StatCell label="Sätze"          value={String(stats.setCount)} dotClassName="bg-blue-400" />
-        <StatCell label="Ø pro Satz"     value={averageSetValue}        dotClassName="bg-teal-400" />
-        <StatCell label="Kleinster Satz" value={String(stats.minSet)}   dotClassName="bg-orange-400" />
-        <StatCell label="Bester Satz"    value={String(stats.maxSet)}   dotClassName="bg-amber-400" />
+      <p className="tabular-nums text-lg font-bold text-white">
+        {me.totalRepetitions.toLocaleString('de-DE')} <span className="text-sm font-medium text-slate-400">PushUps</span>
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-x-3 border-t border-ink-700/60 pt-4">
+        <StatCell label="Sätze" value={String(me.setCount)} dotClassName="bg-brand-400" />
+        <StatCell label="Ø"     value={formatAverage(me.averageSet)} dotClassName="bg-brand-400" />
+        <StatCell label="Best"  value={String(me.maxSet ?? '—')} dotClassName="bg-brand-400" />
+      </div>
+      {footer && (
+        <p className="mt-4 border-t border-ink-700/60 pt-3 text-sm font-semibold text-slate-300">
+          {footer}
+        </p>
+      )}
+    </Card>
+  );
+}
+
+// ── Dein Duell ─────────────────────────────────────────────────────────────
+// Kompakter Ausschnitt der Rangliste: Nutzer direkt über mir, ich selbst,
+// Nutzer direkt unter mir. Rangliste kommt bereits serverseitig sortiert
+// (RANK() mit eindeutigem Tiebreaker) → Nachbarn sind einfach Index ±1.
+
+interface DuelArrow {
+  symbol: '↑' | '↓';
+  value: number;
+}
+
+function DuelRow({
+  entry,
+  arrow,
+  highlight,
+}: {
+  entry: DailyChallengeLeaderboardEntry;
+  arrow: DuelArrow | null;
+  highlight: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 ${
+        highlight ? 'bg-brand-600/15 ring-1 ring-inset ring-brand-500/40' : ''
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-slate-500">
+          #{entry.rank}
+        </span>
+        <span
+          className={`min-w-0 truncate text-sm font-semibold ${
+            highlight ? 'text-brand-200' : 'text-slate-300'
+          }`}
+        >
+          {entry.displayName}
+        </span>
+      </div>
+      <div className="flex shrink-0 items-center gap-2.5">
+        {arrow && (
+          <span
+            className={`text-xs font-semibold tabular-nums ${
+              arrow.symbol === '↑' ? 'text-slate-500' : 'text-emerald-400'
+            }`}
+          >
+            {arrow.symbol} {arrow.value.toLocaleString('de-DE')}
+          </span>
+        )}
+        <span className="tabular-nums text-sm font-bold text-white">
+          {entry.totalRepetitions.toLocaleString('de-DE')}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface DuelCardProps {
+  leaderboard: DailyChallengeLeaderboardEntry[];
+  isLoadingLeaderboard: boolean;
+  leaderboardError: string | null;
+}
+
+function DuelCard({ leaderboard, isLoadingLeaderboard, leaderboardError }: DuelCardProps) {
+  if (leaderboardError) return null;
+  if (isLoadingLeaderboard && leaderboard.length === 0) return null;
+
+  const myIndex = leaderboard.findIndex(e => e.isMe);
+  // Kein eigener Satz heute (nicht in der Live-Rangliste) oder nur ein
+  // Teilnehmer insgesamt → kein sinnvolles Duell darstellbar.
+  if (myIndex === -1 || leaderboard.length < 2) return null;
+
+  const me = leaderboard[myIndex];
+  const above = myIndex > 0 ? leaderboard[myIndex - 1] : null;
+  const below = myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null;
+
+  const aboveArrow: DuelArrow | null = above
+    ? { symbol: '↑', value: above.totalRepetitions - me.totalRepetitions }
+    : null;
+  const belowArrow: DuelArrow | null = below
+    ? { symbol: '↓', value: me.totalRepetitions - below.totalRepetitions }
+    : null;
+
+  const isLeader = me.rank === 1;
+
+  return (
+    <Card className={PREMIUM_CARD}>
+      <CardTitle>Dein Duell</CardTitle>
+      <div className="mt-2 space-y-1">
+        {above && <DuelRow entry={above} arrow={aboveArrow} highlight={false} />}
+        <DuelRow entry={me} arrow={null} highlight />
+        {below && <DuelRow entry={below} arrow={belowArrow} highlight={false} />}
+      </div>
+      {isLeader && belowArrow && (
+        <p className="mt-3 border-t border-ink-700/60 pt-3 text-sm font-semibold text-slate-300">
+          Du führst mit {belowArrow.value.toLocaleString('de-DE')}.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+// ── Tages-Stats ────────────────────────────────────────────────────────────
+// Aggregat über alle Teilnehmer des Tages. Rein clientseitig aus der bereits
+// geladenen leaderboard-Liste summiert — keine neue RPC nötig. Zeigt bewusst
+// nur Werte, die nicht schon direkt darüber prominent zu sehen sind (bester
+// Satz z. B. steht bereits im Performance-Badge und wird hier nicht wiederholt).
+
+function DailyStatsCard({ leaderboard }: { leaderboard: DailyChallengeLeaderboardEntry[] }) {
+  if (leaderboard.length === 0) return null;
+
+  const participantCount = leaderboard.length;
+  const totalPushups = leaderboard.reduce((sum, e) => sum + e.totalRepetitions, 0);
+  const totalSets = leaderboard.reduce((sum, e) => sum + e.setCount, 0);
+  const averagePerSet = totalSets > 0 ? totalPushups / totalSets : null;
+
+  return (
+    <Card className={PREMIUM_CARD}>
+      <CardTitle>Tages-Stats</CardTitle>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3.5">
+        <StatCell label="Teilnehmer" value={String(participantCount)} dotClassName="bg-brand-400" />
+        <StatCell label="PushUps gesamt" value={totalPushups.toLocaleString('de-DE')} dotClassName="bg-brand-400" />
+        <StatCell label="Sätze gesamt" value={String(totalSets)} dotClassName="bg-brand-400" />
+        <StatCell label="Ø pro Satz" value={formatAverage(averagePerSet)} dotClassName="bg-brand-400" />
+      </div>
+    </Card>
+  );
+}
+
+// ── Performance-Badges ─────────────────────────────────────────────────────
+// Kleine, sekundäre Auszeichnungen für Werte, die in der Hauptwertung
+// (Gesamt-PushUps) NICHT sichtbar sind. "Meiste PushUps" wird bewusst nicht
+// als Badge gezeigt — das ist exakt Platz 1 der Rangliste und würde nur
+// duplizieren, was dort bereits gold hervorgehoben ist (kein Mehrwert).
+// Bei Gleichstand gewinnt der zuerst in der (nach Rang sortierten) Liste
+// stehende Eintrag — deterministisch, ohne zusätzliche "geteilt"-Anzeige,
+// um die Badges kompakt zu halten.
+
+interface BadgeWinner {
+  displayName: string;
+  valueLabel: string;
+}
+
+function findBestAverage(leaderboard: DailyChallengeLeaderboardEntry[]): BadgeWinner | null {
+  let best: DailyChallengeLeaderboardEntry | null = null;
+  for (const entry of leaderboard) {
+    if (entry.averageSet == null) continue;
+    if (!best || best.averageSet == null || entry.averageSet > best.averageSet) best = entry;
+  }
+  if (!best || best.averageSet == null) return null;
+  return { displayName: best.displayName, valueLabel: `Ø ${formatAverage(best.averageSet)}` };
+}
+
+function findBestSet(leaderboard: DailyChallengeLeaderboardEntry[]): BadgeWinner | null {
+  let best: DailyChallengeLeaderboardEntry | null = null;
+  for (const entry of leaderboard) {
+    if (entry.maxSet == null) continue;
+    if (!best || best.maxSet == null || entry.maxSet > best.maxSet) best = entry;
+  }
+  if (!best || best.maxSet == null) return null;
+  return { displayName: best.displayName, valueLabel: String(best.maxSet) };
+}
+
+function BadgeCell({ label, winner }: { label: string; winner: BadgeWinner }) {
+  return (
+    <div className="min-w-0 flex-1 rounded-lg border border-ink-700/60 bg-ink-900/40 px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-slate-200">{winner.displayName}</p>
+      <p className="tabular-nums text-xs text-brand-300">{winner.valueLabel}</p>
+    </div>
+  );
+}
+
+function PerformanceBadges({ leaderboard }: { leaderboard: DailyChallengeLeaderboardEntry[] }) {
+  // Bei nur einem Teilnehmer sind Badges identisch mit "Deine Position" —
+  // kein Mehrwert, daher ausblenden.
+  if (leaderboard.length < 2) return null;
+
+  const bestAverage = findBestAverage(leaderboard);
+  const bestSet = findBestSet(leaderboard);
+  if (!bestAverage && !bestSet) return null;
+
+  return (
+    <Card className={PREMIUM_CARD}>
+      <CardTitle>Performance</CardTitle>
+      <div className="mt-2 flex gap-2.5">
+        {bestAverage && <BadgeCell label="Bester Schnitt" winner={bestAverage} />}
+        {bestSet && <BadgeCell label="Bester Satz" winner={bestSet} />}
       </div>
     </Card>
   );
@@ -391,61 +512,39 @@ function TabPill({
 // ── Live-Tab ───────────────────────────────────────────────────────────────
 
 interface LiveTabProps {
-  // hasStatus = false solange der initiale Statusabruf noch läuft (status === null)
-  hasStatus: boolean;
   isActive: boolean;
-  startsAt: Date | null;
-  endsAt: Date | null;
-  serverNow: Date | null;
-  onCountdownEnd: () => void;
-  isLoadingMySets: boolean;
   isLoadingLeaderboard: boolean;
-  setsError: string | null;
   leaderboardError: string | null;
-  mySets: DailyChallengeSet[];
   leaderboard: DailyChallengeLeaderboardEntry[];
-  refreshMySets: () => Promise<void>;
   refreshLeaderboard: () => Promise<void>;
+  onSelectParticipant: (entry: DailyChallengeLeaderboardEntry) => void;
 }
 
+// Visuelle Hierarchie (UI-Polish, Phase 12):
+// Deine Position → Dein Duell → Rangliste → Performance → Tages-Stats.
+// Die frühere StatusCard (großer Countdown, "Challenge läuft") und die alte
+// "Deine Leistung"-Karte (Sätze/Ø/Kleinster/Bester) entfallen — beide
+// duplizierten nur noch, was seit Phase 1/2 bereits im Header bzw. in
+// "Deine Position" steht. Daily Live zeigt Wettbewerb, nicht Status-Text.
 function LiveTab({
-  hasStatus,
   isActive,
-  startsAt,
-  endsAt,
-  serverNow,
-  onCountdownEnd,
-  isLoadingMySets,
   isLoadingLeaderboard,
-  setsError,
   leaderboardError,
-  mySets,
   leaderboard,
-  refreshMySets,
   refreshLeaderboard,
+  onSelectParticipant,
 }: LiveTabProps) {
-  // Skeleton nur beim initialen Laden (hasStatus = false).
-  // Hintergrund-Refreshes (onCountdownEnd) aktualisieren status still →
-  // kein Skeleton-Flash.
   return (
     <div className="flex flex-col gap-3">
-      {!hasStatus ? (
-        <CardSkeleton />
-      ) : (
-        <StatusCard
-          isActive={isActive}
-          startsAt={startsAt}
-          endsAt={endsAt}
-          serverNow={serverNow}
-          onCountdownEnd={onCountdownEnd}
-        />
-      )}
-
-      <PerformanceCard
-        mySets={mySets}
-        isLoadingMySets={isLoadingMySets}
-        setsError={setsError}
-        refreshMySets={refreshMySets}
+      <MyPositionCard
+        leaderboard={leaderboard}
+        isLoadingLeaderboard={isLoadingLeaderboard}
+        leaderboardError={leaderboardError}
+      />
+      <DuelCard
+        leaderboard={leaderboard}
+        isLoadingLeaderboard={isLoadingLeaderboard}
+        leaderboardError={leaderboardError}
       />
       <LeaderboardCard
         isActive={isActive}
@@ -453,7 +552,10 @@ function LiveTab({
         isLoadingLeaderboard={isLoadingLeaderboard}
         leaderboardError={leaderboardError}
         refreshLeaderboard={refreshLeaderboard}
+        onSelectParticipant={onSelectParticipant}
       />
+      {!leaderboardError && <PerformanceBadges leaderboard={leaderboard} />}
+      {!leaderboardError && <DailyStatsCard leaderboard={leaderboard} />}
     </div>
   );
 }
@@ -480,16 +582,135 @@ function SetsTab({ mySets, isLoadingMySets, setsError, refreshMySets }: SetsTabP
   );
 }
 
+// ── Verlauf-Tab ────────────────────────────────────────────────────────────
+// Wettkampfergebnisse vergangener Tage. Wiederverwendet die bestehende
+// History-RPC-Infrastruktur (DailyChallengeHistory.tsx) — kein zweiter,
+// konkurrierender Verlauf zu Arena Rückblick (separates Feature).
+
+function HistoryTab({
+  exerciseId,
+  challengeDate,
+  onSelectDay,
+}: {
+  exerciseId: string | null;
+  challengeDate: string | null;
+  onSelectDay: (date: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <HistoryList exerciseId={exerciseId} challengeDate={challengeDate} onSelectDay={onSelectDay} />
+    </div>
+  );
+}
+
+// ── Teilnehmerdetail ───────────────────────────────────────────────────────
+// Nur lesend: zeigt die heutigen Sätze eines anderen Teilnehmers. Keine
+// Satz-Eingabe, kein Edit/Delete — das bleibt bewusst außerhalb von Daily
+// Live (Dashboard/NavDrawer), wie bei "Deine Sätze" auch.
+
+function ParticipantDetailSheet({
+  participant,
+  sets,
+  isLoading,
+  error,
+  onClose,
+}: {
+  participant: DailyChallengeLeaderboardEntry;
+  sets: DailyChallengeParticipantSet[];
+  isLoading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  const averageSetValue = formatAverage(participant.averageSet);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-[2px]"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Sätze von ${participant.displayName}`}
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 px-4 pt-4"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-700" />
+
+        <div className="flex items-center gap-3">
+          <Avatar url={participant.avatarUrl} name={participant.displayName} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-bold text-slate-100">
+              {participant.displayName}
+            </p>
+            <p className="text-xs text-slate-500">Platz {participant.rank}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-xl p-2 text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
+            aria-label="Schließen"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-x-3 border-t border-ink-700/60 pt-4">
+          <StatCell
+            label="PushUps"
+            value={participant.totalRepetitions.toLocaleString('de-DE')}
+            dotClassName="bg-brand-400"
+          />
+          <StatCell label="Sätze" value={String(participant.setCount)} dotClassName="bg-brand-400" />
+          <StatCell label="Ø" value={averageSetValue} dotClassName="bg-brand-400" />
+        </div>
+
+        <div className="mt-4 border-t border-ink-700/60 pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Sätze heute
+          </p>
+
+          {error ? (
+            <p className="mt-2 text-sm text-slate-500">Sätze konnten nicht geladen werden.</p>
+          ) : isLoading && sets.length === 0 ? (
+            <div className="mt-2 animate-pulse space-y-2">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="h-8 rounded-md bg-ink-800" />
+              ))}
+            </div>
+          ) : sets.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">Keine Sätze gefunden.</p>
+          ) : (
+            <ul className="mt-1.5 divide-y divide-ink-800">
+              {sets.map(set => (
+                <li key={set.id} className="flex items-center justify-between py-2.5">
+                  <span className="tabular-nums text-xs text-slate-500">
+                    {formatBerlinTime(set.createdAt)} Uhr
+                  </span>
+                  <span className="tabular-nums text-sm font-bold text-white">
+                    {set.repetitions} <span className="text-xs font-normal text-slate-500">Wdh.</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Haupt-Komponente ───────────────────────────────────────────────────────
 
 export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
   // Einzige Hook-Instanz — alle Kinder erhalten Daten als Props.
   // Kein secondsUntilStart/End hier: Countdown läuft isoliert in
-  // DailyChallengeCountdown und löst keinen Modal-Re-Render aus.
+  // HeaderRemainingTime und löst keinen Modal-Re-Render aus.
   const {
+    exerciseId,
     status,
+    challengeDate,
     isActive,
-    startsAt,
     endsAt,
     serverNow,
     leaderboard,
@@ -503,7 +724,104 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     refreshLeaderboard,
   } = useDailyChallenge();
 
+  const hasStatus = status !== null;
+
   const [activeTab, setActiveTab] = useState<Tab>('live');
+
+  // ── Verlauf (nur lesend) ───────────────────────────────────────────────────
+  const [selectedHistoryDay, setSelectedHistoryDay] = useState<string | null>(null);
+
+  // ── Teilnehmerdetail (nur lesend) ─────────────────────────────────────────
+  const [selectedParticipant, setSelectedParticipant] =
+    useState<DailyChallengeLeaderboardEntry | null>(null);
+  const [participantSets, setParticipantSets] = useState<DailyChallengeParticipantSet[]>([]);
+  const [isLoadingParticipantSets, setIsLoadingParticipantSets] = useState(false);
+  const [participantSetsError, setParticipantSetsError] = useState<string | null>(null);
+
+  // Auch für den Realtime-Resync unten wiederverwendet — lädt die Sätze
+  // eines Teilnehmers neu, ohne den restlichen Sheet-State anzufassen.
+  const fetchParticipantSets = useCallback(
+    (userId: string) => {
+      if (!exerciseId) return;
+      setParticipantSetsError(null);
+      setIsLoadingParticipantSets(true);
+      void supabase
+        .rpc('get_daily_challenge_participant_sets_today', {
+          p_exercise_id: exerciseId,
+          p_user_id: userId,
+        })
+        .then(({ data, error }) => {
+          if (error) throw error;
+          setParticipantSets((data ?? []).map(mapParticipantSet));
+        })
+        .catch((err: unknown) => {
+          console.error('Daily Live participant-sets RPC failed:', err);
+          setParticipantSetsError('Sätze konnten nicht geladen werden.');
+        })
+        .finally(() => setIsLoadingParticipantSets(false));
+    },
+    [exerciseId]
+  );
+
+  // Realtime-Resync: hält ein bereits geöffnetes Teilnehmerdetail aktuell,
+  // sobald sich die (bereits per live_activity aktualisierte) Rangliste
+  // ändert — z. B. wenn der betrachtete Teilnehmer selbst einen Satz
+  // hinzufügt/löscht, oder wenn sich durch andere Nutzer sein Rang
+  // verschiebt. Kein zusätzlicher Realtime-Channel nötig: die Rangliste
+  // wird bereits zentral in useDailyChallenge aktuell gehalten.
+  const lastSyncedParticipantRef = useRef<{
+    userId: string;
+    setCount: number;
+    totalRepetitions: number;
+  } | null>(null);
+
+  const handleSelectParticipant = useCallback(
+    (entry: DailyChallengeLeaderboardEntry) => {
+      setSelectedParticipant(entry);
+      setParticipantSets([]);
+      // Snapshot direkt übernehmen, damit der Resync-Effekt unten nicht
+      // sofort einen redundanten zweiten Fetch auslöst (er würde sonst noch
+      // den Stand des zuvor ausgewählten Teilnehmers im Ref vorfinden).
+      lastSyncedParticipantRef.current = {
+        userId:           entry.userId,
+        setCount:         entry.setCount,
+        totalRepetitions: entry.totalRepetitions,
+      };
+      fetchParticipantSets(entry.userId);
+    },
+    [fetchParticipantSets]
+  );
+
+  const handleCloseParticipant = useCallback(() => setSelectedParticipant(null), []);
+
+  useEffect(() => {
+    if (!selectedParticipant) {
+      lastSyncedParticipantRef.current = null;
+      return;
+    }
+    const updated = leaderboard.find(e => e.userId === selectedParticipant.userId);
+    if (!updated) {
+      // Teilnehmer hat keine Sätze mehr heute (z. B. letzter Satz gelöscht) →
+      // Sheet zeigt sonst veraltete/falsche Daten, also schließen.
+      setSelectedParticipant(null);
+      return;
+    }
+    const prev = lastSyncedParticipantRef.current;
+    const setsChanged =
+      !prev ||
+      prev.setCount !== updated.setCount ||
+      prev.totalRepetitions !== updated.totalRepetitions;
+    lastSyncedParticipantRef.current = {
+      userId:           updated.userId,
+      setCount:         updated.setCount,
+      totalRepetitions: updated.totalRepetitions,
+    };
+    setSelectedParticipant(updated);
+    if (setsChanged) fetchParticipantSets(updated.userId);
+    // selectedParticipant absichtlich nicht in den Deps: nur leaderboard-
+    // Änderungen sollen diesen Sync auslösen, nicht der eigene setState-Aufruf.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderboard]);
 
   // Stabiler Callback für den Countdown-End-Handler:
   // Inline-Arrow würde bei jedem Modal-Re-Render eine neue Referenz erzeugen
@@ -532,19 +850,50 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
 
       {/* Header */}
       <div className="shrink-0 border-b border-ink-800 px-4 pb-0 pt-2">
-        <div className="flex items-center justify-between pb-3">
-          <h2 className="text-lg font-extrabold text-slate-100">Daily Live</h2>
+        <div className="flex items-start justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-400">
+              Daily Live
+            </p>
+            <h2 className="mt-0.5 text-xl font-extrabold text-slate-100">Tageswettkampf</h2>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+              <span>PushUp</span>
+              <span aria-hidden="true">&middot;</span>
+              <span>Heute</span>
+              {hasStatus && (
+                <>
+                  <span aria-hidden="true">&middot;</span>
+                  {isActive ? (
+                    <span className="flex items-center gap-1 font-semibold text-emerald-400">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-slate-500">Pausiert</span>
+                  )}
+                </>
+              )}
+            </div>
+            {isActive && (
+              <HeaderRemainingTime
+                targetTime={endsAt}
+                serverNow={serverNow}
+                onEnd={handleCountdownEnd}
+              />
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
+            className="shrink-0 rounded-xl p-2 text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
             aria-label="Schließen"
           >
             <CloseIcon />
           </button>
         </div>
-        <div role="tablist" aria-label="Daily-Live-Ansicht" className="flex gap-1">
+        <div role="tablist" aria-label="Daily-Live-Ansicht" className="mt-3 flex gap-1">
           <TabPill label="Live"        active={activeTab === 'live'} onClick={() => setActiveTab('live')} />
           <TabPill label="Deine Sätze" active={activeTab === 'sets'} onClick={() => setActiveTab('sets')} />
+          <TabPill label="Verlauf"     active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
         </div>
       </div>
 
@@ -555,30 +904,42 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
       >
         {activeTab === 'live' ? (
           <LiveTab
-            hasStatus={status !== null}
             isActive={isActive}
-            startsAt={startsAt}
-            endsAt={endsAt}
-            serverNow={serverNow}
-            onCountdownEnd={handleCountdownEnd}
-            isLoadingMySets={isLoadingMySets}
             isLoadingLeaderboard={isLoadingLeaderboard}
-            setsError={setsError}
             leaderboardError={leaderboardError}
-            mySets={mySets}
             leaderboard={leaderboard}
-            refreshMySets={refreshMySets}
             refreshLeaderboard={refreshLeaderboard}
+            onSelectParticipant={handleSelectParticipant}
           />
-        ) : (
+        ) : activeTab === 'sets' ? (
           <SetsTab
             mySets={mySets}
             isLoadingMySets={isLoadingMySets}
             setsError={setsError}
             refreshMySets={refreshMySets}
           />
+        ) : (
+          <HistoryTab exerciseId={exerciseId} challengeDate={challengeDate} onSelectDay={setSelectedHistoryDay} />
         )}
       </div>
+
+      {selectedParticipant && (
+        <ParticipantDetailSheet
+          participant={selectedParticipant}
+          sets={participantSets}
+          isLoading={isLoadingParticipantSets}
+          error={participantSetsError}
+          onClose={handleCloseParticipant}
+        />
+      )}
+
+      {selectedHistoryDay && (
+        <DayResultSheet
+          exerciseId={exerciseId}
+          date={selectedHistoryDay}
+          onClose={() => setSelectedHistoryDay(null)}
+        />
+      )}
     </div>
   );
 }
