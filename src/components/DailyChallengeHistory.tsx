@@ -234,6 +234,10 @@ export function DayResultSheet({
           <div className="mt-4 animate-pulse space-y-2">
             {[0, 1, 2].map(i => <div key={i} className="h-12 rounded-xl bg-ink-800" />)}
           </div>
+        ) : details && details.leaderboard.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            Niemand hat an diesem Tag PushUps gemacht.
+          </p>
         ) : details ? (
           <>
             <ul className="mt-4 space-y-1.5">
