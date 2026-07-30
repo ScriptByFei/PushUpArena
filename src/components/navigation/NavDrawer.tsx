@@ -501,7 +501,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
           featured: true,
         },
         {
-          id: 'feed', label: 'Arena Feed',
+          id: 'feed', label: 'Arena Live',
           icon: <img src="/arena-feed-icon.webp" alt="" className={`${T.icon} object-contain opacity-75`} />,
           onAction: onOpenFeed,
         },

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useArenaFeed, type FeedFilter, type LiveActivityMap } from '@/hooks/useArenaFeed';
-import { getChip, getEventPriority, getGroupCardType } from '@/lib/feedRegistry';
 import { UserInfoSheet } from '@/components/UserInfoSheet';
 import { useExercise } from '@/context/ExerciseContext';
+import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
-import type { ArenaFeedEvent, ArenaFeedGroup, FeedCardType } from '@/types/feed';
+import { TrophyIcon } from '@/components/ui/icons';
+import type { ArenaFeedEvent } from '@/types/feed';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,645 +16,305 @@ interface RankEntry {
   avatarUrl: string | null;
   reps: number;
   rank: number;
+  isMe: boolean;
+  isFriend: boolean;
 }
 
-// ─── Story building ────────────────────────────────────────────────────────────
-
-/** Numeric threshold for milestone_N event types (e.g. 'milestone_100' → 100). */
-function milestoneValue(eventType: string): number {
-  return parseInt(eventType.replace('milestone_', ''), 10) || 0;
-}
-
-/**
- * Variety pass: prevent more than 2 consecutive cards of the same event_type.
- * Preserves priority ordering as much as possible.
- */
-function interleaveVariety(stories: ArenaFeedGroup[]): ArenaFeedGroup[] {
-  if (stories.length <= 3) return stories;
-  const result: ArenaFeedGroup[] = [];
-  const pool = [...stories];
-  while (pool.length > 0) {
-    const prevType = result.at(-1)?.items[0]?.event_type;
-    const prev2Type = result.at(-2)?.items[0]?.event_type;
-    if (prevType && prevType === prev2Type) {
-      const idx = pool.findIndex(s => s.items[0]?.event_type !== prevType);
-      if (idx > 0) { result.push(pool.splice(idx, 1)[0]); continue; }
-    }
-    result.push(pool.shift()!);
-  }
-  return result;
-}
-
-// Deterministic phrase picker — same event id always yields the same phrase.
-// Avoids flicker on re-renders while still producing variation across events.
-function pickPhrase(phrases: readonly string[], seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
-  }
-  return phrases[h % phrases.length];
-}
-
-function buildStories(
-  events: ArenaFeedEvent[],
-  newIds: Set<string>,
-  live: LiveActivityMap,
-): ArenaFeedGroup[] {
-  // 1. Global ID dedup
-  const seenIds = new Set<string>();
-  const unique = events.filter(ev => !seenIds.has(ev.id) && !!seenIds.add(ev.id));
-
-  // 2. Milestone dedup: only the highest milestone per user×exercise earns a card
-  const milestonePeak = new Map<string, ArenaFeedEvent>();
-  for (const ev of unique) {
-    if (!ev.event_type.startsWith('milestone_')) continue;
-    const k = `${ev.user_id}::${ev.exercise_id ?? ''}`;
-    const cur = milestonePeak.get(k);
-    if (!cur || milestoneValue(ev.event_type) > milestoneValue(cur.event_type)) {
-      milestonePeak.set(k, ev);
-    }
-  }
-  const keepMilestones = new Set([...milestonePeak.values()].map(e => e.id));
-
-  // 3. rank_improved dedup: only the best rank achieved per user×exercise
-  const overtakePeak = new Map<string, ArenaFeedEvent>();
-  for (const ev of unique) {
-    if (ev.event_type !== 'rank_improved') continue;
-    const k = `${ev.user_id}::${ev.exercise_id ?? ''}`;
-    const cur = overtakePeak.get(k);
-    const newRank = (ev.metadata as Record<string, unknown>).new_rank as number | undefined;
-    const curRank = cur ? (cur.metadata as Record<string, unknown>).new_rank as number | undefined : 99;
-    if (newRank != null && (curRank == null || newRank < curRank)) overtakePeak.set(k, ev);
-  }
-  const keepOvertakes = new Set([...overtakePeak.values()].map(e => e.id));
-
-  // 4. Low-value event types that don't merit a standalone card
-  const SKIP = new Set([
-    'top10_first', 'milestone_20', 'milestone_50', 'streak_broken',
-    'quick_starter', 'night_owl', 'new_friend', 'friendship_confirmed', 'friend_overtaken',
-  ]);
-
-  // 5. One card per significant event
-  const stories: ArenaFeedGroup[] = [];
-  for (const ev of unique) {
-    if (SKIP.has(ev.event_type)) continue;
-    if (ev.event_type.startsWith('milestone_') && !keepMilestones.has(ev.id)) continue;
-    if (ev.event_type === 'rank_improved' && !keepOvertakes.has(ev.id)) continue;
-    stories.push({
-      key: ev.id,
-      user_id: ev.user_id,
-      display_name: ev.display_name,
-      username: ev.username,
-      avatar_url: ev.avatar_url,
-      event_date: ev.event_date,
-      latest_at: ev.created_at,
-      items: [ev],
-      secondaryOverflow: 0,
-      isNew: newIds.has(ev.id),
-      cardType: getGroupCardType([ev]),
-    });
-  }
-
-  // 6. place1_new scenario annotation: first of day vs. takeover
-  {
-    const allP1 = unique
-      .filter(ev => ev.event_type === 'place1_new')
-      .sort((a, b) => a.created_at.localeCompare(b.created_at));
-    const exFirstLeader = new Map<string | null, string>();
-    for (const ev of allP1) {
-      if (!exFirstLeader.has(ev.exercise_id)) exFirstLeader.set(ev.exercise_id, ev.user_id);
-    }
-    for (const s of stories) {
-      const ev = s.items[0];
-      if (ev.event_type !== 'place1_new') continue;
-      const scenario: 'first_of_day' | 'takeover' =
-        exFirstLeader.get(ev.exercise_id) === s.user_id ? 'first_of_day' : 'takeover';
-      s.items = [{ ...ev, metadata: { ...ev.metadata, __p1_scenario: scenario } }];
-    }
-  }
-
-  // 7. Sort: live activity → card weight → recency
-  const CARD_WEIGHT: Partial<Record<FeedCardType, number>> = {
-    hero: 10, record: 8, rank_movement: 7, comeback: 6, streak: 5, duel: 5, standard: 1,
-  };
-  stories.sort((a, b) => {
-    const aLive = live[a.user_id]?.ts && live[a.user_id].ts > a.latest_at;
-    const bLive = live[b.user_id]?.ts && live[b.user_id].ts > b.latest_at;
-    if (aLive !== bLive) return aLive ? -1 : 1;
-    const wa = CARD_WEIGHT[a.cardType] ?? 1;
-    const wb = CARD_WEIGHT[b.cardType] ?? 1;
-    if (wa !== wb) return wb - wa;
-    return b.latest_at.localeCompare(a.latest_at);
-  });
-
-  // 8. Variety pass: no more than 2 consecutive cards of the same event_type
-  return interleaveVariety(stories);
-}
-
-// ─── Narrative headlines ───────────────────────────────────────────────────────
-// Short, name-free action labels. The card header already shows who did it.
-// The badge shows the category. These labels answer only "what happened".
-
-function storyHeadline(ev: ArenaFeedEvent): string {
-  const m = ev.metadata as Record<string, unknown>;
-  switch (ev.event_type) {
-    case 'place1_new': {
-      const scenario = m.__p1_scenario as string | undefined;
-      return scenario === 'first_of_day' ? 'Erste Bestmarke' : 'Führung übernommen';
-    }
-    case 'medal_gold':   return 'Gold gewonnen';
-    case 'medal_silver': return 'Silber gewonnen';
-    case 'medal_bronze': return 'Bronze gewonnen';
-    case 'rank_improved': {
-      const over = (m.overtaken_name as string | undefined)?.split(' ')[0];
-      return over ? `${over} überholt` : 'Platz verbessert';
-    }
-    case 'top3_first':       return 'Top 3 erreicht';
-    case 'daily_record':     return 'Tagesrekord';
-    case 'personal_record':  return 'Persönlicher Rekord';
-    case 'milestone_100':
-    case 'milestone_250':
-    case 'milestone_500':
-    case 'milestone_1000':   return 'Meilenstein'; // big number is the hero; label is secondary
-    case 'streak_7':
-    case 'streak_30':
-    case 'streak_100':
-    case 'streak_365':       return 'Aktiv-Serie';  // big day count is the hero
-    case 'comeback': {
-      const days = m.days_off as number | undefined;
-      return days ? `Zurück nach ${days} Tagen` : 'Comeback';
-    }
-    case 'total_500':
-    case 'total_1000':
-    case 'total_5000':
-    case 'total_10000':
-    case 'total_25000':
-    case 'total_50000':
-    case 'total_100000':     return 'Gesamtleistung';
-    default:                 return getChip(ev).label;
-  }
-}
-
-// ─── Snapshot rank status line ────────────────────────────────────────────────
-// Generates a compact rank status badge from event metadata (snapshot at event
-// time, never live). Returns null when rank is unknown so callers can skip it.
-
-function rankStatusLine(ev: ArenaFeedEvent): string | null {
-  const m = ev.metadata as Record<string, unknown>;
-  const rank = (m.new_rank ?? m.rank) as number | undefined;
-  if (rank == null) return null;
-
-  // leadOver: reps ahead of the person directly below us (valid for rank=1)
-  const leadOver   = m.lead_over   as number | undefined;
-  // gapToFirst: reps behind rank-1 (valid for rank=2+)
-  const gapToFirst = m.gap_to_first as number | undefined;
-  // Name of person we overtook (now below us — useful when rank=1 as the #2 person's name)
-  const overtakenShort = (m.overtaken_name as string | undefined)?.split(' ')[0];
-  // Name of person ahead of us (explicitly stored, optional)
-  const leaderShort = ((m.lead_name ?? m.target_name) as string | undefined)?.split(' ')[0];
-
-  if (rank === 1) {
-    if (leadOver != null && leadOver > 0 && overtakenShort) {
-      return `🥇 +${leadOver} vor ${overtakenShort}`;
-    }
-    if (leadOver != null && leadOver > 0) {
-      return `🥇 Führt mit +${leadOver}`;
-    }
-    return ev.event_type === 'place1_new' ? '🥇 Platz 1 übernommen' : '🥇 Führt weiterhin';
-  }
-
-  if (rank === 2) {
-    if (gapToFirst != null && gapToFirst > 0 && leaderShort) {
-      return `🥈 ${gapToFirst} hinter ${leaderShort}`;
-    }
-    if (gapToFirst != null && gapToFirst > 0) {
-      return `🥈 ${gapToFirst} hinter Platz 1`;
-    }
-    return ev.event_type === 'rank_improved' ? '🥈 Jetzt Platz 2' : '🥈 Platz 2';
-  }
-
-  if (rank === 3) {
-    if (gapToFirst != null && gapToFirst > 0) {
-      return `🥉 ${gapToFirst} hinter Platz 1`;
-    }
-    return ev.event_type === 'rank_improved' ? '🥉 Jetzt Platz 3' : '🥉 Platz 3';
-  }
-
-  // Rank 4+
-  if (gapToFirst != null && gapToFirst > 0) {
-    return `⬆️ ${gapToFirst} hinter Platz 1`;
-  }
-  return ev.event_type === 'rank_improved'
-    ? `⬆️ Auf Platz ${rank} verbessert`
-    : `⬆️ Platz ${rank}`;
-}
-
-// ─── Event style map ──────────────────────────────────────────────────────────
-// Each event type gets a badge label, badge classes, accent text class,
-// and a left-border hex colour. Colours are intentionally subtle.
-
-interface EventStyleDef {
-  badge: string;
-  badgeClasses: string;
-  accentTextClass: string;
-  borderColor: string; // hex/rgba for inline style
-}
-
-function getEventStyle(eventType: string): EventStyleDef {
-  if (eventType === 'place1_new') return {
-    badge: 'FÜHRUNG', badgeClasses: 'bg-amber-500/15 text-amber-400',
-    accentTextClass: 'text-amber-300', borderColor: '#d97706',
-  };
-  if (eventType === 'medal_gold') return {
-    badge: 'GOLD', badgeClasses: 'bg-amber-500/15 text-amber-400',
-    accentTextClass: 'text-amber-300', borderColor: '#d97706',
-  };
-  if (eventType === 'medal_silver') return {
-    badge: 'SILBER', badgeClasses: 'bg-slate-400/15 text-slate-300',
-    accentTextClass: 'text-slate-200', borderColor: '#94a3b8',
-  };
-  if (eventType === 'medal_bronze') return {
-    badge: 'BRONZE', badgeClasses: 'bg-orange-400/15 text-orange-300',
-    accentTextClass: 'text-orange-200', borderColor: '#c2410c',
-  };
-  if (eventType === 'rank_improved') return {
-    badge: 'ÜBERHOLMANÖVER', badgeClasses: 'bg-violet-500/15 text-violet-400',
-    accentTextClass: 'text-violet-300', borderColor: '#7c3aed',
-  };
-  if (eventType === 'top3_first') return {
-    badge: 'TOP 3', badgeClasses: 'bg-purple-500/15 text-purple-400',
-    accentTextClass: 'text-purple-300', borderColor: '#9333ea',
-  };
-  if (eventType === 'daily_record' || eventType === 'personal_record') return {
-    badge: 'REKORD', badgeClasses: 'bg-green-500/15 text-green-400',
-    accentTextClass: 'text-green-300', borderColor: '#16a34a',
-  };
-  if (eventType.startsWith('milestone_')) return {
-    badge: 'MEILENSTEIN', badgeClasses: 'bg-blue-500/15 text-blue-400',
-    accentTextClass: 'text-blue-300', borderColor: '#2563eb',
-  };
-  if (eventType.startsWith('streak_')) return {
-    badge: 'STREAK', badgeClasses: 'bg-orange-500/15 text-orange-400',
-    accentTextClass: 'text-orange-300', borderColor: '#ea580c',
-  };
-  if (eventType === 'comeback') return {
-    badge: 'COMEBACK', badgeClasses: 'bg-pink-500/15 text-pink-400',
-    accentTextClass: 'text-pink-300', borderColor: '#db2777',
-  };
-  if (eventType.startsWith('total_')) return {
-    badge: 'GESAMT', badgeClasses: 'bg-teal-500/15 text-teal-400',
-    accentTextClass: 'text-teal-300', borderColor: '#0d9488',
-  };
-  return {
-    badge: 'NEWS', badgeClasses: 'bg-slate-500/15 text-slate-400',
-    accentTextClass: 'text-slate-300', borderColor: '#475569',
-  };
-}
-
-// ─── Compact time ─────────────────────────────────────────────────────────────
-
-function compactTime(iso: string): string {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'gerade eben';
-  const m = Math.floor(s / 60);
-  if (m < 60) return `vor ${m} Min.`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `vor ${h} Std.`;
-  return `vor ${Math.floor(h / 24)} Tg.`;
-}
-
-
-// ─── Shared card shell ────────────────────────────────────────────────────────
-
-function CardShell({
-  group,
-  flashing,
-  leftAccent,
-  extraClass,
-  children,
-}: {
-  group: ArenaFeedGroup;
-  flashing: boolean;
-  leftAccent?: string; // hex colour for the 3 px left accent border
-  extraClass?: string;
-  children: React.ReactNode;
-}) {
-  const animStyle: React.CSSProperties = group.isNew
-    ? { animation: 'feedEnter 0.35s ease-out' }
-    : flashing
-      ? { animation: 'liveFlash 0.9s ease-out' }
-      : {};
-  return (
-    <div
-      className={`overflow-hidden rounded-2xl border border-ink-700/50 bg-ink-900 transition-transform active:scale-[0.985] ${extraClass ?? ''}`}
-      style={{
-        ...animStyle,
-        ...(leftAccent ? { borderLeftColor: leftAccent, borderLeftWidth: '3px' } : {}),
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CardHeader({
-  name,
-  avatarUrl,
-  time,
-  size = 32,
-}: {
-  name: string;
-  avatarUrl: string | null;
-  time: string;
-  size?: number;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Avatar url={avatarUrl} name={name} size={size} />
-        <span className="truncate text-[12px] font-semibold leading-none text-slate-400">{name}</span>
-      </div>
-      <span className="shrink-0 text-[10px] font-medium leading-none text-slate-600 tabular-nums">
-        {compactTime(time)}
-      </span>
-    </div>
-  );
-}
-
-// ─── Card props ───────────────────────────────────────────────────────────────
-
-interface CardProps {
-  group: ArenaFeedGroup;
-  rankList: RankEntry[];
-  liveReps?: { addedReps: number; ts: string };
-  onOpenProfile: (group: ArenaFeedGroup) => void;
-}
-
-// ─── PremiumFeedCard ─────────────────────────────────────────────────────────
-// Single unified card component for all feed event types.
-// Layout: left accent bar → header → badge → big primary → secondary → status.
-// Number-centric events (milestones, streaks): big number is the hero.
-// Action-centric events (lead, overtake, record, medals): action phrase is hero.
-
-function PremiumFeedCard({ group, rankList, liveReps, onOpenProfile }: CardProps) {
-  const [flashing, setFlashing] = useState(false);
-  const prevTsRef = useRef<string | undefined>(liveReps?.ts);
-
-  useEffect(() => {
-    if (liveReps?.ts && liveReps.ts !== prevTsRef.current) {
-      prevTsRef.current = liveReps.ts;
-      setFlashing(true);
-      const t = setTimeout(() => setFlashing(false), 900);
-      return () => clearTimeout(t);
-    }
-  }, [liveReps?.ts]);
-
-  const name = group.display_name || group.username || 'Unbekannt';
-  const [headline] = group.items;
-  const m = headline.metadata as Record<string, unknown>;
-  const exName = headline.exercise_name ?? 'PushUps';
-  const displayTime = liveReps?.ts && liveReps.ts > group.latest_at ? liveReps.ts : group.latest_at;
-
-  const style = getEventStyle(headline.event_type);
-  const action = storyHeadline(headline);
-  const status = rankStatusLine(headline);
-
-  // Number-centric layout: big number is the hero (milestone_*, streak_*, total_*)
-  const isNumberCentric = headline.event_type.startsWith('milestone_') || headline.event_type.startsWith('total_');
-  const isStreakCentric  = headline.event_type.startsWith('streak_');
-
-  const repsAtEvent = (m.today_total ?? m.reps) as number | undefined;
-  const totalCount  = m.total as number | undefined;
-  const streakDays  = m.days as number | undefined;
-  const prevBest    = m.prev_best as number | undefined;
-
-  const bigNumber = isNumberCentric
-    ? (headline.event_type.startsWith('total_') ? totalCount : repsAtEvent)
-    : isStreakCentric ? streakDays
-    : undefined;
-  const bigUnit = isNumberCentric ? exName : 'Tage';
-
-  // For records: show improvement delta if available
-  const recordReps = (m.reps ?? m.today_total) as number | undefined;
-  const isRecord = headline.event_type === 'daily_record' || headline.event_type === 'personal_record';
-  const delta = isRecord && recordReps != null && prevBest != null ? recordReps - prevBest : undefined;
-
-  // ── Live progress ──────────────────────────────────────────────────────────
-  // Show the user's current today-total from rankList alongside the event snapshot.
-  // Uses already-fetched data — zero extra DB calls. Only shown when there's
-  // genuine progress beyond the event value (progress > 0).
-  const liveEntry = rankList.find(r => r.userId === group.user_id);
-  const currentReps = liveEntry?.reps;
-  // Compare against the event's rep snapshot. For streak events we skip this.
-  const snapReps = isStreakCentric ? undefined : repsAtEvent;
-  const liveProgress = currentReps != null && snapReps != null && currentReps > snapReps
-    ? currentReps - snapReps
-    : null;
-  // Show "Jetzt: X" when there's a progress delta, or when no snapshot exists (context-only)
-  const showLiveNow = !isStreakCentric && currentReps != null && currentReps > 0 && liveProgress != null;
-
-  return (
-    <CardShell group={group} flashing={flashing} leftAccent={style.borderColor}>
-      <button
-        className="w-full text-left"
-        onClick={() => onOpenProfile(group)}
-        aria-label={`Profil von ${name}`}
-      >
-        <div className="px-4 pt-3 pb-2.5">
-          {/* ── Header ── */}
-          <CardHeader name={name} avatarUrl={group.avatar_url} time={displayTime} size={26} />
-
-          {/* ── Event badge ── */}
-          <div className="mt-2">
-            <span className={`inline-block rounded-full px-2 py-[3px] text-[9px] font-bold uppercase tracking-widest ${style.badgeClasses}`}>
-              {style.badge}
-            </span>
-          </div>
-
-          {/* ── Primary content ── */}
-          <div className="mt-2">
-            {bigNumber != null ? (
-              /* Number hero */
-              <div className="flex items-baseline gap-1.5">
-                <span className={`text-[28px] font-black leading-none tabular-nums ${style.accentTextClass}`}>
-                  {bigNumber.toLocaleString('de-DE')}
-                </span>
-                <span className="text-[13px] font-semibold text-slate-400">{bigUnit}</span>
-              </div>
-            ) : (
-              /* Action hero */
-              <span className={`block text-[16px] font-extrabold leading-snug tracking-tight ${style.accentTextClass}`}>
-                {action}
-              </span>
-            )}
-          </div>
-
-          {/* ── Secondary content (action cards only) ── */}
-          {bigNumber != null ? null : repsAtEvent != null ? (
-            <p className="mt-1 text-[13px] font-semibold text-slate-400">
-              {repsAtEvent.toLocaleString('de-DE')}{' '}
-              <span className="text-[12px] font-medium text-slate-500">{exName}</span>
-              {delta != null && delta > 0 && (
-                <span className="ml-2 text-[11px] font-bold text-green-400">+{delta}</span>
-              )}
-              {!isRecord && prevBest != null && prevBest > 0 && (
-                <span className="ml-2 text-[11px] text-slate-600">vorher {prevBest}</span>
-              )}
-            </p>
-          ) : null}
-
-          {/* ── Live progress — "Jetzt: 240 (+140)" ── */}
-          {showLiveNow && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-[11px] font-medium text-slate-500">
-                Jetzt: {currentReps!.toLocaleString('de-DE')} {exName}
-              </span>
-              {liveProgress != null && liveProgress > 0 && (
-                <span className="rounded-full bg-green-500/12 px-1.5 py-px text-[10px] font-bold text-green-400">
-                  +{liveProgress.toLocaleString('de-DE')}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* ── Rank status (event snapshot) ── */}
-          {status && (
-            <p className="mt-1.5 text-[11px] font-medium text-slate-500">{status}</p>
-          )}
-
-          {/* ── Real-time session delta badge ── */}
-          {liveReps && liveReps.addedReps > 0 && (
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-bold text-brand-400">
-                +{liveReps.addedReps}
-              </span>
-              <span className="flex items-center gap-1 text-[9px] text-slate-600">
-                <span className="inline-block h-1 w-1 rounded-full bg-green-400 animate-pulse" />
-                gerade eben
-              </span>
-            </div>
-          )}
-        </div>
-      </button>
-    </CardShell>
-  );
-}
-
-// ─── LiveCard ──────────────────────────────────────────────────────────────────
-
-interface LiveCardProps {
+interface ActivityEntry {
+  entryId: string;
   userId: string;
   displayName: string;
   avatarUrl: string | null;
-  entry: { addedReps: number; ts: string };
-  rankList: RankEntry[];
-  onOpenProfile: () => void;
+  exerciseId: string;
+  amount: number;
+  runningTotal: number;
+  performedAt: string;
 }
 
-function LiveCard({ displayName, avatarUrl, entry, rankList, userId, onOpenProfile }: LiveCardProps) {
-  const myEntry = rankList.find(r => r.userId === userId);
-  return (
-    <div
-      className="overflow-hidden rounded-2xl border border-green-500/25 bg-ink-900 transition-transform active:scale-[0.985]"
-      style={{ animation: 'feedEnter 0.35s ease-out' }}
-    >
-      <button className="w-full text-left" onClick={onOpenProfile} aria-label={`Profil von ${displayName}`}>
-        <div className="px-3.5 pt-3 pb-2.5">
-          <CardHeader name={displayName} avatarUrl={avatarUrl} time={entry.ts} size={30} />
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400" />
-            </span>
-            <span className="text-[14px] font-extrabold text-green-400">
-              Trainiert gerade
-              {myEntry && ` · ${myEntry.reps.toLocaleString('de-DE')} PushUps`}
-              {entry.addedReps > 0 && ` (+${entry.addedReps})`}
-            </span>
-          </div>
-          {myEntry && (
-            <p className="mt-0.5 text-[10px] text-slate-600">Platz {myEntry.rank} · live</p>
-          )}
-        </div>
-      </button>
-    </div>
-  );
+// ─── Zeit (Europe/Berlin, HH:MM) ────────────────────────────────────────────────
+
+function berlinTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('de-DE', {
+    timeZone: 'Europe/Berlin',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-// ─── CurrentLeaderCard ────────────────────────────────────────────────────────
+// ─── Besondere Ereignisse (Meilenstein, Rekord, Führung, Platzwechsel) ─────────
+// Quelle: bestehende feed_events (vom DB-Trigger erzeugt) — keine neue Tabelle.
+// Ein feed_event wird der Ticker-Zeile zugeordnet, die es ausgelöst hat, damit
+// normale Sätze dezent bleiben und nur die auslösende Zeile hervorgehoben wird.
+
+type SpecialAccent = 'blue' | 'green' | 'amber' | 'neutral';
+
+interface SpecialBadge {
+  label: string;
+  description: string;
+  accent: SpecialAccent;
+  weight: number; // höheres Gewicht gewinnt, falls mehrere Events auf dieselbe Zeile matchen
+}
+
+const MILESTONE_ACCENT: SpecialAccent = 'blue';
+const RECORD_ACCENT: SpecialAccent = 'green';
+const LEAD_ACCENT: SpecialAccent = 'amber';
+const RANK_UP_ACCENT: SpecialAccent = 'neutral'; // bewusst kein zusätzlicher Farbton — sparsame Palette
+
+/** Zeitlich naheliegendster Aktivitäts-Eintrag desselben Nutzers/Exercises — für
+ * Events ohne exakten Zahlen-Match (place1_new, rank_improved). */
+function closestEntry(
+  entries: ActivityEntry[],
+  userId: string,
+  exerciseId: string | null,
+  iso: string,
+): ActivityEntry | undefined {
+  const t = new Date(iso).getTime();
+  let best: ActivityEntry | undefined;
+  let bestDiff = Infinity;
+  for (const e of entries) {
+    if (e.userId !== userId || e.exerciseId !== exerciseId) continue;
+    const diff = Math.abs(new Date(e.performedAt).getTime() - t);
+    if (diff < bestDiff) { bestDiff = diff; best = e; }
+  }
+  return best;
+}
+
+function matchSpecialEvents(
+  entries: ActivityEntry[],
+  events: ArenaFeedEvent[],
+): Map<string, SpecialBadge> {
+  const result = new Map<string, SpecialBadge>();
+
+  const consider = (entryId: string | undefined, badge: SpecialBadge) => {
+    if (!entryId) return;
+    const existing = result.get(entryId);
+    if (!existing || badge.weight > existing.weight) result.set(entryId, badge);
+  };
+
+  for (const ev of events) {
+    const name = ev.display_name || ev.username || 'Unbekannt';
+    const m = ev.metadata;
+
+    if (ev.event_type.startsWith('milestone_')) {
+      // milestone_20 / milestone_50 sind reine Freundes-Hinweise ohne eigenen
+      // Wert im Live-Ticker — analog zur bisherigen Story-Logik übersprungen.
+      if (ev.event_type === 'milestone_20' || ev.event_type === 'milestone_50') continue;
+      const threshold = parseInt(ev.event_type.replace('milestone_', ''), 10);
+      const target = m.today_total as number | undefined;
+      const entry = entries.find(
+        e => e.userId === ev.user_id && e.exerciseId === ev.exercise_id && e.runningTotal === target,
+      );
+      consider(entry?.entryId, {
+        label: 'MEILENSTEIN',
+        description: `${name} erreicht ${threshold.toLocaleString('de-DE')} PushUps`,
+        accent: MILESTONE_ACCENT,
+        weight: 1,
+      });
+      continue;
+    }
+
+    if (ev.event_type === 'daily_record' || ev.event_type === 'personal_record') {
+      const reps = m.reps as number | undefined;
+      const entry = entries.find(
+        e => e.userId === ev.user_id && e.exerciseId === ev.exercise_id && e.runningTotal === reps,
+      );
+      consider(entry?.entryId, {
+        label: 'REKORD',
+        description: `${name} stellt einen neuen Tagesrekord auf`,
+        accent: RECORD_ACCENT,
+        weight: 2,
+      });
+      continue;
+    }
+
+    if (ev.event_type === 'place1_new') {
+      const entry = closestEntry(entries, ev.user_id, ev.exercise_id, ev.created_at);
+      consider(entry?.entryId, {
+        label: 'NEUE FÜHRUNG',
+        description: `${name} übernimmt Platz 1`,
+        accent: LEAD_ACCENT,
+        weight: 4,
+      });
+      continue;
+    }
+
+    if (ev.event_type === 'rank_improved') {
+      const newRank = m.new_rank as number | undefined;
+      if (newRank == null) continue;
+      const entry = closestEntry(entries, ev.user_id, ev.exercise_id, ev.created_at);
+      consider(entry?.entryId, {
+        label: 'PLATZWECHSEL',
+        description: `↑ ${name} steigt auf Platz ${newRank}`,
+        accent: RANK_UP_ACCENT,
+        weight: 3,
+      });
+    }
+  }
+
+  return result;
+}
+
+// ─── Gruppierung (Bursts desselben Nutzers zu einer Zeile bündeln) ────────────
+// Rein clientseitig über die frisch geladene activityList — keine Persistenz,
+// daher bei jedem Re-Fetch (Edit/Delete/Realtime) automatisch neu und korrekt.
+// Reihen mit besonderem Ereignis (Badge) bleiben immer eigenständig, damit sie
+// nie in einer Sammel-Zeile untergehen.
+
+const GROUP_WINDOW_MS = 3 * 60 * 1000; // 3 Minuten zwischen unmittelbar folgenden Sätzen
+
+interface ActivityGroup {
+  key: string;
+  entries: ActivityEntry[];
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  exerciseId: string;
+  totalDelta: number;   // Summe aller Satzgrößen der Gruppe — keine Datenverluste
+  runningTotal: number; // Tagesgesamtstand nach dem neuesten Satz der Gruppe
+  latestAt: string;
+  badge?: SpecialBadge;
+}
+
+function groupActivity(
+  entries: ActivityEntry[], // bereits absteigend sortiert (neueste zuerst)
+  specialByEntry: Map<string, SpecialBadge>,
+): ActivityGroup[] {
+  const groups: ActivityGroup[] = [];
+
+  for (const entry of entries) {
+    const badge = specialByEntry.get(entry.entryId);
+    const last = groups[groups.length - 1];
+    const lastEntry = last?.entries[last.entries.length - 1];
+    const gapMs = lastEntry
+      ? new Date(lastEntry.performedAt).getTime() - new Date(entry.performedAt).getTime()
+      : Infinity;
+
+    const canMerge =
+      last && !last.badge && !badge &&
+      last.userId === entry.userId && last.exerciseId === entry.exerciseId &&
+      gapMs <= GROUP_WINDOW_MS;
+
+    if (canMerge && last) {
+      last.entries.push(entry);
+      last.totalDelta += entry.amount;
+      // runningTotal/latestAt bleiben die des neuesten (zuerst eingefügten) Satzes
+    } else {
+      groups.push({
+        key: entry.entryId,
+        entries: [entry],
+        userId: entry.userId,
+        displayName: entry.displayName,
+        avatarUrl: entry.avatarUrl,
+        exerciseId: entry.exerciseId,
+        totalDelta: entry.amount,
+        runningTotal: entry.runningTotal,
+        latestAt: entry.performedAt,
+        badge,
+      });
+    }
+  }
+
+  return groups;
+}
+
+// ─── LiveRankList (kompakte Live-Rangliste, Top 5) ─────────────────────────────
 // Built EXCLUSIVELY from the live leaderboard (get_all_active_today).
 // Never uses a feed_event as its source of truth.
 // Shown at the top of every feed render — always correct, never stale.
 
-interface CurrentLeaderCardProps {
-  leader: RankEntry;
-  secondPlace: RankEntry | undefined;
+function RankRow({
+  entry,
+  isLive,
+  onOpenProfile,
+  detached,
+}: {
+  entry: RankEntry;
   isLive: boolean;
-  exerciseName: string;
   onOpenProfile: () => void;
+  detached?: boolean;
+}) {
+  const isFirst = entry.rank === 1;
+  return (
+    <button
+      className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition active:bg-ink-800/60 ${
+        detached ? 'bg-brand-500/5' : ''
+      }`}
+      onClick={onOpenProfile}
+      aria-label={`Profil von ${entry.displayName}`}
+    >
+      <span
+        className={`w-5 shrink-0 text-center text-[12px] font-black tabular-nums ${
+          isFirst ? 'text-amber-400' : 'text-slate-500'
+        }`}
+      >
+        {entry.rank}
+      </span>
+      <Avatar url={entry.avatarUrl} name={entry.displayName} size={26} />
+      <span
+        className={`min-w-0 flex-1 truncate text-[13px] font-semibold ${
+          isFirst ? 'text-amber-200' : entry.isMe ? 'text-brand-300' : 'text-slate-200'
+        }`}
+      >
+        {entry.displayName}
+      </span>
+      {isLive && (
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-400" />
+        </span>
+      )}
+      <span
+        className={`shrink-0 text-[13px] font-black tabular-nums ${
+          isFirst ? 'text-amber-300' : 'text-slate-300'
+        }`}
+      >
+        {entry.reps.toLocaleString('de-DE')}
+      </span>
+    </button>
+  );
 }
 
-function CurrentLeaderCard({
-  leader,
-  secondPlace,
-  isLive,
-  exerciseName,
+function LiveRankList({
+  top,
+  myEntry,
+  liveActivity,
   onOpenProfile,
-}: CurrentLeaderCardProps) {
-  const shortName = leader.displayName.split(' ')[0];
-  const lead = secondPlace ? leader.reps - secondPlace.reps : null;
+}: {
+  top: RankEntry[];
+  myEntry: RankEntry | null;
+  liveActivity: LiveActivityMap;
+  onOpenProfile: (entry: RankEntry) => void;
+}) {
+  if (top.length === 0) return null;
+  const showDetached = !!myEntry && !top.some(e => e.userId === myEntry.userId);
 
   return (
-    <div
-      className="overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-ink-900 via-ink-900 to-amber-950/30 shadow-[0_0_20px_-6px_rgba(251,191,36,0.3)] transition-transform active:scale-[0.985]"
-    >
-      <button
-        className="w-full text-left"
-        onClick={onOpenProfile}
-        aria-label={`Profil von ${leader.displayName}`}
-      >
-        <div className="px-3.5 pt-3 pb-3">
-          {/* Header row */}
-          <div className="flex items-center justify-between">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Avatar url={leader.avatarUrl} name={leader.displayName} size={30} />
-              <span className="truncate text-[12px] font-semibold leading-none text-slate-400">
-                {leader.displayName}
-              </span>
-              {isLive && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-400" />
-                </span>
-              )}
-            </div>
-            <span className="shrink-0 text-[10px] font-semibold leading-none text-amber-500/80">
-              Platz 1 • live
-            </span>
-          </div>
-
-          {/* Big number */}
-          <div className="mt-2 flex items-end gap-2.5">
-            <span className="text-[22px] leading-none">👑</span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-1">
-                <span className="text-[28px] font-black leading-none tabular-nums text-amber-300">
-                  {leader.reps.toLocaleString('de-DE')}
-                </span>
-                <span className="text-[11px] font-semibold text-slate-500">{exerciseName} heute</span>
-              </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0">
-                <span className="text-[11px] font-bold text-amber-400">{shortName} führt</span>
-                {lead != null && lead > 0 && secondPlace && (
-                  <span className="text-[10px] text-slate-600">
-                    {lead.toLocaleString('de-DE')} vor {secondPlace.displayName.split(' ')[0]}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </button>
+    <div className="overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900">
+      <div className="flex items-baseline justify-between px-3.5 pt-2.5 pb-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Live-Rangliste</span>
+        <span className="text-[10px] font-semibold text-slate-600">Heute</span>
+      </div>
+      <div className="divide-y divide-ink-800/70">
+        {top.map(entry => (
+          <RankRow
+            key={entry.userId}
+            entry={entry}
+            isLive={!!liveActivity[entry.userId]}
+            onOpenProfile={() => onOpenProfile(entry)}
+          />
+        ))}
+      </div>
+      {showDetached && myEntry && (
+        <>
+          <div className="mx-3.5 border-t border-dashed border-ink-700/70" />
+          <RankRow
+            entry={myEntry}
+            isLive={!!liveActivity[myEntry.userId]}
+            onOpenProfile={() => onOpenProfile(myEntry)}
+            detached
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -662,18 +323,10 @@ function CurrentLeaderCard({
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse rounded-2xl border border-ink-700/60 bg-ink-900 px-3.5 py-3">
-      <div className="flex items-start gap-2.5">
-        <div className="mt-0.5 h-[30px] w-[30px] shrink-0 rounded-full bg-ink-700" />
-        <div className="min-w-0 flex-1 pt-0.5">
-          <div className="flex items-baseline justify-between">
-            <div className="h-2.5 w-1/4 rounded-full bg-ink-700" />
-            <div className="h-2 w-8 rounded-full bg-ink-700" />
-          </div>
-          <div className="mt-2 h-4 w-3/5 rounded-full bg-ink-700" />
-          <div className="mt-1.5 h-2.5 w-2/5 rounded-full bg-ink-700/60" />
-        </div>
-      </div>
+    <div className="flex animate-pulse items-center gap-2.5 rounded-xl bg-ink-900 px-3.5 py-2">
+      <div className="h-[26px] w-[26px] shrink-0 rounded-full bg-ink-700" />
+      <div className="h-2.5 w-1/3 rounded-full bg-ink-700" />
+      <div className="ml-auto h-2.5 w-10 rounded-full bg-ink-700" />
     </div>
   );
 }
@@ -693,12 +346,124 @@ function FilterPill({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-// ─── Card dispatch ────────────────────────────────────────────────────────────
+// ─── LiveActivityTicker (kompakter Live-Ticker, ein Eintrag pro Satz) ──────────
+// Jede Zeile: Avatar, Name, Satzgröße (+X), Pfeil, neuer Tagesgesamtstand, Uhrzeit.
+// Quelle: get_arena_live_activity — reine Projektion von workout_entries, daher
+// bei UPDATE/DELETE eines Satzes beim nächsten Fetch automatisch korrekt.
 
-function FeedCard(props: CardProps) {
-  const [headline] = props.group.items;
-  if (!headline) return null;
-  return <PremiumFeedCard {...props} />;
+const SPECIAL_ACCENT_CLASSES: Record<SpecialAccent, { border: string; label: string }> = {
+  blue:   { border: 'border-l-blue-500 bg-blue-500/[0.06]',    label: 'text-blue-400' },
+  green:  { border: 'border-l-green-500 bg-green-500/[0.06]',  label: 'text-green-400' },
+  amber:  { border: 'border-l-amber-400 bg-amber-400/[0.07]',  label: 'text-amber-400' },
+  neutral: { border: 'border-l-slate-500 bg-slate-500/[0.05]', label: 'text-slate-400' },
+};
+
+function ActivityRow({ entry, isMe, badge, onOpenProfile }: {
+  entry: ActivityEntry;
+  isMe: boolean;
+  badge?: SpecialBadge;
+  onOpenProfile: () => void;
+}) {
+  const accent = badge ? SPECIAL_ACCENT_CLASSES[badge.accent] : null;
+
+  return (
+    <button
+      className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition active:bg-ink-800/60 ${
+        accent ? `border-l-2 ${accent.border}` : ''
+      }`}
+      onClick={onOpenProfile}
+      aria-label={`Profil von ${entry.displayName}`}
+    >
+      <Avatar url={entry.avatarUrl} name={entry.displayName} size={24} />
+      <div className="min-w-0 flex-1">
+        {badge && (
+          <span className={`block text-[9px] font-bold uppercase tracking-widest ${accent!.label}`}>
+            {badge.label}
+          </span>
+        )}
+        <span className={`block truncate text-[13px] font-semibold ${isMe ? 'text-brand-300' : 'text-slate-200'}`}>
+          {badge ? badge.description : entry.displayName}
+        </span>
+      </div>
+      <span className="shrink-0 text-[12px] font-bold text-green-400">
+        +{entry.amount.toLocaleString('de-DE')}
+      </span>
+      <span className="shrink-0 text-[11px] text-slate-600">→</span>
+      <span className="shrink-0 text-[13px] font-black tabular-nums text-slate-200">
+        {entry.runningTotal.toLocaleString('de-DE')}
+      </span>
+      <span className="w-9 shrink-0 text-right text-[10px] font-medium tabular-nums text-slate-600">
+        {berlinTime(entry.performedAt)}
+      </span>
+    </button>
+  );
+}
+
+function GroupedActivityRow({ group, isMe, onOpenProfile }: {
+  group: ActivityGroup;
+  isMe: boolean;
+  onOpenProfile: () => void;
+}) {
+  return (
+    <button
+      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition active:bg-ink-800/60"
+      onClick={onOpenProfile}
+      aria-label={`Profil von ${group.displayName}`}
+    >
+      <Avatar url={group.avatarUrl} name={group.displayName} size={24} />
+      <div className="min-w-0 flex-1">
+        <span className={`block truncate text-[13px] font-semibold ${isMe ? 'text-brand-300' : 'text-slate-200'}`}>
+          {group.displayName}
+        </span>
+        <span className="block text-[10px] text-slate-600">{group.entries.length} Sätze</span>
+      </div>
+      <span className="shrink-0 text-[12px] font-bold text-green-400">
+        +{group.totalDelta.toLocaleString('de-DE')}
+      </span>
+      <span className="shrink-0 text-[11px] text-slate-600">→</span>
+      <span className="shrink-0 text-[13px] font-black tabular-nums text-slate-200">
+        {group.runningTotal.toLocaleString('de-DE')}
+      </span>
+      <span className="w-9 shrink-0 text-right text-[10px] font-medium tabular-nums text-slate-600">
+        {berlinTime(group.latestAt)}
+      </span>
+    </button>
+  );
+}
+
+function LiveActivityTicker({ groups, myUserId, onOpenProfile }: {
+  groups: ActivityGroup[];
+  myUserId: string | undefined;
+  onOpenProfile: (entry: ActivityEntry) => void;
+}) {
+  if (groups.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900">
+      <div className="px-3.5 pt-2.5 pb-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Live-Aktivität</span>
+      </div>
+      <div className="divide-y divide-ink-800/70">
+        {groups.map(group =>
+          group.entries.length > 1 ? (
+            <GroupedActivityRow
+              key={group.key}
+              group={group}
+              isMe={group.userId === myUserId}
+              onOpenProfile={() => onOpenProfile(group.entries[0])}
+            />
+          ) : (
+            <ActivityRow
+              key={group.key}
+              entry={group.entries[0]}
+              isMe={group.userId === myUserId}
+              badge={group.badge}
+              onOpenProfile={() => onOpenProfile(group.entries[0])}
+            />
+          ),
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -712,19 +477,27 @@ interface InfoSheetState {
 
 export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const { exercise: activeExercise } = useExercise();
+  const { user } = useAuth();
   const [filter, setFilter] = useState<FeedFilter>('global');
   const [infoSheet, setInfoSheet] = useState<InfoSheetState | null>(null);
   const [rankList, setRankList] = useState<RankEntry[]>([]);
+  const [activityList, setActivityList] = useState<ActivityEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
-  const {
-    events, loading, refreshing, hasMore, newEventIds, liveActivity,
-    refresh, loadMore, silentRefresh,
-  } = useArenaFeed(filter);
+  const { events, refreshing, liveActivity, refresh, silentRefresh } = useArenaFeed(filter);
+
+  // Sequenz-Zähler gegen Race Conditions: bei schnell aufeinanderfolgenden
+  // Fetches (z.B. mehrere Sätze kurz hintereinander) darf eine spät eintreffende
+  // Antwort eine bereits neuere nicht mehr überschreiben.
+  const rankListSeq = useRef(0);
+  const activityListSeq = useRef(0);
 
   // ── Rang-Hilfsfunktion ──────────────────────────────────────────────────────
   const fetchRankList = useCallback(async (exId: string) => {
+    const seq = ++rankListSeq.current;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any).rpc('get_all_active_today', { p_exercise: exId });
+    if (seq !== rankListSeq.current) return; // veraltete Antwort verwerfen
     if (!data) return;
     const sorted: RankEntry[] = [...data]
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -736,8 +509,31 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
         avatarUrl: (r.avatar_url ?? null) as string | null,
         reps: r.today_amount as number,
         rank: i + 1,
+        isMe: !!r.is_me,
+        isFriend: !!r.is_friend,
       }));
     setRankList(sorted);
+  }, []);
+
+  // ── Live-Aktivität-Hilfsfunktion ────────────────────────────────────────────
+  const fetchActivityList = useCallback(async (f: FeedFilter) => {
+    const seq = ++activityListSeq.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).rpc('get_arena_live_activity', { p_filter: f, p_limit: 40 });
+    if (seq !== activityListSeq.current) return; // veraltete Antwort verwerfen
+    if (!data) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: ActivityEntry[] = (data as any[]).map(r => ({
+      entryId: r.entry_id,
+      userId: r.user_id,
+      displayName: r.display_name || r.username || 'Unbekannt',
+      avatarUrl: (r.avatar_url ?? null) as string | null,
+      exerciseId: r.exercise_id,
+      amount: r.amount as number,
+      runningTotal: r.running_total as number,
+      performedAt: r.performed_at as string,
+    }));
+    setActivityList(rows);
   }, []);
 
   // Fetch live leaderboard for competitive context (lead-over-#2, rank proximity).
@@ -745,28 +541,34 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const rankFetched = useRef(false);
   useEffect(() => {
     if (rankFetched.current) return;
-    const exId = activeExercise?.id ?? events.find(e => e.exercise_id)?.exercise_id;
+    const exId = activeExercise?.id;
     if (!exId) return;
     rankFetched.current = true;
     void fetchRankList(exId);
-  }, [activeExercise?.id, events, fetchRankList]);
+  }, [activeExercise?.id, fetchRankList]);
 
-  // Debounced Aktualisierung von Rang + Feed wenn live_activity sich ändert.
+  // Live-Aktivität initial laden und bei Filter-Wechsel neu laden (Filter wird
+  // serverseitig in get_arena_live_activity angewendet).
+  useEffect(() => {
+    setActivityLoading(true);
+    void fetchActivityList(filter).finally(() => setActivityLoading(false));
+  }, [filter, fetchActivityList]);
+
+  // Debounced Aktualisierung von Rang + Aktivität wenn live_activity sich ändert.
   // Tritt auf bei:
   //   a) Neuem Workout (INSERT) → live_activity erhöht sich → neue Daten anzeigen
   //   b) Gelöschtem/bearbeitetem Satz (DELETE/UPDATE) → live_activity sinkt →
-  //      abgelaufene feed_events aus dem UI entfernen + Rang korrigieren
+  //      abgelaufene Ticker-Zeilen korrigieren
   const liveActivityDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (Object.keys(liveActivity).length === 0) return; // nichts zu tun bei leerem State
-    const exId = activeExercise?.id ?? events.find(e => e.exercise_id)?.exercise_id;
+    const exId = activeExercise?.id;
 
     if (liveActivityDebounce.current) clearTimeout(liveActivityDebounce.current);
     liveActivityDebounce.current = setTimeout(async () => {
-      // Feed neu laden (entfernt abgelaufene Events)
       await silentRefresh();
-      // Rangliste neu laden
       if (exId) await fetchRankList(exId);
+      await fetchActivityList(filter);
     }, 2000);
 
     return () => {
@@ -776,57 +578,40 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveActivity]);
 
-  // Re-fetch ranking + feed on pull-to-refresh
+  // Re-fetch ranking + activity on pull-to-refresh
   const handleRefresh = async () => {
     rankFetched.current = false;
     await refresh();
+    const exId = activeExercise?.id;
+    if (exId) await fetchRankList(exId);
+    await fetchActivityList(filter);
   };
 
-  const stories = useMemo(
-    () => buildStories(events, newEventIds, liveActivity),
-    [events, newEventIds, liveActivity],
+  // Live-Rangliste passend zum gewählten Filter neu ranken (rankList selbst bleibt
+  // global — wird nur für Lookups verwendet).
+  const filteredRankList = useMemo(() => {
+    const base = filter === 'friends' ? rankList.filter(r => r.isFriend || r.isMe) : rankList;
+    return base.map((r, i) => ({ ...r, rank: i + 1 }));
+  }, [rankList, filter]);
+  const topRankList = useMemo(() => filteredRankList.slice(0, 5), [filteredRankList]);
+  const myRankEntry = useMemo(() => filteredRankList.find(r => r.isMe) ?? null, [filteredRankList]);
+
+  // Besondere Ereignisse (Meilenstein, Rekord, Führung, Platzwechsel) den
+  // Ticker-Zeilen zuordnen, die sie ausgelöst haben — reine feed_events-Projektion,
+  // keine eigene Persistenz.
+  const specialByEntry = useMemo(
+    () => matchSpecialEvents(activityList, events),
+    [activityList, events],
+  );
+
+  // Bursts desselben Nutzers zu einer kompakten Sammel-Zeile bündeln.
+  const activityGroups = useMemo(
+    () => groupActivity(activityList, specialByEntry),
+    [activityList, specialByEntry],
   );
 
   const listRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
-
-  // Users with live activity who have no story in the current feed.
-  // Nutzer mit todayTotal = 0 (Satz gelöscht) werden ausgeblendet.
-  const liveOnlyUsers = useMemo(() => {
-    const storyUserIds = new Set(stories.map(g => g.user_id));
-    const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-    return Object.entries(liveActivity)
-      .filter(([userId, entry]) =>
-        !storyUserIds.has(userId) &&
-        entry.todayTotal > 0 &&                               // nicht anzeigen wenn Summe 0
-        new Date(entry.ts).getTime() > fiveMinAgo,
-      )
-      .map(([userId, entry]) => {
-        const ref = events.find(e => e.user_id === userId);
-        return {
-          userId,
-          displayName: ref?.display_name || ref?.username || 'Unbekannt',
-          avatarUrl: ref?.avatar_url ?? null,
-          entry: { addedReps: entry.lastDelta, ts: entry.ts },
-        };
-      })
-      .filter(l => l.entry.addedReps > 0);
-  }, [liveActivity, stories, events]);
-
-  // Infinite scroll
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && hasMore && !loading) void loadMore();
-      },
-      { root: listRef.current, threshold: 0.1 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, loading, loadMore]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -843,9 +628,40 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
       midnight.setHours(24, 0, 5, 0);
       return Math.max(0, midnight.getTime() - berlinNow.getTime());
     };
-    const timer = setTimeout(() => void refresh(), msUntilMidnight());
+    const timer = setTimeout(() => {
+      rankFetched.current = false;
+      void refresh();
+      const exId = activeExercise?.id;
+      if (exId) void fetchRankList(exId);
+      void fetchActivityList(filter);
+    }, msUntilMidnight());
     return () => clearTimeout(timer);
-  }, [refresh]);
+  }, [refresh, filter, fetchActivityList, fetchRankList, activeExercise?.id]);
+
+  // Nach Rückkehr aus dem Hintergrund (Tab/App-Wechsel, Bildschirm gesperrt):
+  // Realtime-Verbindung kann während der Zeit im Hintergrund kurz unterbrochen
+  // gewesen sein (z.B. iOS Safari suspendiert WebSockets) — erzwungener
+  // Voll-Refresh holt verpasste Änderungen nach. Throttled, damit kurzes
+  // Wegtippen/Zurückkommen (z.B. Kamera für Profilbild) keinen Extra-Request auslöst.
+  const lastVisibilityRefreshAt = useRef(Date.now());
+  useEffect(() => {
+    const VISIBILITY_REFETCH_MS = 60_000; // max. einmal pro Minute
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastVisibilityRefreshAt.current < VISIBILITY_REFETCH_MS) return;
+      lastVisibilityRefreshAt.current = Date.now();
+      void silentRefresh();
+      const exId = activeExercise?.id;
+      if (exId) void fetchRankList(exId);
+      void fetchActivityList(filter);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [silentRefresh, fetchRankList, fetchActivityList, filter, activeExercise?.id]);
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -853,37 +669,17 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
     if (dy > 60 && (listRef.current?.scrollTop ?? 0) <= 0 && !refreshing) void handleRefresh();
   };
 
-  const handleOpenProfile = (group: ArenaFeedGroup) => {
-    const exerciseId = group.items.find(i => i.exercise_id)?.exercise_id ?? activeExercise?.id;
-    if (!exerciseId) return;
+  const handleOpenActivityProfile = (entry: ActivityEntry) => {
     setInfoSheet({
-      userId: group.user_id,
-      displayName: group.display_name || group.username || 'Unbekannt',
-      avatarUrl: group.avatar_url,
-      exerciseId,
+      userId: entry.userId,
+      displayName: entry.displayName,
+      avatarUrl: entry.avatarUrl,
+      exerciseId: entry.exerciseId,
     });
-  };
-
-  const handleOpenLiveProfile = (userId: string, displayName: string, avatarUrl: string | null) => {
-    const exerciseId = liveActivity[userId]?.exerciseId ?? activeExercise?.id;
-    if (!exerciseId) return;
-    setInfoSheet({ userId, displayName, avatarUrl, exerciseId });
   };
 
   return (
     <>
-      <style>{`
-        @keyframes feedEnter {
-          from { opacity: 0; transform: translateY(-6px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-        @keyframes liveFlash {
-          0%   { box-shadow: 0 0 0 0px rgba(99,102,241,0); }
-          35%  { box-shadow: 0 0 0 3px rgba(99,102,241,0.45); }
-          100% { box-shadow: 0 0 0 0px rgba(99,102,241,0); }
-        }
-      `}</style>
-
       <div className="fixed inset-0 z-50 flex flex-col bg-ink-950">
         <div style={{ paddingTop: 'env(safe-area-inset-top)' }} />
 
@@ -898,7 +694,7 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
                   Live
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600">Wer führt gerade?</p>
+              <p className="text-[11px] text-slate-600">Was passiert heute?</p>
             </div>
             <button
               onClick={onClose}
@@ -934,77 +730,51 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {loading && stories.length === 0 ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+          {activityLoading && activityList.length === 0 ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
-          ) : stories.length === 0 && liveOnlyUsers.length === 0 ? (
+          ) : topRankList.length === 0 && activityList.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-ink-800 text-3xl">🏋️</div>
-              <p className="text-sm font-bold text-slate-300">Noch nichts los.</p>
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-ink-800">
+                <TrophyIcon className="h-7 w-7 text-slate-600" />
+              </div>
+              <p className="text-sm font-bold text-slate-300">
+                {filter === 'friends' ? 'Ruhig hier.' : 'Noch nichts los.'}
+              </p>
               <p className="max-w-[200px] text-xs text-slate-600">
                 {filter === 'friends'
-                  ? 'Deine Freunde waren heute noch nicht aktiv.'
-                  : 'Sei der Erste, der heute trainiert!'}
+                  ? 'Heute war noch keiner deiner Freunde aktiv.'
+                  : 'Heute ist es noch ruhig in der Arena.'}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {/* ── Current leader — built from live leaderboard, never from feed events ── */}
-              {rankList.length > 0 && rankList[0].reps > 0 && (
-                <CurrentLeaderCard
-                  leader={rankList[0]}
-                  secondPlace={rankList[1]}
-                  isLive={!!liveActivity[rankList[0].userId]}
-                  exerciseName={
-                    events.find(e => e.exercise_id)?.exercise_name ?? 'PushUps'
-                  }
-                  onOpenProfile={() => {
-                    const exerciseId =
-                      activeExercise?.id ??
-                      events.find(e => e.exercise_id)?.exercise_id;
+              {/* ── Live-Rangliste — built from live leaderboard, never from feed events ── */}
+              {topRankList.length > 0 && (
+                <LiveRankList
+                  top={topRankList}
+                  myEntry={myRankEntry}
+                  liveActivity={liveActivity}
+                  onOpenProfile={entry => {
+                    const exerciseId = activeExercise?.id ?? activityList[0]?.exerciseId;
                     if (!exerciseId) return;
                     setInfoSheet({
-                      userId: rankList[0].userId,
-                      displayName: rankList[0].displayName,
-                      avatarUrl: rankList[0].avatarUrl,
+                      userId: entry.userId,
+                      displayName: entry.displayName,
+                      avatarUrl: entry.avatarUrl,
                       exerciseId,
                     });
                   }}
                 />
               )}
 
-              {liveOnlyUsers.map(l => (
-                <LiveCard
-                  key={`live-${l.userId}`}
-                  userId={l.userId}
-                  displayName={l.displayName}
-                  avatarUrl={l.avatarUrl}
-                  entry={l.entry}
-                  rankList={rankList}
-                  onOpenProfile={() => handleOpenLiveProfile(l.userId, l.displayName, l.avatarUrl)}
-                />
-              ))}
-
-              {stories.map(group => (
-                <FeedCard
-                  key={group.key}
-                  group={group}
-                  rankList={rankList}
-                  liveReps={
-                    liveActivity[group.user_id]
-                      ? { addedReps: liveActivity[group.user_id].lastDelta, ts: liveActivity[group.user_id].ts }
-                      : undefined
-                  }
-                  onOpenProfile={handleOpenProfile}
-                />
-              ))}
-
-              <div ref={sentinelRef} className="h-1" />
-
-              {!hasMore && stories.length > 0 && (
-                <p className="py-4 text-center text-xs text-slate-600">Das war alles 🎉</p>
-              )}
+              {/* ── Live-Aktivität — ein Eintrag pro Satz (Bursts gebündelt) ── */}
+              <LiveActivityTicker
+                groups={activityGroups}
+                myUserId={user?.id}
+                onOpenProfile={handleOpenActivityProfile}
+              />
 
               <div style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }} />
             </div>
