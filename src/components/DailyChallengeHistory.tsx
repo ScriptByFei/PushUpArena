@@ -136,9 +136,14 @@ export function HistoryList({ exerciseId, challengeDate, onSelectDay }: HistoryL
 
 // ── Tagesergebnis-Sheet ────────────────────────────────────────────────────
 
+// Qualifikation: mind. 2 getrennte Sätze an diesem Tag — ein einzelner,
+// gebündelt eingetragener Riesensatz soll diese Auszeichnungen nicht
+// gewinnen können. Gleiche Regel wie bei den Live-Badges (DailyChallengeModal.tsx).
+
 function findBestAverage(entries: DailyChallengeDayLeaderboardEntry[]) {
   let best: DailyChallengeDayLeaderboardEntry | null = null;
   for (const e of entries) {
+    if (e.setCount < 2) continue;
     if (e.averageSet == null) continue;
     if (!best || best.averageSet == null || e.averageSet > best.averageSet) best = e;
   }
@@ -148,10 +153,36 @@ function findBestAverage(entries: DailyChallengeDayLeaderboardEntry[]) {
 function findBestSet(entries: DailyChallengeDayLeaderboardEntry[]) {
   let best: DailyChallengeDayLeaderboardEntry | null = null;
   for (const e of entries) {
+    if (e.setCount < 2) continue;
     if (e.maxSet == null) continue;
     if (!best || best.maxSet == null || e.maxSet > best.maxSet) best = e;
   }
   return best;
+}
+
+function HistoryBadgeCell({
+  label,
+  winner,
+}: {
+  label: string;
+  winner: { displayName: string; valueLabel: string } | null;
+}) {
+  return (
+    <div className="min-w-0 flex-1 rounded-lg border border-ink-700/60 bg-ink-800/40 px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      {winner ? (
+        <>
+          <p className="mt-1 truncate text-sm font-semibold text-slate-200">{winner.displayName}</p>
+          <p className="tabular-nums text-xs text-brand-300">{winner.valueLabel}</p>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Noch nicht vergeben</p>
+          <p className="text-[10px] text-slate-600">Ab 2 Sätzen</p>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function DayResultSheet({
@@ -266,34 +297,23 @@ export function DayResultSheet({
               ))}
             </ul>
 
-            {(bestAverage || bestSet) && (
-              <div className="mt-4 flex gap-2.5 border-t border-ink-700/60 pt-4">
-                {bestSet && (
-                  <div className="min-w-0 flex-1 rounded-lg border border-ink-700/60 bg-ink-800/40 px-3 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                      Bester Satz
-                    </p>
-                    <p className="mt-1 truncate text-sm font-semibold text-slate-200">
-                      {bestSet.displayName}
-                    </p>
-                    <p className="tabular-nums text-xs text-brand-300">{bestSet.maxSet}</p>
-                  </div>
-                )}
-                {bestAverage && (
-                  <div className="min-w-0 flex-1 rounded-lg border border-ink-700/60 bg-ink-800/40 px-3 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                      Bester Durchschnitt
-                    </p>
-                    <p className="mt-1 truncate text-sm font-semibold text-slate-200">
-                      {bestAverage.displayName}
-                    </p>
-                    <p className="tabular-nums text-xs text-brand-300">
-                      Ø {formatAverage(bestAverage.averageSet)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Dieser Zweig wird nur erreicht, wenn details.leaderboard nicht leer
+                ist (leerer Fall wird oben separat behandelt) — daher hier immer
+                sichtbar, mit "Noch nicht vergeben" falls niemand qualifiziert ist. */}
+            <div className="mt-4 flex gap-2.5 border-t border-ink-700/60 pt-4">
+              <HistoryBadgeCell
+                label="Bester Einzelsatz"
+                winner={bestSet ? { displayName: bestSet.displayName, valueLabel: String(bestSet.maxSet) } : null}
+              />
+              <HistoryBadgeCell
+                label="Bester Satzdurchschnitt"
+                winner={
+                  bestAverage
+                    ? { displayName: bestAverage.displayName, valueLabel: `Ø ${formatAverage(bestAverage.averageSet)}` }
+                    : null
+                }
+              />
+            </div>
           </>
         ) : null}
       </div>

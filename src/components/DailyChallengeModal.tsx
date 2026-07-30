@@ -336,8 +336,12 @@ interface BadgeWinner {
 }
 
 function findBestAverage(leaderboard: DailyChallengeLeaderboardEntry[]): BadgeWinner | null {
+  // Qualifikation: mind. 2 getrennte Sätze heute — ein einzelner, gebündelt
+  // eingetragener Riesensatz (z. B. 250 auf einmal) soll "Bester
+  // Satzdurchschnitt" nicht gewinnen können.
   let best: DailyChallengeLeaderboardEntry | null = null;
   for (const entry of leaderboard) {
+    if (entry.setCount < 2) continue;
     if (entry.averageSet == null) continue;
     if (!best || best.averageSet == null || entry.averageSet > best.averageSet) best = entry;
   }
@@ -346,8 +350,11 @@ function findBestAverage(leaderboard: DailyChallengeLeaderboardEntry[]): BadgeWi
 }
 
 function findBestSet(leaderboard: DailyChallengeLeaderboardEntry[]): BadgeWinner | null {
+  // Gleiche Qualifikation wie oben: mind. 2 Sätze, sonst kein "Bester
+  // Einzelsatz" für einen einzelnen Sammel-Eintrag.
   let best: DailyChallengeLeaderboardEntry | null = null;
   for (const entry of leaderboard) {
+    if (entry.setCount < 2) continue;
     if (entry.maxSet == null) continue;
     if (!best || best.maxSet == null || entry.maxSet > best.maxSet) best = entry;
   }
@@ -355,12 +362,21 @@ function findBestSet(leaderboard: DailyChallengeLeaderboardEntry[]): BadgeWinner
   return { displayName: best.displayName, valueLabel: String(best.maxSet) };
 }
 
-function BadgeCell({ label, winner }: { label: string; winner: BadgeWinner }) {
+function BadgeCell({ label, winner }: { label: string; winner: BadgeWinner | null }) {
   return (
     <div className="min-w-0 flex-1 rounded-lg border border-ink-700/60 bg-ink-900/40 px-3 py-2.5">
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-slate-200">{winner.displayName}</p>
-      <p className="tabular-nums text-xs text-brand-300">{winner.valueLabel}</p>
+      {winner ? (
+        <>
+          <p className="mt-1 truncate text-sm font-semibold text-slate-200">{winner.displayName}</p>
+          <p className="tabular-nums text-xs text-brand-300">{winner.valueLabel}</p>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Noch nicht vergeben</p>
+          <p className="text-[10px] text-slate-600">Ab 2 Sätzen</p>
+        </>
+      )}
     </div>
   );
 }
@@ -372,14 +388,13 @@ function PerformanceBadges({ leaderboard }: { leaderboard: DailyChallengeLeaderb
 
   const bestAverage = findBestAverage(leaderboard);
   const bestSet = findBestSet(leaderboard);
-  if (!bestAverage && !bestSet) return null;
 
   return (
     <Card className={PREMIUM_CARD}>
       <CardTitle>Performance</CardTitle>
       <div className="mt-2 flex gap-2.5">
-        {bestAverage && <BadgeCell label="Bester Schnitt" winner={bestAverage} />}
-        {bestSet && <BadgeCell label="Bester Satz" winner={bestSet} />}
+        <BadgeCell label="Bester Satzdurchschnitt" winner={bestAverage} />
+        <BadgeCell label="Bester Einzelsatz" winner={bestSet} />
       </div>
     </Card>
   );
