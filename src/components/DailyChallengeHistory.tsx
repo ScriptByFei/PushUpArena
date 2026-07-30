@@ -235,8 +235,11 @@ export function DayResultSheet({
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 px-4 pt-4"
-        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        className="max-h-[85vh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-ink-900 px-4 pt-4"
+        style={{
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+          WebkitOverflowScrolling: 'touch',
+        }}
         onClick={e => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-700" />

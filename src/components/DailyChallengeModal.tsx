@@ -510,9 +510,11 @@ function TabPill({
 }) {
   return (
     <button
+      type="button"
       role="tab"
       aria-selected={active}
       onClick={onClick}
+      style={{ touchAction: 'manipulation' }}
       className={`mb-3 flex-1 rounded-lg px-4 py-1.5 text-center text-sm font-semibold transition ${
         active
           ? 'bg-brand-600/30 text-brand-300'
@@ -647,8 +649,11 @@ function ParticipantDetailSheet({
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 px-4 pt-4"
-        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        className="max-h-[80vh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-ink-900 px-4 pt-4"
+        style={{
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+          WebkitOverflowScrolling: 'touch',
+        }}
         onClick={e => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-700" />
@@ -855,7 +860,7 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       data-no-drawer="true"
-      className="fixed inset-0 z-50 flex flex-col bg-ink-950"
+      className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-ink-950"
       role="dialog"
       aria-modal="true"
       aria-label="Daily Live"
@@ -912,10 +917,17 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Scrollbarer Inhalt */}
+      {/* Scrollbarer Inhalt — min-h-0 verhindert, dass der Flex-Child sich an
+          seinem Inhalt aufbläht statt zu scrollen (Safari-Flexbug); overscroll-
+          contain + WebkitOverflowScrolling verhindern, dass der elastische
+          iOS-Rubber-Band-Bounce am Scroll-Ende in einen "hängenden" Touch-
+          State übergeht, der den nächsten Tap auf die Tab-Leiste verschluckt. */}
       <div
-        className="flex-1 overflow-y-auto px-4 pt-4"
-        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
+        style={{
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+          WebkitOverflowScrolling: 'touch',
+        }}
       >
         {activeTab === 'live' ? (
           <LiveTab
