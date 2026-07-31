@@ -205,6 +205,13 @@ export const MedalIcon = (p: IconProps) => (
   </svg>
 );
 
+export const CrownIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M4 18h16" />
+    <path d="M4 18 3 8l5 4.5L12 6l4 6.5L21 8l-1 10" />
+  </svg>
+);
+
 export const MenuIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M3 6h18M3 12h18M3 18h18" />

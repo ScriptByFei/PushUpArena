@@ -5,7 +5,8 @@ import { UserInfoSheet } from '@/components/UserInfoSheet';
 import { useExercise } from '@/context/ExerciseContext';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
-import { TrophyIcon } from '@/components/ui/icons';
+import { TrophyIcon, CrownIcon } from '@/components/ui/icons';
+import { computeLeadChanges } from '@/lib/arenaLeadChange';
 import type { ArenaFeedEvent } from '@/types/feed';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,10 +42,12 @@ function berlinTime(iso: string): string {
   });
 }
 
-// ─── Besondere Ereignisse (Meilenstein, Rekord, Führung, Platzwechsel) ─────────
+// ─── Besondere Ereignisse (Meilenstein, Rekord, Platzwechsel) ──────────────────
 // Quelle: bestehende feed_events (vom DB-Trigger erzeugt) — keine neue Tabelle.
 // Ein feed_event wird der Ticker-Zeile zugeordnet, die es ausgelöst hat, damit
 // normale Sätze dezent bleiben und nur die auslösende Zeile hervorgehoben wird.
+// Führungswechsel ("FÜHRUNGSWECHSEL") werden NICHT hierüber erkannt, sondern
+// deterministisch aus den Tages-Sätzen berechnet — siehe computeLeadChanges().
 
 type SpecialAccent = 'blue' | 'green' | 'amber' | 'neutral';
 
@@ -53,6 +56,7 @@ interface SpecialBadge {
   description: string;
   accent: SpecialAccent;
   weight: number; // höheres Gewicht gewinnt, falls mehrere Events auf dieselbe Zeile matchen
+  icon?: 'crown';
 }
 
 const MILESTONE_ACCENT: SpecialAccent = 'blue';
@@ -127,16 +131,11 @@ function matchSpecialEvents(
       continue;
     }
 
-    if (ev.event_type === 'place1_new') {
-      const entry = closestEntry(entries, ev.user_id, ev.exercise_id, ev.created_at);
-      consider(entry?.entryId, {
-        label: 'NEUE FÜHRUNG',
-        description: `${name} übernimmt Platz 1`,
-        accent: LEAD_ACCENT,
-        weight: 4,
-      });
-      continue;
-    }
+    // Hinweis: 'place1_new' wird hier bewusst NICHT mehr verwendet — der DB-Trigger
+    // erzeugt es bereits, sobald der Nutzer nach seinem Satz Rang 1 ist, auch ohne
+    // dass ein vorheriger, eindeutiger Anführer existierte (z.B. der allererste
+    // Satz des Tages). Echte Führungswechsel werden stattdessen deterministisch aus
+    // den Tages-Sätzen berechnet — siehe computeLeadChanges() weiter unten.
 
     if (ev.event_type === 'rank_improved') {
       const newRank = m.new_rank as number | undefined;
@@ -377,7 +376,8 @@ function ActivityRow({ entry, isMe, badge, onOpenProfile }: {
       <Avatar url={entry.avatarUrl} name={entry.displayName} size={24} />
       <div className="min-w-0 flex-1">
         {badge && (
-          <span className={`block text-[9px] font-bold uppercase tracking-widest ${accent!.label}`}>
+          <span className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest ${accent!.label}`}>
+            {badge.icon === 'crown' && <CrownIcon className="h-2.5 w-2.5" />}
             {badge.label}
           </span>
         )}
@@ -596,13 +596,40 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   const topRankList = useMemo(() => filteredRankList.slice(0, 5), [filteredRankList]);
   const myRankEntry = useMemo(() => filteredRankList.find(r => r.isMe) ?? null, [filteredRankList]);
 
-  // Besondere Ereignisse (Meilenstein, Rekord, Führung, Platzwechsel) den
-  // Ticker-Zeilen zuordnen, die sie ausgelöst haben — reine feed_events-Projektion,
-  // keine eigene Persistenz.
-  const specialByEntry = useMemo(
+  // Besondere Ereignisse (Meilenstein, Rekord, Platzwechsel) den Ticker-Zeilen
+  // zuordnen, die sie ausgelöst haben — reine feed_events-Projektion, keine
+  // eigene Persistenz.
+  const eventBadges = useMemo(
     () => matchSpecialEvents(activityList, events),
     [activityList, events],
   );
+
+  // Echte Führungswechsel deterministisch aus den Tages-Sätzen berechnen
+  // (chronologische Rekonstruktion, siehe arenaLeadChange.ts). Ersetzt das
+  // fehlerhafte feed_events-'place1_new' (feuerte auch ohne echten Vorgänger,
+  // z.B. beim allerersten Satz des Tages). Bei Bearbeitung/Löschung eines
+  // Satzes wird activityList neu geladen und der Verlauf korrigiert sich
+  // automatisch — keine gesonderte Invalidierung nötig.
+  const leadChanges = useMemo(() => computeLeadChanges(activityList), [activityList]);
+
+  // Beide Quellen zu einer Badge-Map je Ticker-Zeile zusammenführen. Führungswechsel
+  // hat das höchste Gewicht und gewinnt bei Überschneidung mit anderen Ereignissen.
+  const specialByEntry = useMemo(() => {
+    const merged = new Map(eventBadges);
+    for (const entry of activityList) {
+      if (!leadChanges.has(entry.entryId)) continue;
+      const badge: SpecialBadge = {
+        label: 'FÜHRUNGSWECHSEL',
+        description: `${entry.displayName} übernimmt die Führung`,
+        accent: LEAD_ACCENT,
+        weight: 4,
+        icon: 'crown',
+      };
+      const existing = merged.get(entry.entryId);
+      if (!existing || badge.weight > existing.weight) merged.set(entry.entryId, badge);
+    }
+    return merged;
+  }, [eventBadges, leadChanges, activityList]);
 
   // Bursts desselben Nutzers zu einer kompakten Sammel-Zeile bündeln.
   const activityGroups = useMemo(
