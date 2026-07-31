@@ -868,8 +868,15 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
     >
       <div style={{ paddingTop: 'env(safe-area-inset-top)' }} />
 
-      {/* Header */}
-      <div className="shrink-0 border-b border-ink-800 px-4 pb-0 pt-2">
+      {/* Header — eigene Compositing-Ebene (transform + isolation), damit die
+          Tab-Leiste auf iOS Safari während eines noch laufenden Momentum-
+          Scrolls des Content-Geschwisters nicht kompositorisch "hinterherhinkt"
+          und Taps kurzzeitig falsch zuordnet. relative+z-10 sichert zusätzlich
+          einen eigenen Stacking-Context ab. */}
+      <div
+        className="relative z-10 shrink-0 border-b border-ink-800 px-4 pb-0 pt-2"
+        style={{ transform: 'translateZ(0)', isolation: 'isolate' }}
+      >
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-400">
