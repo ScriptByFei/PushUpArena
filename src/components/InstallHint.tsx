@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
+import { shouldBypassPwaInstallGate } from '@/lib/pwaGateBypass';
 
 // Diese Pfade bleiben im Browser zugänglich (E-Mail-Links, Rechtliches)
 const BROWSER_ALLOWED = ['/auth/confirm', '/reset-password', '/forgot-password', '/privacy', '/imprint'];
@@ -137,9 +138,10 @@ export function InstallHintProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isAllowedInBrowser = BROWSER_ALLOWED.some((p) => pathname.startsWith(p));
+  const shouldShowInstallGate = !standalone && !isAllowedInBrowser && !shouldBypassPwaInstallGate();
 
-  // Never block if standalone or on an allowed path
-  if (standalone || isAllowedInBrowser) {
+  // Never block if standalone, on an allowed path, oder im Dev-/Preview-Bypass
+  if (!shouldShowInstallGate) {
     return (
       <InstallHintContext.Provider value={false}>
         {children}
