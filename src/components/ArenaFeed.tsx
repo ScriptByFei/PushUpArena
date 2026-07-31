@@ -516,10 +516,14 @@ export function ArenaFeed({ onClose }: { onClose: () => void }) {
   }, []);
 
   // ── Live-Aktivität-Hilfsfunktion ────────────────────────────────────────────
+  // p_limit 100 = Server-Obergrenze der RPC (LEAST(p_limit, 100)). Wichtig für
+  // computeLeadChanges(): fallen ältere Sätze eines Nutzers aus der geladenen
+  // Liste, wird sein Tagesstand sonst zu niedrig rekonstruiert und ein bloßes
+  // Gleichziehen eines anderen Nutzers fälschlich als Überholen erkannt.
   const fetchActivityList = useCallback(async (f: FeedFilter) => {
     const seq = ++activityListSeq.current;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any).rpc('get_arena_live_activity', { p_filter: f, p_limit: 40 });
+    const { data } = await (supabase as any).rpc('get_arena_live_activity', { p_filter: f, p_limit: 100 });
     if (seq !== activityListSeq.current) return; // veraltete Antwort verwerfen
     if (!data) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

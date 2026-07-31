@@ -85,7 +85,18 @@ export function detectLeadChange(
 export interface LeadChangeSourceEntry {
   entryId: string;
   userId: string;
-  amount: number;
+  /**
+   * Kumulierter Tagesgesamtstand DES NUTZERS nach diesem Satz — bereits
+   * serverseitig korrekt über den kompletten Tag berechnet (SQL-Window-
+   * Function), unabhängig davon, wie viele Sätze der Client tatsächlich
+   * geladen hat. NICHT aus `amount`-Deltas der geladenen Einträge neu
+   * aufsummieren: Wird `activityList` serverseitig limitiert (z.B. LIMIT 40)
+   * und fallen dadurch ältere Sätze eines Nutzers weg, ergibt eine
+   * Neu-Aufsummierung einen zu niedrigen Stand für diesen Nutzer — mit der
+   * Folge, dass ein anderer Nutzer beim bloßen Gleichziehen fälschlich als
+   * "überholt" erkannt wird.
+   */
+  runningTotal: number;
   performedAt: string;
 }
 
@@ -116,7 +127,10 @@ export function computeLeadChanges(
 
   for (const entry of chronological) {
     const before: TotalsMap = new Map(totals);
-    totals.set(entry.userId, (totals.get(entry.userId) ?? 0) + entry.amount);
+    // Bereits korrekt kumuliert (serverseitig über den ganzen Tag berechnet) —
+    // NICHT aus Deltas der geladenen Einträge neu aufsummieren, siehe Hinweis
+    // an LeadChangeSourceEntry.runningTotal.
+    totals.set(entry.userId, entry.runningTotal);
 
     if (detectLeadChange(before, totals, entry.userId)) {
       result.set(entry.entryId, {
