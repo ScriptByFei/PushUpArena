@@ -748,6 +748,14 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
 
   const [activeTab, setActiveTab] = useState<Tab>('live');
 
+  // Alle drei Tabs teilen sich einen einzigen Scroll-Container (siehe unten).
+  // Bei Tab-Wechsel auf scrollTop 0 zurücksetzen, sonst startet der neue Tab
+  // an der vorherigen Scroll-Position statt oben.
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0 });
+  }, [activeTab]);
+
   // ── Verlauf (nur lesend) ───────────────────────────────────────────────────
   const [selectedHistoryDay, setSelectedHistoryDay] = useState<string | null>(null);
 
@@ -928,8 +936,13 @@ export function DailyChallengeModal({ onClose }: { onClose: () => void }) {
           seinem Inhalt aufbläht statt zu scrollen (Safari-Flexbug); overscroll-
           contain + WebkitOverflowScrolling verhindern, dass der elastische
           iOS-Rubber-Band-Bounce am Scroll-Ende in einen "hängenden" Touch-
-          State übergeht, der den nächsten Tap auf die Tab-Leiste verschluckt. */}
+          State übergeht, der den nächsten Tap auf die Tab-Leiste verschluckt.
+          Alle drei Tabs teilen sich diesen einen Container (nur der Inhalt
+          wird ausgetauscht, der Container selbst bleibt gemountet) — ohne
+          Reset bliebe eine vorhandene Scroll-Position beim Tab-Wechsel stehen
+          und der neue Tab würde mitten im Inhalt statt oben beginnen. */}
       <div
+        ref={contentScrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
         style={{
           paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
