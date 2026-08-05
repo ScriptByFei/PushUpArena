@@ -61,12 +61,12 @@ import { Avatar } from '@/components/ui/Avatar';
 import {
   BoltIcon,
   CalculatorIcon,
+  ChartIcon,
   HomeIcon,
   LogoutIcon,
   PlusIcon,
   RecapIcon,
   SettingsIcon,
-  TrophyIcon,
   XIcon,
 } from '@/components/ui/icons';
 
@@ -526,8 +526,8 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
       id: 'persoenlich', label: 'Persönlich',
       items: [
         {
-          id: 'achievements', label: 'Erfolge',
-          icon: <TrophyIcon className={T.icon} />,
+          id: 'statistics', label: 'Statistik',
+          icon: <ChartIcon className={T.icon} />,
           to: '/achievements',
         },
         {

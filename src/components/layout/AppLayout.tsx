@@ -21,7 +21,7 @@ const titles: Record<string, string> = {
   '/track': 'Eintragen',
   '/friends': 'Freunde',
   '/activity': 'Aktivität',
-  '/achievements': 'Erfolge · PushUp',
+  '/achievements': 'Statistik · PushUp',
   '/calorie-calculator': 'Kalorienrechner',
   '/leaderboard': 'Rangliste',
   '/profile': 'Profil',

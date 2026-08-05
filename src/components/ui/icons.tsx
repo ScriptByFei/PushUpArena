@@ -218,6 +218,13 @@ export const MenuIcon = (p: IconProps) => (
   </svg>
 );
 
+export const ChartIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M3 3v18h18" />
+    <path d="M18 8 12 14l-3-3-4 4" />
+  </svg>
+);
+
 export const CalculatorIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <rect x="4" y="2" width="16" height="20" rx="2" />
