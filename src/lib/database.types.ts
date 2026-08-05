@@ -276,6 +276,26 @@ export interface Database {
           current_streak: number;
         }[];
       };
+      get_my_statistics_summary: {
+        Args: { p_exercise: string };
+        Returns: {
+          total_amount: number;
+          total_sets: number;
+          training_days: number;
+          current_streak: number;
+          longest_streak: number;
+          avg_per_set: number;
+          avg_per_training: number;
+          best_day_amount: number;
+          best_day_date: string | null;
+          best_set_amount: number;
+          best_set_date: string | null;
+          most_sets_in_day: number;
+          most_sets_day_date: string | null;
+          best_avg_per_day: number;
+          best_avg_per_day_date: string | null;
+        }[];
+      };
       get_friend_leaderboard: {
         Args: { p_exercise: string };
         Returns: {
@@ -466,6 +486,7 @@ export type Achievement = Database['public']['Tables']['achievements']['Row'];
 export type UserAchievement = Database['public']['Tables']['user_achievements']['Row'];
 
 export type MyStats = Database['public']['Functions']['get_my_stats']['Returns'][number];
+export type MyStatisticsSummary = Database['public']['Functions']['get_my_statistics_summary']['Returns'][number];
 export type MyDailyRank = Database['public']['Functions']['get_my_daily_rank']['Returns'][number];
 export type LeaderboardRow = Database['public']['Functions']['get_friend_leaderboard']['Returns'][number];
 export type GlobalLeaderboardRow = LeaderboardRow & { is_friend: boolean; has_pending_request: boolean };

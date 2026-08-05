@@ -216,7 +216,7 @@ function LeaderboardRow({
 }
 
 // ── Hauptkomponente ───────────────────────────────────────────────
-export default function Achievements() {
+export function StatisticsAchievements() {
   const { enrolledExercises, loading: exLoading } = useExercise();
   const pushups = enrolledExercises.find((ex) => ex.slug === 'pushups');
   const { rows, loading, error, refetch } = usePodiumHistory(pushups?.id);
@@ -245,7 +245,7 @@ export default function Achievements() {
   const canNext = sliderIdx < dates.length - 1 && !podiumLoading;
 
   return (
-    <div className="space-y-3.5 pb-8">
+    <div className="space-y-3.5">
 
       {/* ── Tages-Podest ──────────────────────────────────────── */}
       {!datesLoading && dates.length > 0 && (

@@ -528,7 +528,7 @@ export const NavDrawer = forwardRef<NavDrawerHandle, NavDrawerProps>(function Na
         {
           id: 'statistics', label: 'Statistik',
           icon: <ChartIcon className={T.icon} />,
-          to: '/achievements',
+          to: '/statistics',
         },
         {
           id: 'calorie-calculator', label: 'Kalorienrechner',

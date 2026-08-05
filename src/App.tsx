@@ -51,7 +51,7 @@ import Dashboard from '@/pages/Dashboard';
 import Track from '@/pages/Track';
 import Friends from '@/pages/Friends';
 import Activity from '@/pages/Activity';
-import Achievements from '@/pages/Achievements';
+import Statistics from '@/pages/Statistics';
 import CalorieCalculator from '@/pages/CalorieCalculator';
 import Leaderboard from '@/pages/Leaderboard';
 import Profile from '@/pages/Profile';
@@ -119,7 +119,8 @@ export default function App() {
         <Route path="track" element={<Track />} />
         <Route path="friends" element={<Friends />} />
         <Route path="activity" element={<Activity />} />
-        <Route path="achievements" element={<Achievements />} />
+        <Route path="statistics" element={<Statistics />} />
+        <Route path="achievements" element={<Navigate to="/statistics" replace />} />
         <Route path="calorie-calculator" element={<CalorieCalculator />} />
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="profile" element={<Profile />} />

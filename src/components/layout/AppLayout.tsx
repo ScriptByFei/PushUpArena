@@ -21,7 +21,7 @@ const titles: Record<string, string> = {
   '/track': 'Eintragen',
   '/friends': 'Freunde',
   '/activity': 'Aktivität',
-  '/achievements': 'Statistik · PushUp',
+  '/statistics': 'Statistik · PushUp',
   '/calorie-calculator': 'Kalorienrechner',
   '/leaderboard': 'Rangliste',
   '/profile': 'Profil',
@@ -102,7 +102,7 @@ export function AppLayout() {
     enrolledExercises.length > 1 &&
     pathname !== '/' &&
     pathname !== '/global-stats' &&
-    pathname !== '/achievements';
+    pathname !== '/statistics';
 
   const handleOpenRecap = useCallback(async () => {
     await forceLoad();
